@@ -1,0 +1,12 @@
+.env
+dbg1.db
+test.py
+test2.py
+test3.py
+
+
+
+.mypy_cache/
+.vscode/
+venv/
+__pycache__/
