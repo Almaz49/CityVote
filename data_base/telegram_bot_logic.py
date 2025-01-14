@@ -46,8 +46,8 @@ def status_member(tg_id):
         else:
             status = extract_status(member_id)
     return(status)
-    
-  
+
+
 
  #Функци извлечения данных о пользователе по его tg_id
 # *c - список (точнее кортеж) колонок, из которых извлекатся данные.
@@ -57,8 +57,8 @@ def extract_user_data_tg(tg_id,*c):
 #     print(user_id)
     if user_id:
         return extract_user_data(user_id,*c)
-    
-# Функция извлечения member_id по tg_id    
+
+# Функция извлечения member_id по tg_id
 def member_id_tg(tg_id):
     user_id = extract_user_id(tg_id)
     if user_id:
@@ -93,7 +93,7 @@ def extract_new_registrator_data(tg_id):
         flag = False
         ans_str += '\nЭтот участник еще не зарегистрирован в группе'
 
-    
+
 
 
 #Присвоение нового статуса - в качестве аргументов функции tg_id регистратора и
@@ -113,7 +113,7 @@ def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
     if ans_str:
         return(ans_str)
 
-# Создание нового голосования    
+# Создание нового голосования
 def new_vote_tg(creator_tg_id, title, text = None, vote_type = 'usual',
                 vote_status = 'add_variants', link_id = None):
     creator_user_id = extract_user_id(creator_tg_id)
@@ -127,7 +127,7 @@ def new_variant_tg(vote_id, tg_id, title, text = None, link_id = None):
     user_id = extract_user_id(tg_id)
     author = extract_member_id(club_id, user_id)
     new_variant(vote_id, author, title, text, link_id)
-    
+
 
 # Извлечение статусов участника группы (отдает список статусов)
 def extract_status_tg(tg_id):
@@ -142,18 +142,12 @@ def extract_status_tg(tg_id):
 def list_of_votes_tg(*vote_status):
     return(list_of_votes(club_id,*vote_status))
 
-#Функция извлечения списка регистраторов
-def list_of_registrators_tg():
-    return(list_of_registrators(club_id))
+# Функция извлечения списка участников с со списком статусов *status
+def  list_of_memberd_tg(*status):
+    return list_of_members(club_id,*status)
 
 
-#Функция извлечения списка представителей
-def list_of_proxy_tg():
-    return(list_of_proxy(club_id))
 
-#Функция извлечения списка регистраторов
-def list_of_delegates_tg():
-    return(list_of_delegates(club_id))
 
 
 
@@ -170,5 +164,3 @@ def list_of_delegates_tg():
 #print(extract_user_data_tg(101))
 # print(status_member(12345))
 # print(extract_status_tg(12345))
-
-

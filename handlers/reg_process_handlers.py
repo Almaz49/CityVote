@@ -12,7 +12,7 @@ from data_base.data_base import db_update
 from keyboards.keyboards import reg_keyboard, contact_keyboard, remove_keyboard
 from filters.filters import filter_contact
 from data_base.telegram_bot_logic import (status_member, extract_user_data,
-        new_status_tg, list_of_registrators_tg)
+        new_status_tg, list_of_members_tg)
 from config_data.config import Config, load_config
 
 #инициализируем бота
@@ -96,7 +96,7 @@ async def reg_button_press(callback: CallbackQuery,state: FSMContext):
              reply_markup = markup
              )
             # Устанавливаем состояние ожидания подтверждения
-            await state.set_state(FSMRereg.fill_OK)     
+            await state.set_state(FSMRereg.fill_OK)
         else: #сли пользователь зарегистрирован в группе
             print(444444444444444444444444)
                 # Создаем объекты инлайн-кнопок
@@ -118,7 +118,7 @@ async def reg_button_press(callback: CallbackQuery,state: FSMContext):
              reply_markup = markup
              )
             # Устанавливаем состояние ожидания подтверждения
-            await state.set_state(FSMRereg.fill_OK)        
+            await state.set_state(FSMRereg.fill_OK)
 
 #Хендлер на обновление данных члена без регистрации
 @router.callback_query(StateFilter(FSMRereg.fill_OK),
@@ -143,7 +143,7 @@ async def process_yes_reg_member(callback: CallbackQuery, state: FSMContext):
 async def process_no_reg_member(callback: CallbackQuery, state: FSMContext):
     # Удаляем сообщение с кнопками подтверждения
     await callback.message.delete()
-    await callback.message.answer(   
+    await callback.message.answer(
         text='Вы вышли из анкеты регистрации\n\n'
              'Чтобы снова перейти к заполнению анкеты - '
              'снова нажмите кнопку "регистрация"'
@@ -181,7 +181,7 @@ async def process_no_rereg(callback: CallbackQuery, state: FSMContext):
         buttons.append([InlineKeyboardButton(
             text=f'{name} {famil}',
             callback_data = str(tg_id)
-        )])    
+        )])
     buttons.append([InlineKeyboardButton(
         text='Никого из модераторов не знаю',
         callback_data = 'stranger'
@@ -212,7 +212,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext):
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
 
-#Этот хендлер будет срабатывать, если 
+#Этот хендлер будет срабатывать, если
 
 #
 
@@ -393,7 +393,7 @@ async def warning_get_contact(message: Message):
              'заполнение анкеты - отправьте команду /cancel'
     )
 
-# Этот хэндлер будет срабатывать на подтверждение личных данных 
+# Этот хэндлер будет срабатывать на подтверждение личных данных
 
 @router.callback_query(StateFilter(FSMRegistration.fill_confirm1),
                    F.data =='yes_contact')
@@ -404,31 +404,31 @@ async def process_yes_contact(callback: CallbackQuery, state: FSMContext):
     Novosibirsk_button = InlineKeyboardButton(
         text='Новосибирск',
         callback_data='Новосибирск')
-    
+
     Berdsk_button = InlineKeyboardButton(
         text='Бердск',
         callback_data='Бердск')
-    
+
     Kolcovo_button = InlineKeyboardButton(
         text='Кольцово',
         callback_data='Кольцово')
-    
+
     Krasnoobsk_button = InlineKeyboardButton(
         text='Краснообск',
         callback_data='Краснообск')
-    
+
     Iskitim_button = InlineKeyboardButton(
         text='Искитим',
-        callback_data='Искитим')   
-    
+        callback_data='Искитим')
+
     Ob_button = InlineKeyboardButton(
         text='Обь',
         callback_data='Обь')
-    
+
     Other_button = InlineKeyboardButton(
         text='Другое',
-        callback_data='other')  
-    
+        callback_data='other')
+
     # Добавляем кнопки в клавиатуру в три ряда
     keyboard: list[list[InlineKeyboardButton]] = [
         [Novosibirsk_button, Berdsk_button],
@@ -436,10 +436,10 @@ async def process_yes_contact(callback: CallbackQuery, state: FSMContext):
         [Iskitim_button, Ob_button],
         [Other_button]
     ]
-    
+
     # Создаем объект инлайн-клавиатуры
     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    
+
     await callback.message.answer(
         text="""Спасибо! Осталось ответить на несколько вопросов.\n
         о том, где вы живете\n
@@ -449,7 +449,7 @@ async def process_yes_contact(callback: CallbackQuery, state: FSMContext):
         )
     # Устанавливаем состояние ожидания выбора города
     await state.set_state(FSMRegistration.fill_city)
-    
+
 
 #Этот хэндлер будет срабатывать на нажатие кнопки "Не верно" при подтверждении
 #личных данных. Стираем кнопки и выходим из машины состояний.
@@ -465,7 +465,7 @@ async def process_no_contact(callback: CallbackQuery, state: FSMContext):
         text='Спасибо! Ваши данные не добавлены\nПопробуйте еще раз.\n'
              'Вы вышли из машины состояний'
     )
-    
+
 
 # Этот хэндлер будет срабатывать, если во время подтверждения
 # личных данных будет введено/отправлено что-то некорректное
@@ -477,7 +477,7 @@ async def warning_not_contact(message: Message):
              'отправьте команду /cancel'
     )
 
-# Этот хэндлер будет срабатывать на нажатие кнопки города 
+# Этот хэндлер будет срабатывать на нажатие кнопки города
 # и переводить в состояние ожидания ввода улицы
 @router.callback_query(StateFilter(FSMRegistration.fill_city),
                    F.data.in_(['Новосибирск', 'Бердск', 'Кольцово',
@@ -521,7 +521,7 @@ async def warning_not_city(message: Message):
              'Если вы хотите прервать заполнение анкеты - отправьте '
              'команду /cancel'
     )
-    
+
 # Этот хэндлер будет срабатывать, если введено корректное название города
 # и переводить в состояние ожидания ввода улицы
 @router.message(StateFilter(FSMRegistration.fill_new_city), F.text.isalpha())
@@ -560,7 +560,7 @@ async def process_street_sent(message: Message, state: FSMContext):
         callback_data='ijs'
     )
 
-    # Добавляем кнопки в клавиатуру 
+    # Добавляем кнопки в клавиатуру
     keyboard: list[list[InlineKeyboardButton]] = [
         [mkd_button, ijs_button],
     ]
@@ -572,7 +572,7 @@ async def process_street_sent(message: Message, state: FSMContext):
                          )
     # Устанавливаем состояние ожидания выбора типа дома
     await state.set_state(FSMRegistration.fill_yes_mkd)
-    
+
 # Этот хэндлер будет срабатывать на нажатие кнопки МНОГОКВАРТИРНОМ
 # при выборе типа дома и переводить в состояние ввода номер
 @router.callback_query(StateFilter(FSMRegistration.fill_yes_mkd),
@@ -586,7 +586,7 @@ async def process_mkd_press(callback: CallbackQuery, state: FSMContext):
     )
     # Устанавливаем состояние ожидания ввода номера дома
     await state.set_state(FSMRegistration.fill_number_mkd)
-    
+
 # Этот хэндлер будет срабатывать на нажатие кнопки ЧАСТНОМ
 # при выборе типа дома и переводить в состояние ожидания выбора диапазона номеров
 @router.callback_query(StateFilter(FSMRegistration.fill_yes_mkd),
@@ -595,7 +595,7 @@ async def process_ijs_press(callback: CallbackQuery, state: FSMContext):
     # Удаляем сообщение с кнопками,
     # чтобы у пользователя не было желания тыкать кнопки
     await callback.message.delete()
-    
+
     #Делаем клаиватуру из диапазанов номеров
     d0120_button = InlineKeyboardButton(
         text='1-20',
@@ -783,7 +783,7 @@ async def process_last_name_sent(message: Message, state: FSMContext):
     ]
     # Создаем объект инлайн-клавиатуры
     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    
+
     #Выводим данные адреса для подтверждения
     user_dict = await state.get_data()
     await message.answer(text = (f'Спасибо!\n'
@@ -797,7 +797,7 @@ async def process_last_name_sent(message: Message, state: FSMContext):
     print(user_dict)
     # Устанавливаем состояние ожидания подтверждения адреса
     await state.set_state(FSMRegistration.fill_confirm2)
-    
+
 #Этот хэндлер будет срабатывать на нажатие кнопки диапазона домов
 @router.callback_query(StateFilter(FSMRegistration.fill_range_num))#,
                    #re.match(r'[0-9]+[-][0-9]+', str(F.data)) is not None or
@@ -824,7 +824,7 @@ async def process_range_house_press(callback: CallbackQuery, state: FSMContext):
     ]
     # Создаем объект инлайн-клавиатуры
     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    
+
     #Выводим данные адреса для подтверждения
     user_dict = await state.get_data()
     await callback.message.answer(text = (f"Спасибо!\n"
@@ -854,8 +854,8 @@ async def warning_not_range(message: Message):
                    F.data =='yes_address')
 async def process_yes_adress_no_reg(callback: CallbackQuery, state: FSMContext):
     # Удаляем сообщение с кнопками подтверждения
-    await callback.message.delete()    
-    tg_id = callback.from_user.id 
+    await callback.message.delete()
+    tg_id = callback.from_user.id
     #Заносим данные регистрации в строку соответствующего пользователя в  базе данных
     user_dict = await state.get_data()
     db_update('Users','tg_id',tg_id, **user_dict) #записываем данные в БД
@@ -866,10 +866,10 @@ async def process_yes_adress_no_reg(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(#возможно answer
         text='Спасибо! Ваши данные сохранены',
         )
-    
 
 
-# Этот хэндлер будет срабатывать на подтверждение адреса 
+
+# Этот хэндлер будет срабатывать на подтверждение адреса
 
 @router.callback_query(StateFilter(FSMRegistration.fill_confirm2),
                    F.data =='yes_address')
@@ -878,7 +878,7 @@ async def process_yes_adress(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
 
     #Создаем инлайн-кнопки
-    list_of_registrators = list_of_registrators_tg()
+    list_of_registrators = list_of_members_tg('registrator')
 
     #делаем клавиатуру
     buttons: list[InlineKeyboardButton] = []
@@ -886,7 +886,7 @@ async def process_yes_adress(callback: CallbackQuery, state: FSMContext):
         buttons.append([InlineKeyboardButton(
             text=f'{item[0]} {item[1]}',
             callback_data = str(item[2])
-        )])    
+        )])
     buttons.append([InlineKeyboardButton(
         text='Никого из регистраторов не знаю',
         callback_data = 'stranger'
@@ -902,7 +902,7 @@ async def process_yes_adress(callback: CallbackQuery, state: FSMContext):
                          )
     # Устанавливаем состояние ожидания выбора модератора
     await state.set_state(FSMRegistration.fill_registrator)
-    
+
 #Этот хэндлер будет срабатывать на отказ подтвердить адрес
 @router.callback_query(StateFilter(FSMRegistration.fill_confirm2),
                    F.data =='no_address')
@@ -916,7 +916,7 @@ async def process_no_address(callback: CallbackQuery, state: FSMContext):
         text='Спасибо! Ваши данные не добавлены\nПопробуйте еще раз.\n'
              'Вы вышли из машины состояний'
     )
-    
+
 # Этот хэндлер будет срабатывать, если вместо подтверждения адреса
 # будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_confirm2))
@@ -927,7 +927,7 @@ async def warning_not_address(message: Message):
              'заполнение анкеты - отправьте команду /cancel'
     )
 
-# Этот хэндлер будет срабатывать на выбор регистратора 
+# Этот хэндлер будет срабатывать на выбор регистратора
 @router.callback_query(StateFilter(FSMRegistration.fill_registrator),
                    F.data.isdigit() or F.data == 'stranger')
 async def process_registrator_press(callback: CallbackQuery, state: FSMContext):
@@ -936,7 +936,7 @@ async def process_registrator_press(callback: CallbackQuery, state: FSMContext):
     # Cохраняем знакомого модератора (callback.data нажатой кнопки) в хранилище,
     # по ключу "familiar"
     await state.update_data(familiar=callback.data)
-    tg_id = callback.from_user.id 
+    tg_id = callback.from_user.id
     #Заносим данные регистрации в строку соответствующего пользователя в  базе данных
     user_dict = await state.get_data()
     db_update('Users','tg_id',tg_id, **user_dict) #записываем данные в БД
