@@ -1,6 +1,8 @@
+import datetime
+from db_func import *
+
 # ФУНКЦИИ ВЗАИМОДЕЙСТВИЯ БАЗЫ ДАННЫХ С ГОЛОСОВАНИЕМ
 
-from db_func import *
 
 # Создание нового голосования. Создается название голосования и описание, также
 # может быть введен тип голосования и ссылка. Варианты добавляются позже.
@@ -44,7 +46,7 @@ def new_variant(vote_id, author, title, text = None, link_id = None):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     if len(title) > 40:
-        flag,answ_str = 'too_long','Название не должо быть длиннее 40 символов'
+        flag,answ_str = False,'Название не должо быть длиннее 40 символов'
     else:
         with Database(path_db) as cursor:
             cursor.execute(
@@ -54,7 +56,7 @@ def new_variant(vote_id, author, title, text = None, link_id = None):
             )
             status, = cursor.fetchone()
             if status == 'add_variants':
-                print('Добавление вариантов у голосования возможно')
+                # print('Добавление вариантов у голосования возможно')
                 cursor.execute(
             """
          SELECT title FROM Variants WHERE vote_id = ?
@@ -64,7 +66,7 @@ def new_variant(vote_id, author, title, text = None, link_id = None):
                 titles = cursor.fetchall()
                 print(titles)
                 if (title,) not in titles:
-                    print('Такого варианта еще нет')
+                    # print('Такого варианта еще нет')
                     cursor.execute(
             '''
             INSERT INTO Variants(vote_id, author, title, text, time_create, link_id)
@@ -72,16 +74,16 @@ def new_variant(vote_id, author, title, text = None, link_id = None):
             ''',(vote_id, author, title, text, time_create, link_id)
             )
                     answ_str = 'Вариант добавлен'
-                    flag = 'OK'
+                    flag = True
                 else:
                     answ_str = '''Вариант с таким названием уже существует.
 Придумайте другое название'''
-                    flag = 'double'
-                    print(answ_str)
+                    flag = False
+                    # print(answ_str)
             else:
                 answ_str = 'К этому голосованию нельзя добавить варианты'
-                flag = 'too_late'
-                print(answ_str)
+                flag = False
+                # print(answ_str)
     return(flag,answ_str)
 
 
@@ -205,7 +207,7 @@ def election(member_id,variant_id):
             ,(vote_id,)
             )
         result = cursor.fetchone()
-        print(result)
+        # print(result)
         vote_status, = result
         if vote_status == 'add_variants':
             answer = (False, 'Голосование ещё не началось')

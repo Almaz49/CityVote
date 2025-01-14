@@ -1,18 +1,18 @@
-import sqlite3
 from config_data.config import Config, load_config
+
 if __name__ == '__main__':
     from data_base import *
 else:
     from data_base.data_base import *
-"""
-ЛОГИКА ТЕЛЕГРАМ БОТА
-Здесь логика взаимодействия телеграм-бота с базой данных.
-Все запросы с tg_id приходят сюда. Отсюда в data_base уходят запросы с member_id
-"""
+
+# ЛОГИКА ТЕЛЕГРАМ БОТА
+# Здесь логика взаимодействия телеграм-бота с базой данных.
+# Все запросы с tg_id приходят сюда. Отсюда в data_base уходят запросы с member_id
+
 
 # Загружаем конфиг в переменную config
 config: Config = load_config('.env')
-path_db = config.db.path_db #путь к базе данных
+# path_db = config.db.path_db #путь к базе данных
 club_id = config.tg_bot.club_id # id группы в БД (не телеграм)
 
 
@@ -64,8 +64,8 @@ def member_id_tg(tg_id):
     if user_id:
         return(extract_member_id(club_id,user_id))
 
- #Функци извлечения данных о пользователе по его tg_id
-# Используется при создании нового администратора
+ #Функция извлечения данных о пользователе по его tg_id
+# Используется при создании нового регистратора
 # Вщзвращает (flag, ans_str). Если flag == true, значит участник может быть
 # назначен регистратором.
 # ans_str - комментарий который выдается по итогу извлечения данных
@@ -92,6 +92,7 @@ def extract_new_registrator_data(tg_id):
     else: #если пользователь подал заявку но еще не зарегистрирован как участник группы
         flag = False
         ans_str += '\nЭтот участник еще не зарегистрирован в группе'
+    return flag,ans_str
 
 
 
@@ -147,6 +148,13 @@ def  list_of_memberd_tg(*status):
     return list_of_members(club_id,*status)
 
 
+# Функция выборва варианта при голосовании (от ТГ-id)
+def election_tg(tg_id,variant_id):
+    member_id = extract_member_id(tg_id)
+    if member_id:
+        return election(member_id, variant_id)
+    else:
+        return(False, 'Такого участника нет в группе')
 
 
 
