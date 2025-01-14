@@ -1,5 +1,8 @@
 import datetime
-from db_func import *
+print ('vote', __name__)
+
+# from db_func import *
+from data_base.db_func import *
 
 # ФУНКЦИИ ВЗАИМОДЕЙСТВИЯ БАЗЫ ДАННЫХ С ГОЛОСОВАНИЕМ
 

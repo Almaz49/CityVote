@@ -144,7 +144,7 @@ def list_of_votes_tg(*vote_status):
     return(list_of_votes(club_id,*vote_status))
 
 # Функция извлечения списка участников с со списком статусов *status
-def  list_of_memberd_tg(*status):
+def  list_of_members_tg(*status):
     return list_of_members(club_id,*status)
 
 

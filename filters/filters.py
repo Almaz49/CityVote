@@ -17,7 +17,8 @@ from data_base.telegram_bot_logic import status_member
 #Фильтры на статус:
 
 def filter_isAdmin (message: Message) -> bool:
-    return 'admin' in status_member(message.from_user.id) 
+    status = status_member(message.from_user.id)
+    return (('admin' in status) or ('owner' in status))
 
 def filter_isRegistrator (message: Message) -> bool:
     return 'registrator' in  status_member(message.from_user.id)
@@ -45,4 +46,3 @@ def filter_isUser (message: Message) -> bool:
 #Фильтр на контакт message.contact.user_id == message.from_user.id
 def filter_contact (message: Message) -> bool:
     return message.contact.user_id == message.from_user.id
-

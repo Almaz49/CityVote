@@ -2,8 +2,13 @@ import random
 import time
 
 # from db_func import *
-from db_member import *
-from db_vote import *
+print('data_base',__name__,__file__)
+if __name__ == '__main__':
+    from db_member import *
+    from db_vote import *
+else:
+    from data_base.db_member import *
+    from data_base.db_vote import *
 
 
 # БАЗА ДАННЫХ
