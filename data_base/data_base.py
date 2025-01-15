@@ -1,8 +1,7 @@
 import random
 import time
 
-# from db_func import *
-print('data_base',__name__,__file__)
+
 if __name__ == '__main__':
     from db_member import *
     from db_vote import *

@@ -1,8 +1,9 @@
 import datetime
-print ('vote', __name__)
 
-# from db_func import *
-from data_base.db_func import *
+if __name__ == '__main__':
+    from db_func import *
+else:
+    from data_base.db_func import *
 
 # ФУНКЦИИ ВЗАИМОДЕЙСТВИЯ БАЗЫ ДАННЫХ С ГОЛОСОВАНИЕМ
 
@@ -10,7 +11,7 @@ from data_base.db_func import *
 # Создание нового голосования. Создается название голосования и описание, также
 # может быть введен тип голосования и ссылка. Варианты добавляются позже.
 def new_vote(club_id, creator, title, text = None,
-             vote_type = 'usual', vote_status = None, link_id = None):
+             vote_type = 'usual', vote_status = 'add_variants', link_id = None):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if len(title) > 40:
         flag = False
@@ -45,7 +46,7 @@ def new_vote(club_id, creator, title, text = None,
 # В БД вносится автор (member_id)  заголовок варианта, текст варианта,
 # если есть  - ссылка
 # Возвращает комментарий по итогам добавления
-def new_variant(vote_id, author, title, text = None, link_id = None):
+def new_variant(vote_id, author, title,variant_status = 'valid', text = None, link_id = None):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     if len(title) > 40:
@@ -72,9 +73,9 @@ def new_variant(vote_id, author, title, text = None, link_id = None):
                     # print('Такого варианта еще нет')
                     cursor.execute(
             '''
-            INSERT INTO Variants(vote_id, author, title, text, time_create, link_id)
-            VALUES (?,?,?,?,?,?)
-            ''',(vote_id, author, title, text, time_create, link_id)
+            INSERT INTO Variants(vote_id, author, title, variant_status, text, time_create, link_id)
+            VALUES (?,?,?,?,?,?,?)
+            ''',(vote_id, author, title, variant_status, text, time_create, link_id)
             )
                     answ_str = 'Вариант добавлен'
                     flag = True
@@ -121,6 +122,22 @@ def extract_vote_id(variant_id):
             return(vote_id)
         else: return None
 
+# Функция возвращает ID группы по ID голосования
+def extract_group_id(vote_id):
+    with Database(path_db) as cursor:
+        cursor.execute(
+            '''
+            SELECT club_id FROM Votes WHERE id = ?
+            ''', (vote_id,)
+                )
+        result = cursor.fetchone()
+            #print(answ)
+        if result:
+            club_id, = result
+            return(club_id)
+        else: return None
+
+
 # Функция выясняет, за какие варианты в данном голосовании голосовал (лично) пользователь
 # Возвращает ID вариантов (список кортежей с одним членом) или None
 def past_choise(member_id, vote_id):
@@ -136,6 +153,25 @@ def past_choise(member_id, vote_id):
         result = cursor.fetchall()
         # print(result)
         return result
+
+# Функция подсчета числа членов группы, имеющих право голоса
+def count_votist(club_id):
+    with Database(path_db) as cursor:
+        cursor.execute('''
+           SELECT COUNT (*) FROM Members WHERE id IN
+           (SELECT id FROM Members WHERE club_id = ?)
+           AND id IN
+           (SELECT member_id FROM  Status WHERE status  = 'votist')
+           '''
+            ,(club_id, )
+            )
+        result = cursor.fetchone()
+            #print(answ)
+        if result:
+            amount, = result
+            return(int(amount))
+        else: return None
+
 
 # Функция подсчета голосов, отданых за вариант лично теми, кто имеет право голоса
 def count_directly_votes(variant_id):
@@ -174,6 +210,7 @@ def count_directly_empty_votes(variant_id):
             return(int(amount))
         else: return None
 
+
 # Функция подсчета голосов, отданых за вариант через представителей
 def count_proxy_votes(variant_id):
     with Database(path_db) as cursor:
@@ -198,6 +235,7 @@ def count_proxy_votes(variant_id):
             amount, = result
             return(int(amount))
         else: return None
+
 
 # Функция выбора варианта при голосовании
 def election(member_id,variant_id):
@@ -252,3 +290,62 @@ def election(member_id,variant_id):
         flag = answer[0]
         answer = (flag, str1)
     return answer
+
+# Функция завершения промежуточного этапа голосования. Переводит в статус "loser" наименее популярные варианты.
+# Оставшиеся варианты должны в сумме набирать 50% голосов от имеющих право голоса.
+#
+def vote_stage(vote_id):
+    variants = list_of_variants(vote_id,'valid')
+    club_id = extract_group_id(vote_id)
+    s_votist = count_votist(club_id)
+    # подсчитываем число голосов, отданных за вариант (в виде кортежа): всего, напрямую, не имеющих права голоса
+    res = {}
+    sum_vote = 0
+    # Делаем словарь, где ключ - ID варианта, а значение - кортеж результатов. Заодно подсчитываем суму отданных голосов
+    for item in variants:
+        dir = count_directly_votes(item[0])
+        prox = count_proxy_votes(item[0])
+        empt = count_directly_empty_votes(item[0])
+        res[item[0]] = dir + prox, dir, empt
+        sum_vote += dir+prox
+    print(res)
+    # Упорядочиваем словарь (он превращается в список кортеей)
+    sorted_res = sorted(res.items(), key=lambda item: item[1],reverse = True)
+    print(sorted_res)
+    # Если сумма, отданная за варианты больше "кворума" в половину голосующих, ищем проигравшие варианты
+    if sum_vote * 2 > s_votist:
+        a = s_votist / 2
+        k = 1
+        # k - количество голосов, меньше которого варианты выбывают
+        for i in range(len(sorted_res)):
+            a -= sorted_res[i][1][0]
+            if a < 0:
+                k = sorted_res[i][1][0]
+                break
+    losers = []
+    for item in res:
+        if res[item][0] < k:
+            losers.append((item,))
+    if losers:
+        with Database(path_db) as cursor:
+            cursor.executemany(
+            '''
+            UPDATE Variants SET variant_status = 'loser' WHERE id = ?
+            ''', losers
+                )
+        return list(zip(*losers))[0]
+    else:
+        return None
+
+
+
+
+
+
+
+
+#       //////////////////////////////////////
+#           Проверяем работу функций
+#       \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+print('losers: ', vote_stage(3))

@@ -3,12 +3,10 @@
 import datetime
 import os
 
-# from db_func import *
-from data_base.db_func import *
-
-# print('OOOOSSSS',os.path.dirname(current_file))
-
-print ('member', __name__,__file__)
+if __name__ == '__main__':
+    from db_func import *
+else:
+    from data_base.db_func import *
 
 
 # запись нового пользователя в базу данных из телеграм-бота

@@ -213,7 +213,7 @@ def list_of_votes(club_id,*vote_status):
 # Функция извлечения списка вариантов голосования.
 # В качестве аргументов принимает id голосования и список статусов вариантов.
 # Извлекаются голосования имеющие эти статусы.
-# Возвращает писок кортежей из ID и названий вариантов
+# Возвращает cписок кортежей из ID, названий вариантов и статусов вариантов
 def list_of_variants(vote_id,*variant_status):
     if variant_status:
         query = ''
@@ -221,12 +221,12 @@ def list_of_variants(vote_id,*variant_status):
             query += "'" + status + "', "
         query = query[:-2]
         query = f'''
-            SELECT id, title FROM Variants
-            WHERE vote_id = ? AND varaiant_status IN ({query})
+            SELECT id, title, variant_status FROM Variants
+            WHERE vote_id = ? AND variant_status IN ({query})
             '''
     else:
         query = '''
-            SELECT id, title FROM Variants
+            SELECT id, title, variant_status FROM Variants
             WHERE vote_id = ?
             '''
     print('Запрос:', query)
