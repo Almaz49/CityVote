@@ -390,7 +390,22 @@ def vote_finish(vote_id):
     sorted_res = sorted(res.items(), key=lambda item: item[1],reverse = True)
     print(sorted_res)
     losers = []
+    # Отрабатываем случай одинакового результата нескольких вариантов. Тогда выигрывает тот,
+    # который раньше создан (у кого меньше ID)
     winner_id = sorted_res[0][0]
+    winner_res = sorted_res[0][1]
+    i = 1
+    len_sr = len(sorted_res)
+    if i+1 <= len_sr: flag = True
+    while flag:
+        if sorted_res[i][1]>=winner_res:
+            if sorted_res[i][0] < time_1:
+                winner_id = sorted_res[i][0]
+                winner_res = sorted_res[i][1]
+            i += 1
+        else:
+            flag = False
+    # Делаем  проигравших вариантов статус loser
     for i in range(len(sorted_res)):
         if i > 0:
             losers.append((sorted_res[i][0],))
