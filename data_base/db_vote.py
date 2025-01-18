@@ -398,8 +398,8 @@ def vote_finish(vote_id):
     len_sr = len(sorted_res)
     if i+1 <= len_sr: flag = True
     while flag:
-        if sorted_res[i][1]>=winner_res:
-            if sorted_res[i][0] < time_1:
+        if sorted_res[i][1]==winner_res:
+            if sorted_res[i][0] < winner_id:
                 winner_id = sorted_res[i][0]
                 winner_res = sorted_res[i][1]
             i += 1
