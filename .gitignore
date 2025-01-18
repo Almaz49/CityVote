@@ -10,3 +10,4 @@ test/
 .vscode/
 venv/
 __pycache__/
+test/readf.py

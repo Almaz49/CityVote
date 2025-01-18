@@ -293,7 +293,7 @@ def election(member_id,variant_id):
 
 # Функция завершения промежуточного этапа голосования. Переводит в статус "loser" наименее популярные варианты.
 # Оставшиеся варианты должны в сумме набирать 50% голосов от имеющих право голоса.
-#
+# Возвращает кортеж из ID проигравших вариантов.
 def vote_stage(vote_id):
     variants = list_of_variants(vote_id,'valid')
     club_id = extract_group_id(vote_id)
@@ -309,7 +309,7 @@ def vote_stage(vote_id):
         res[item[0]] = dir + prox, dir, empt
         sum_vote += dir+prox
     print(res)
-    # Упорядочиваем словарь (он превращается в список кортеей)
+    # Упорядочиваем словарь (он превращается в список кортежей)
     sorted_res = sorted(res.items(), key=lambda item: item[1],reverse = True)
     print(sorted_res)
     # Если сумма, отданная за варианты больше "кворума" в половину голосующих, ищем проигравшие варианты
@@ -337,9 +337,84 @@ def vote_stage(vote_id):
     else:
         return None
 
+# Функция создания финального этапа голосования (где голосуется два варианта или больше, если есть варианты, которые набрали столькоо же, сколько второй)
+def vote_final(vote_id):
+    variants = list_of_variants(vote_id,'valid')
+    # подсчитываем число голосов, отданных за вариант (в виде кортежа): всего, напрямую, не имеющих права голоса
+    res = {}
+    # Делаем словарь, где ключ - ID варианта, а значение - кортеж результатов. Заодно подсчитываем суму отданных голосов
+    for item in variants:
+        dir = count_directly_votes(item[0])
+        prox = count_proxy_votes(item[0])
+        empt = count_directly_empty_votes(item[0])
+        res[item[0]] = dir + prox, dir, empt
+    print(res)
+    # Упорядочиваем словарь (он превращается в список кортежей). При одинаковом общем числе голосов - упорядочивается по прямым голосам, затем - по "пустым"
+    sorted_res = sorted(res.items(), key=lambda item: item[1],reverse = True)
+    print(sorted_res)
+    k = sorted_res[1][1] # результат второго варианта в виде кортежа
+    print('результат отсечения: ', k)
+    losers = []
+    for item in res:
+        if res[item] < k:
+            losers.append((item,))
+    if losers:
+        with Database(path_db) as cursor:
+            cursor.executemany(
+            '''
+            UPDATE Variants SET variant_status = 'loser' WHERE id = ?
+            ''', losers
+                )
+        return list(zip(*losers))[0]
+    else:
+        return None
 
 
-
+# Функция завершения голосования. Определяет вариант - победитель.
+# При прочих равных (что вряд ли) побеждает тот вариант, который создан раньше
+def vote_finish(vote_id):
+    variants = list_of_variants(vote_id,'valid')
+    print(variants)
+    if not variants:
+        return(None,[])
+    # подсчитываем число голосов, отданных за вариант (в виде кортежа): всего, напрямую, не имеющих права голоса
+    res = {}
+    # Делаем словарь, где ключ - ID варианта, а значение - кортеж результатов. Заодно подсчитываем суму отданных голосов
+    for item in variants:
+        dir = count_directly_votes(item[0])
+        prox = count_proxy_votes(item[0])
+        empt = count_directly_empty_votes(item[0])
+        res[item[0]] = dir + prox, dir, empt
+    print(res)
+    # Упорядочиваем словарь (он превращается в список кортежей). При одинаковом общем числе голосов - упорядочивается по прямым голосам, затем - по "пустым"
+    sorted_res = sorted(res.items(), key=lambda item: item[1],reverse = True)
+    print(sorted_res)
+    losers = []
+    winner_id = sorted_res[0][0]
+    for i in range(len(sorted_res)):
+        if i > 0:
+            losers.append((sorted_res[i][0],))
+    if losers:
+        with Database(path_db) as cursor:
+            cursor.executemany(
+            '''
+            UPDATE Variants SET variant_status = 'loser' WHERE id = ?
+            ''', losers
+                )
+    if winner_id:
+        with Database(path_db) as cursor:
+            cursor.execute(
+            '''
+            UPDATE Variants SET variant_status = 'winner' WHERE id = ?
+            ''', (winner_id,)
+                )
+    with Database(path_db) as cursor:
+        cursor.execute(
+            '''
+            UPDATE Votes SET vote_status = 'finshed' WHERE id = ?
+            ''', (vote_id,)
+                )
+    return(winner_id,losers)
 
 
 
@@ -348,4 +423,5 @@ def vote_stage(vote_id):
 #           Проверяем работу функций
 #       \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
-print('losers: ', vote_stage(3))
+# print('losers: ', vote_final(3))
+print(vote_finish(3))
