@@ -255,3 +255,105 @@ def extract_status(member_id):
             return(answ)
         else:
             return(['user'])
+
+
+
+#       //////////////////////////////////////
+#           Проверяем работу функций
+#       \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+# print('losers: ', vote_final(3))
+# print(vote_finish(3))
+
+
+# c='tg_id','last_name'
+#new_status(1,2,'not_status')
+#print(extract_member_id(101))
+#print(extract_user_id(24))
+# print(extract_status(1))
+# new_status(1,2,'registrator')
+#new_vote(1, 2,'Важное голосование')
+#cv = {'first_name':'Василий'}
+
+# print(extract_user_id(101))
+#print(extract_member_id(1,101))
+# print(extract_user_data(3))
+# print(all_status())
+# print(list_of_registrators(1))
+# print(list_of_members(1,'proxy'))
+#print(list_of_votes(1,'bbbb'))
+# print(new_variant(1,1,'за всё','cjdctv'))
+# print('я работаю')
+# print(path_db)
+# trust(1,4)
+# vote_start(3,1)
+# print(past_choise(15,3))
+# print(count_directly_votes(1))
+# print(count_directly_empty_votes(4))
+# print(count_proxy_votes(1))
+# print(extract_status(102))
+# print(election(102,1))
+"""
+for i in range(5):
+    a = count_directly_votes(i+1)
+
+    b = count_proxy_votes(i+1)
+
+    print('вариант ',i+1,': всего голосов - ', a+b, ', отданных напрямую - ', a,
+          ', через преставителя',b, ', голосов неголосующх - ', count_directly_empty_votes(i+2))
+"""
+# print(list_of_variants(3))
+# votist(10)
+
+# добавляем пользователей в бд
+"""
+
+
+# Добавляем участников в группу 1
+with Database(path_db) as cursor:
+    for i in range(100):
+        cursor.execute('''INSERT INTO Members
+        (club_id, user_id, proxy)  VALUES (?,?,?)''',
+        (1, i+6,  random.randint(1,5))
+                       )
+
+# Присваиваем части участникам статус member, другим - candidate
+with Database(path_db) as cursor:
+    for i in range(100):
+        cursor.execute('''INSERT INTO Status
+        (member_id, status)  VALUES (?,?)''',
+        (i+6,
+         'member' if random.randint(1,5) < 5 else 'candidate'
+         )
+                       )
+
+
+# Голосуем за участников
+with Database(path_db) as cursor:
+    for i in range(100):
+        if random.randint(1,5) > 4:
+            cursor.execute('''INSERT INTO Elections
+        (member_id, variant_id, time_election)  VALUES (?,?,?)''',
+        (i+2,
+         random.randint(2,5),
+         datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+         )
+                       )
+            time.sleep(2)
+            print( 'участник ', i+2, ' выбрал вариант ')
+
+
+# Добавляем статус в голосования участников
+with Database(path_db) as cursor:
+    for i in range(100):
+        variant_id = past_choise(i+1, 1)
+        if variant_id:
+            cursor.execute('''UPDATE Elections SET
+        status = ?
+        WHERE variant_id = ? AND  member_id = ?
+        ''',
+        ('valid',variant_id, i+1)
+         )
+            print( 'участник ', i+1, ' выбрал вариант ', variant_id)
+
+"""

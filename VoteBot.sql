@@ -4,16 +4,12 @@ CREATE TABLE IF NOT EXISTS `Votes` (
 	`vote_type` TEXT NOT NULL DEFAULT usual,
 	`title` TEXT NOT NULL,
 	`text` TEXT DEFAULT 'null',
-	`active` INTEGER DEFAULT '1',
 	`club_id` INTEGER NOT NULL,
 	`result` INTEGER,
 	time_create TEXT,
     time_start    TEXT,
-    starter       INTEGER REFERENCES Members (id),
-    time_finish_1 TEXT,
-    finisher_1            REFERENCES Members (id),
     time_close    TEXT,
-    closer        INTEGER REFERENCES Members (id),
+	vote_status   TEXT,
 FOREIGN KEY(`creator`) REFERENCES `Members`(`id`),
 FOREIGN KEY(`club_id`) REFERENCES `Clubs`(`id`),
 FOREIGN KEY(`result`) REFERENCES `Variants`(`id`)
@@ -120,7 +116,7 @@ CREATE TABLE IF NOT EXISTS Elections (
                           UNIQUE,
     member_id     INTEGER REFERENCES Members (id),
     variant_id    INTEGER REFERENCES Variants (id),
-    election_time TEXT,
+    time_election TEXT,
     status        TEXT
 );
 CREATE TABLE IF NOT EXISTS Trusts (
@@ -130,5 +126,5 @@ CREATE TABLE IF NOT EXISTS Trusts (
                        NOT NULL,
     proxy_id   INTEGER REFERENCES Members (id)
                        NOT NULL,
-    trust_time TEXT    NOT NULL
+    time_trust TEXT    NOT NULL
 );

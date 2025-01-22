@@ -116,18 +116,18 @@ def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
 
 # Создание нового голосования
 def new_vote_tg(creator_tg_id, title, text = None, vote_type = 'usual',
-                vote_status = 'add_variants', link_id = None):
+                vote_status = 'add_variants'):
     creator_user_id = extract_user_id(creator_tg_id)
     creator = extract_member_id(club_id, creator_user_id)
-    new_vote(club_id, creator, title, text = text, vote_type = vote_type,
-             vote_status = vote_status, link_id = link_id)
+    return new_vote(club_id, creator, title, text = text, vote_type = vote_type,
+             vote_status = vote_status)
 
 # Создание варианта для голосования. Добавляется в голосования со статусом ожидания вариантов.
 # В БД вносится автор, заголовок варианта, текст варианта, если есть и мб - ссылка
-def new_variant_tg(vote_id, tg_id, title, text = None, link_id = None):
+def new_variant_tg(vote_id, tg_id, title, text = None):
     user_id = extract_user_id(tg_id)
     author = extract_member_id(club_id, user_id)
-    new_variant(vote_id, author, title, text, link_id)
+    return new_variant(vote_id, author, title, text=text)
 
 
 # Извлечение статусов участника группы (отдает список статусов)

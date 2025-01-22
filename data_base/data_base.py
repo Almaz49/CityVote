@@ -120,71 +120,8 @@ for i in range(5):
 # print(list_of_variants(3))
 # votist(10)
 
-# добавляем пользователей в бд
-"""
-with open('names.txt',encoding="UTF-8") as f:
-    stroka = f.read()
-spisok = stroka.splitlines()
-
-with Database(path_db) as cursor:
-    for FIO in spisok:
-        fam,im,otch = FIO.split(' ')
-        tg_id = random.randint(100000,999999)
-        tg_phone_number = random.randint(100000000,999999999)
-        bithyear = random.randint(1928,2008)
-        cursor.execute('''INSERT INTO Users
-        (tg_id, tg_phone_number,tg_first_name,tg_last_name, first_name,middle_name,
-        last_name,bithyear) VALUES (?,?,?,?,?,?,?,?)''',
-        (tg_id,tg_phone_number,im,fam,im,otch,fam,bithyear))
-
-# Добавляем участников в группу 1
-with Database(path_db) as cursor:
-    for i in range(100):
-        cursor.execute('''INSERT INTO Members
-        (club_id, user_id, proxy)  VALUES (?,?,?)''',
-        (1, i+6,  random.randint(1,5))
-                       )
-
-# Присваиваем части участникам статус member, другим - candidate
-with Database(path_db) as cursor:
-    for i in range(100):
-        cursor.execute('''INSERT INTO Status
-        (member_id, status)  VALUES (?,?)''',
-        (i+6,
-         'member' if random.randint(1,5) < 5 else 'candidate'
-         )
-                       )
 
 
-# Голосуем за участников
-with Database(path_db) as cursor:
-    for i in range(100):
-        if random.randint(1,5) > 4:
-            cursor.execute('''INSERT INTO Elections
-        (member_id, variant_id, time_election)  VALUES (?,?,?)''',
-        (i+6,
-         random.randint(2,5),
-         datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-         )
-                       )
-            time.sleep(2)
-            print( 'участник ', i+6, ' выбрал вариант ')
-
-
-# Добавляем статус в голосования участников
-with Database(path_db) as cursor:
-    for i in range(105):
-        variant_id = past_choise(i+1, 1)
-        if variant_id:
-            cursor.execute('''UPDATE Elections SET
-        status = ?
-        WHERE variant_id = ? AND  member_id = ?
-        ''',
-        ('valid',variant_id, i+1)
-         )
-            print( 'участник ', i+1, ' выбрал вариант ', variant_id)
-
-# Присваиваем статус голосующего всем участникам группы, кто имеет право голосовать
-for i in range(105):
-    votist(i+1)
-"""
+# # Присваиваем статус голосующего всем участникам группы, кто имеет право голосовать
+# for i in range(101):
+#     votist(i+1)
