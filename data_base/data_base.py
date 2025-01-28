@@ -1,17 +1,12 @@
 import random
 import time
 
-
-if __name__ == '__main__':
-    from db_member import *
-    from db_vote import *
-else:
-    from data_base.db_member import *
-    from data_base.db_vote import *
+from data_base.db_member import *
+from data_base.db_vote import *
 
 
 # БАЗА ДАННЫХ
-# Первоначальный файл разбит на три, которые импортируются сюда.
+# Первоначальный файл разбит на , которые импортируются сюда.
 # db_func - файл с функциями, которые используются другими функциями
 # В частности, класс для работы с БД
 # db_memder - функции работы с участниками
@@ -19,7 +14,8 @@ else:
 # Здесь функции взаимодействия с БД исходя из user_id и member_id пользователей.
 # Функции универсальны независимо от платформы.
 # Специфика телеграм-бота вынесена в telegram_bot_logic.
-# То есть, телеграм-бот взаимодействует с БД и data_base только через telegram_bot_logic (пока это не так, но надо стремиться наверно)
+# То есть, телеграм-бот взаимодействует с БД и data_base только через telegram_bot_logic
+# (пока это не так, но надо стремиться наверно)
 # А data_base ничего "не знает" о телеграм-боте
 
 
@@ -35,7 +31,7 @@ def votist(member_id):
             ,(member_id,)
             )
         result = cursor.fetchall()
-        print(result)
+        # print(result)
 #     Если у участника нет статуса члена, лишаем его права голоса (если было)
         if ('member',) not in result:
             vot = False

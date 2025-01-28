@@ -58,11 +58,23 @@ def extract_user_data_tg(tg_id,*c):
     if user_id:
         return extract_user_data(user_id,*c)
 
+#Функция создания нового голосоания
+def new_vote_tg(creator_tg_id, title, text = None,
+                vote_type = 'usual', vote_status = 'add_variants'):
+    creator = member_id_tg((creator_tg_id))
+    if creator:
+        return (new_vote(club_id, creator, title, text,
+             vote_type, vote_status))
+    else:
+        return(False,'Вы не являетесь участником группы')
+
 # Функция извлечения member_id по tg_id
 def member_id_tg(tg_id):
     user_id = extract_user_id(tg_id)
     if user_id:
         return(extract_member_id(club_id,user_id))
+    else:
+        return None
 
  #Функция извлечения данных о пользователе по его tg_id
 # Используется при создании нового регистратора
@@ -124,8 +136,8 @@ def new_vote_tg(creator_tg_id, title, text = None, vote_type = 'usual',
 
 # Создание варианта для голосования. Добавляется в голосования со статусом ожидания вариантов.
 # В БД вносится автор, заголовок варианта, текст варианта, если есть и мб - ссылка
-def new_variant_tg(vote_id, tg_id, title, text = None):
-    user_id = extract_user_id(tg_id)
+def new_variant_tg(vote_id, creator_tg_id, title, text = None):
+    user_id = extract_user_id(creator_tg_id)
     author = extract_member_id(club_id, user_id)
     return new_variant(vote_id, author, title, text=text)
 
@@ -157,6 +169,39 @@ def election_tg(tg_id,variant_id):
         return(False, 'Такого участника нет в группе')
 
 
+# Функция старта голосования. Меняем статус голосования на 'ongoing'
+# Указываем, кто запустил голосование (если не автоматически)
+
+def vote_start_tg(vote_id, starter_tg_id = None):
+    if starter_tg_id:
+        starter = member_id_tg(starter_tg_id)
+        vote_start(vote_id,starter)
+    else:
+        vote_start(vote_id)
+
+# Функция выбора варианта при голосовании
+def election_tg(tg_id,variant_id):
+    member_id = member_id_tg(tg_id)
+    return(election(member_id,variant_id))
+
+
+# Функция завершения промежуточного этапа голосования. Переводит в статус "loser" наименее популярные варианты.
+# Оставшиеся варианты должны в сумме набирать 50% голосов от имеющих право голоса.
+# Возвращает кортеж из ID проигравших вариантов.
+def vote_stage_tg(vote_id, stager_tg_id = None):
+    stager = member_id_tg(stager_tg_id)
+    return(vote_stage(vote_id,stager))
+
+# Функция создания финального этапа голосования (где голосуется два варианта или больше, если есть варианты, которые набрали столькоо же, сколько второй)
+def vote_final_tg(vote_id, finaler_tg_id = None):
+    finaler = member_id_tg(finaler_tg_id)
+    return(vote_final(vote_id,finaler))
+
+# Функция завершения голосования. Определяет вариант - победитель.
+# При прочих равных (что вряд ли) побеждает тот вариант, который создан раньше
+def vote_finish_tg(vote_id, finisher_tg_id = None):
+    finisher = member_id_tg(finisher_tg_id)
+    return(vote_finish(vote_id,finisher))
 
 
 

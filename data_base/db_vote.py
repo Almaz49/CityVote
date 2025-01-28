@@ -1,11 +1,7 @@
 import datetime
 import random
 import time
-
-if __name__ == '__main__':
-    from db_func import *
-else:
-    from data_base.db_func import *
+from data_base.db_func import *
 
 # ФУНКЦИИ ВЗАИМОДЕЙСТВИЯ БАЗЫ ДАННЫХ С ГОЛОСОВАНИЕМ
 
@@ -40,7 +36,7 @@ def new_vote(club_id, creator, title, text = None,
                 answ_str = ('Уже есть идущее голосование с таким названием.'
                        'Придумайте другое название')
                 flag = False
-    print(flag, answ_str)
+    # print(flag, answ_str)
     return (flag,answ_str)
 
 # Создание варианта для голосования. Добавляется только в голосования
@@ -70,7 +66,7 @@ def new_variant(vote_id, author, title,text = None, variant_status = 'valid'):
             (vote_id,)
             )
                 titles = cursor.fetchall()
-                print(titles)
+                # print(titles)
                 if (title,) not in titles:
                     # print('Такого варианта еще нет')
                     cursor.execute(
@@ -317,10 +313,10 @@ def vote_stage(vote_id, stager = None):
         empt = count_directly_empty_votes(item[0])
         res[item[0]] = dir + prox, dir, empt
         sum_vote += dir+prox
-    print(res)
+    # print(res)
     # Упорядочиваем словарь (он превращается в список кортежей)
     sorted_res = sorted(res.items(), key=lambda item: item[1],reverse = True)
-    print(sorted_res)
+    # print(sorted_res)
     # Если сумма, отданная за варианты больше "кворума" в половину голосующих, ищем проигравшие варианты
     if sum_vote * 2 > s_votist:
         a = s_votist / 2
@@ -369,12 +365,12 @@ def vote_final(vote_id, finaler = None):
         prox = count_proxy_votes(item[0])
         empt = count_directly_empty_votes(item[0])
         res[item[0]] = dir + prox, dir, empt
-    print(res)
+    # print(res)
     # Упорядочиваем словарь (он превращается в список кортежей). При одинаковом общем числе голосов - упорядочивается по прямым голосам, затем - по "пустым"
     sorted_res = sorted(res.items(), key=lambda item: item[1],reverse = True)
-    print(sorted_res)
+    # print(sorted_res)
     k = sorted_res[1][1] # результат второго варианта в виде кортежа
-    print('результат отсечения: ', k)
+    # print('результат отсечения: ', k)
     losers = []
     for item in res:
         if res[item] < k:
@@ -403,8 +399,9 @@ def vote_final(vote_id, finaler = None):
 def vote_finish(vote_id, finisher = None):
     time_finish = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = list_of_variants(vote_id,'valid')
-    print(variants)
+    # print(variants)
     if not variants:
+        # print('пусто!')
         return(None,[])
     # подсчитываем число голосов, отданных за вариант (в виде кортежа): всего, напрямую, не имеющих права голоса
     res = {}
@@ -414,10 +411,10 @@ def vote_finish(vote_id, finisher = None):
         prox = count_proxy_votes(item[0])
         empt = count_directly_empty_votes(item[0])
         res[item[0]] = dir + prox, dir, empt
-    print(res)
+    # print(res)
     # Упорядочиваем словарь (он превращается в список кортежей). При одинаковом общем числе голосов - упорядочивается по прямым голосам, затем - по "пустым"
     sorted_res = sorted(res.items(), key=lambda item: item[1],reverse = True)
-    print(sorted_res)
+    # print(sorted_res)
     losers = []
     # Отрабатываем случай одинакового результата нескольких вариантов. Тогда выигрывает тот,
     # который раньше создан (у кого меньше ID)
@@ -455,14 +452,14 @@ def vote_finish(vote_id, finisher = None):
                 )
             cursor.execute(
                 """
-            UPDATE Votes SET result = ? WHERE id = ?
-            """, (winner_id, vote_id)
+            UPDATE Votes SET result = ?, time_close = ? WHERE id = ?
+            """, (winner_id, time_finish, vote_id)
             )
     with Database(path_db) as cursor:
         cursor.execute(
         '''
-        UPDATE Votes SET vote_status = 'finshed' WHERE id = ?
-        ''', (vote_id,)
+        UPDATE Votes SET vote_status = 'finshed', time_close = ? WHERE id = ?
+        ''', (time_finish, vote_id)
         )
 
         cursor.execute(

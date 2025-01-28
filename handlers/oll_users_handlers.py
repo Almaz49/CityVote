@@ -4,7 +4,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from keyboards.keyboards import reg_keyboard, contact_keyboard, remove_keyboard
+from keyboards.keyboards import reg_markup, contact_markup, remove_markup
 from config_data.config import Config, load_config
 
 #инициализируем бота
@@ -40,7 +40,7 @@ async def process_help_command(message: Message):
 async def process_cancel_command(message: Message):
     await message.answer(
         text='Отменять нечего. Вы вне машины состояний',
-        reply_markup=remove_keyboard
+        reply_markup=remove_markup
     )
 
 
@@ -50,7 +50,7 @@ async def process_cancel_command(message: Message):
 async def process_cancel_command_state(message: Message, state: FSMContext):
     await message.answer(
         text='Вы вышли из машины состояний',
-        reply_markup=remove_keyboard
+        reply_markup=remove_markup
     )
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
@@ -60,5 +60,3 @@ async def process_cancel_command_state(message: Message, state: FSMContext):
 @router.message()
 async def send_echo(message: Message):
     await bot.send_message(message.from_user.id, message.text)
-    
-

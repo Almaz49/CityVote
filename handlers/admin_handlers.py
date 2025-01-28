@@ -32,14 +32,14 @@ router.message.filter(filter_isAdmin)
 async def process_start_command1(message: Message):
     await bot.send_message(message.from_user.id,
         text='Привет, Админ!\nМеня зовут Эхо-бот!\nНапиши мне что-нибудь')
-    
+
 # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии
 # по умолчанию и сообщать, что эта команда работает внутри машины состояний
 @router.message(Command(commands='cancel'), StateFilter(default_state))
 async def process_cancel_command(message: Message):
     await message.answer(
         text='Отменять нечего. Вы вне машины состояний',
-        reply_markup=remove_keyboard
+        reply_markup=remove_markup
     )
 
 
@@ -49,7 +49,7 @@ async def process_cancel_command(message: Message):
 async def process_cancel_command_state(message: Message, state: FSMContext):
     await message.answer(
         text='Вы вышли из машины состояний',
-        reply_markup=remove_keyboard
+        reply_markup=remove_markup
     )
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
@@ -82,7 +82,7 @@ async def process_registrator_id_sent(message: Message, state: FSMContext):
     # Cохраняем ID в хранилище по ключу "ID"
     await state.update_data(ID=int(message.text))
     flag,ans_str = extract_new_registrator_data(int(message.text)) #извлекаем данные о новом регистраторе
-    
+
 
     # Создаем объекты инлайн-кнопок
     ok_mod_button = InlineKeyboardButton(
@@ -94,7 +94,7 @@ async def process_registrator_id_sent(message: Message, state: FSMContext):
         callback_data='NewRegistratorNotOK'
     )
 
-    # Добавляем кнопки в клавиатуру 
+    # Добавляем кнопки в клавиатуру
     keyboard: list[list[InlineKeyboardButton]] = [
         [ok_mod_button, no_mod_button],
     ]
@@ -115,7 +115,7 @@ async def process_registrator_id_sent(message: Message, state: FSMContext):
         # Сбрасываем состояние и очищаем данные, полученные внутри состояний
         await state.clear()
 
-    
+
 # Этот хэндлер будет срабатывать на нажатие кнопки "ВСЁ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewRegistrator.fill_OK),
                    F.data == 'NewRegistratorOK')
@@ -189,7 +189,7 @@ async def process_user_id_sent(message: Message, state: FSMContext):
     user_data = extract_user_data_tg(user_tg_id,'id', 'tg_first_name',
                          'tg_last_name', 'tg_phone_number') #извлекаем данные о пользователе
     if user_data:
-        
+
         await message.answer(
         text=f'''Данные нового модератора\nИмя: {user_data[1]},
 Фамилия: {user_data[2]}, \n Телефон: {user_data[3]}\nВсё верно?''',
@@ -204,7 +204,7 @@ async def process_user_id_sent(message: Message, state: FSMContext):
         # Сбрасываем состояние и очищаем данные, полученные внутри состояний
         await state.clear()
 
-    
+
 # Этот хэндлер будет срабатывать на нажатие кнопки "ВСЁ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewStatus.fill_OK),
                    F.data == 'ConfirmOK')
@@ -233,7 +233,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext):
         reply_markup=markup #клавиатура из статусов
         )
          # Устанавливаем состояние ожидания подтверждения
-    await state.set_state(FSMNewStatus.fill_choice)   
+    await state.set_state(FSMNewStatus.fill_choice)
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
@@ -257,8 +257,8 @@ async def warning_registrator(message: Message):
              'Если вы хотите прервать назначение регистратора - '
              'отправьте команду /cancel'
     )
-    
-    
+
+
 # Этот хэндлер будет срабатывать на выбор одного из статусов (или его отмены)
 @router.callback_query(StateFilter(FSMNewStatus.fill_choice))
 async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext):
@@ -278,9 +278,9 @@ async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext)
         reply_markup=confirm_markup
         )
     await state.set_state(FSMNewStatus.fill_new_status_confirm)
-    
 
-    
+
+
 
 
 # Этот хендлер будет срабатывать на нажатие кнопки "всё верно" при подтверждении
@@ -312,7 +312,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext):
              'Вы вышли из машины состояний'
        )
 
-    
+
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewStatus.fill_new_status_confirm),
                    F.data == 'ConfirmNotOK')
@@ -334,4 +334,3 @@ async def warning_new_status(message: Message):
              'Если вы хотите прервать изменение статуса - '
              'отправьте команду /cancel'
     )
-

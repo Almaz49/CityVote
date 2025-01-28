@@ -3,7 +3,7 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
 from filters.filters import filter_isMember
-from keyboards.keyboards import reg_keyboard, contact_keyboard, remove_keyboard
+from keyboards.keyboards import reg_markup, contact_markup, remove_markup
 from config_data.config import Config, load_config
 
 #инициализируем бота

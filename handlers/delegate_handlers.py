@@ -32,7 +32,7 @@ router.message.filter(filter_isDelegate)
 async def process_start_command1(message: Message):
     await bot.send_message(message.from_user.id,
         text='Привет, Делегат!\nМеня зовут Эхо-бот!\nНапиши мне что-нибудь')
-    
+
 
 
 """
@@ -69,14 +69,14 @@ async def process_new_voting_description_sent(message: Message, state: FSMContex
     data = await state.get_data()
     title = data['title']
     description = message.text
-#здесь создание кнопок, если надо    
+#здесь создание кнопок, если надо
     await message.answer(text=f'''Пожалуйста, подтвердите, правильно ли введены
                          название и описание голосования?
                          Название:
                          {title}
                          Текст:
                          {description}
-                         
+
                          ''',
                          reply_markup=confirm_markup
                          )
@@ -110,7 +110,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewVoting.fill_OK),
-                   F.data == 'ConfirmNotOK')    
+                   F.data == 'ConfirmNotOK')
 async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FSMContext):
     # Завершаем машину состояний
     await state.clear()
@@ -141,7 +141,7 @@ async def process_new_variant_start(message: Message, state: FSMContext):
         await message.answer(text = 'Сейчас нет активных голосований,'
         'вы не можете добавить вариант')
         return()
-    
+
 
     # Устанавливаем состояние ожидания ввода названия
     await message.answer(text='''Пожалуйста, выберите, к какому голосованию
@@ -160,7 +160,7 @@ async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext)
     await callback.message.edit_text(text='Пожалуйста, введите название варианта',
         reply_markup=None)
     await state.set_state(FSMNewVariant.fill_variant_title)
-    
+
 
 
 # Этот хэндлер будет срабатывать на ввод названия варианта
@@ -184,14 +184,14 @@ async def process_new_variant_description_sent(message: Message, state: FSMConte
     data = await state.get_data()
     title = data['title']
     description = message.text
-#здесь создание кнопок, если надо    
+#здесь создание кнопок, если надо
     await message.answer(text=f'''Пожалуйста, подтвердите, правильно ли введены
                          название и описание варианта?
                          Название:
                          {title}
                          Текст:
                          {description}
-                         
+
                          ''',
                          reply_markup=confirm_markup
                          )
@@ -213,7 +213,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
     description = data['description']
     tg_id = callback.from_user.id
 #     Записываем новое голосование в базу данных
-    new_variant_tg(vote_id=vote_id, tg_id=tg_id, title=title, text=description)
+    new_variant_tg(vote_id=vote_id, creator_tg_id=tg_id, title=title, text=description)
 
 
     await callback.message.edit_text(
@@ -225,7 +225,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewVoting.fill_OK),
-                   F.data == 'ConfirmNotOK')    
+                   F.data == 'ConfirmNotOK')
 async def process_new_variant_no_confirm_press(callback: CallbackQuery, state: FSMContext):
     # Отправляем в чат сообщение о выходе из машины состояний
     await callback.message.edit_text(
@@ -234,7 +234,7 @@ async def process_new_variant_no_confirm_press(callback: CallbackQuery, state: F
         reply_markup = variant_markup
         )
     await state.set_state(FSMNewVariant.fill_more_variant)
-    
+
 # Этот хэндлер будет срабатывать на нажатие кнопки "Добавить ещё вараинт"
 # Откатываем машину состояния в точку ввода названия варианта
 @router.callback_query(StateFilter(FSMNewVariant.fill_more_variant),

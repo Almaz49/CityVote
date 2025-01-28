@@ -9,7 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration,FSMRereg
 from data_base.data_base import db_update
-from keyboards.keyboards import reg_keyboard, contact_keyboard, remove_keyboard
+from keyboards.keyboards import reg_markup, contact_markup, remove_markup
 from filters.filters import filter_contact
 from data_base.telegram_bot_logic import (status_member, extract_user_data,
         new_status_tg, list_of_members_tg)
@@ -320,7 +320,7 @@ async def process_gender_press(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.answer(
         text='Отправьте ваш контакт\nНажмите для этого кнопку в самом низу экрана',
-        reply_markup = contact_keyboard
+        reply_markup = contact_markup
     )
 
     # Устанавливаем состояние ожидания отправки контакта
@@ -375,7 +375,7 @@ async def process_get_contact(message, state: FSMContext):
                     Возраст: {user_dict["age"]}\n'
                     Пол: {user_dict["gender"]}\n'
                     Номер телефона: {user_dict["tg_phone_number"]}''',
-                reply_markup=remove_keyboard
+                reply_markup=remove_markup
         )
     await message.answer(text = f'Всё правильно?',
                          reply_markup=markup #клавиатура подтвержджения
@@ -491,7 +491,7 @@ async def process_сity_press(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await callback.message.answer(
         text='Спасибо! А теперь введите название вашей улицы.',
-        reply_markup=remove_keyboard
+        reply_markup=remove_markup
     )
     # Устанавливаем состояние ожидания ввода названия улицы
     await state.set_state(FSMRegistration.fill_street)
@@ -506,7 +506,7 @@ async def process_new_city_press(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await callback.message.answer(
         text='Введите название вашего города или населенного пункта.',
-        reply_markup=remove_keyboard
+        reply_markup=remove_markup
     )
     # Устанавливаем состояние ожидания ввода названия города
     await state.set_state(FSMRegistration.fill_new_city)

@@ -3,7 +3,7 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
 from filters.filters import filter_isRegistrator
-from keyboards.keyboards import reg_keyboard, contact_keyboard, remove_keyboard
+from keyboards.keyboards import reg_markup, contact_markup, remove_markup
 from config_data.config import Config, load_config
 
 #инициализируем бота
@@ -39,8 +39,8 @@ async def process_registrator_yes_press(callback: CallbackQuery):
     db_update('Members','tg_id',tg_id, **cv)
     await callback.message.answer(text = f"Спасибо!\n"
                     f'Пользоватль {tg_id} получил статус "Участник"\n'
-                         )    
-    
+                         )
+
 #Этот хэндлер срабатывает при нажатии регистратором кнопки "Не подтверждаю"
 #при регистрации участника
 @router.callback_query(F.data.split(':')[0]=='no_confirm'
@@ -54,4 +54,4 @@ async def process_registrator_no_press(callback: CallbackQuery):
     db_update('Members','tg_id',tg_id, **cv)
     await callback.message.answer(text = f"Спасибо!\n"
                     f'Пользоватль {tg_id} не получил статус "Участник"\n'
-                         )    
+                         )

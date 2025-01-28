@@ -10,10 +10,7 @@ from config_data.config import Config, load_config
 # Загружаем конфиг в переменную config
 config: Config = load_config('.env')
 
-if __name__ == '__main__':
-    path_db = r'C:\Users\Alex\progs\CityVote\dbg1.db'
-else:
-    path_db = config.db.path_db #путь к базе данных
+path_db = config.db.path_db #путь к базе данных
 
 
 #Создаем контекстный менеджер для работы с базой данных
@@ -229,11 +226,11 @@ def list_of_variants(vote_id,*variant_status):
             SELECT id, title, variant_status FROM Variants
             WHERE vote_id = ?
             '''
-    print('Запрос:', query)
+    # print('Запрос:', query)
     with Database(path_db) as cursor:
         cursor.execute(query, (vote_id,) )
         ans = cursor.fetchall()
-        print(ans)
+        # print(ans)
         return(ans)
 #         if ans:
 #             list_id = list(zip(*ans))[0]
