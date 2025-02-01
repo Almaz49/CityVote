@@ -26,12 +26,12 @@ router.message.filter(filter_isDelegate)
 
 
 
-# Этот хэндлеры будет срабатывать на команду "/start"
+# # Этот хэндлеры будет срабатывать на команду "/start"
 
-@router.message(Command(commands=["start"]))
-async def process_start_command1(message: Message):
-    await bot.send_message(message.from_user.id,
-        text='Привет, Делегат!\nМеня зовут Эхо-бот!\nНапиши мне что-нибудь')
+# @router.message(Command(commands=["start"]))
+# async def process_start_command1(message: Message):
+#     await bot.send_message(message.from_user.id,
+#         text='Привет, Делегат!\nМеня зовут Эхо-бот!\nНапиши мне что-нибудь')
 
 
 

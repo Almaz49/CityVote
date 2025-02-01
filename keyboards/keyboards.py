@@ -66,17 +66,17 @@ member_keyboard = [
     [button('become_proxy')]
     ]
 registrator_keyboard = [
-    ['new_member']
+    [button('new_member')]
     ]
 proxy_keyboard = [
-    ['resign_from_proxy']
+    [button('resign_from_proxy')]
     ]
 delegate_keyboard = [
-    ['new_vote'],
-    ['new_variant']
+    [button('new_vote')],
+    [button('new_variant')]
     ]
 admin_keyboard = [
-    ['new_status']
+    [button('new_status')]
     ]
 
 # Словарь соотвествия стстус:клавиатура.
@@ -88,12 +88,31 @@ status_keyboards = {
     'registrator' : registrator_keyboard,
     'proxy' : proxy_keyboard,
     'delegate' :delegate_keyboard,
-    'admin' : admin_keyboard
+    'admin' : admin_keyboard,
+    'owner' : admin_keyboard
 }
 # Функция создания инлайн-клавиатуры (меню) участника в зависимости от его статусов
 
-def user_menu(tg_id):
-    status = extract_status_tg(tg_id)
+# async def user_menu(tg_id):
+#     status = extract_status_tg(tg_id)
+#     # print('status:', status)
+#     if 'member' not in status:
+#         if 'user' in status:
+#             keyboard = user_keyboard
+#         elif 'candidate' in status:
+#             keyboard = candidate_keyboard
+#         else:
+#             keyboard = [['Я не знаю кто ты']]
+#     else:
+#         keyboard = []
+#         for item in status:
+#             if item in status_keyboards:
+#                 keyboard += status_keyboards[item]
+#     # print('keyboard', keyboard)
+#     return(InlineKeyboardMarkup(inline_keyboard=keyboard))
+
+async def user_menu(tg_id):
+    status = await extract_status_tg(tg_id)
     if 'member' not in status:
         if 'user' in status:
             keyboard = user_keyboard
@@ -106,9 +125,7 @@ def user_menu(tg_id):
         for item in status:
             if item in status_keyboards:
                 keyboard += status_keyboards[item]
-    return(InlineKeyboardMarkup(inline_keyboard=keyboard))
-
-
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 """
 #Инлайн кнопка и клавиатура регистарции для новичков

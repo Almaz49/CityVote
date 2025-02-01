@@ -15,10 +15,10 @@ bot = Bot(token=config.tg_bot.token)
 router = Router()
 router.message.filter(filter_isUser)
 
-#Хэндлер на кманду "старт"
-@router.message(Command(commands=["start"]))
-async def process_start_command5(message: Message):
-    await bot.send_message(message.from_user.id, '''Привет, Новичок!\nЭто бот клуба избирателей!\n
-С моей помощью ты сможешь участвовать\n в голосованиях клуба. \n
-Чтобы получить все права участия, надо зарегистрироваться''',
-                         reply_markup = reg_markup)
+# #Хэндлер на кманду "старт"
+# @router.message(Command(commands=["start"]))
+# async def process_start_command5(message: Message):
+#     await bot.send_message(message.from_user.id, '''Привет, Новичок!\nЭто бот клуба избирателей!\n
+# С моей помощью ты сможешь участвовать\n в голосованиях клуба. \n
+# Чтобы получить все права участия, надо зарегистрироваться''',
+#                          reply_markup = reg_markup)

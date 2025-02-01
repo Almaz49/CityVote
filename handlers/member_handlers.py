@@ -15,7 +15,7 @@ bot = Bot(token=config.tg_bot.token)
 router = Router()
 router.message.filter(filter_isMember)
 
-@router.message(Command(commands=["start"]))
-async def process_start_command3(message: Message):
-    await bot.send_message(message.from_user.id,
-        'Привет, Участник!\nМеня зовут Эхо-бот!\nНапиши мне что-нибудь')
+# @router.message(Command(commands=["start"]))
+# async def process_start_command3(message: Message):
+#     await bot.send_message(message.from_user.id,
+#         'Привет, Участник!\nМеня зовут Эхо-бот!\nНапиши мне что-нибудь')

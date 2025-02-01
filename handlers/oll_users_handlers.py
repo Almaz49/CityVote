@@ -4,7 +4,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from keyboards.keyboards import reg_markup, contact_markup, remove_markup
+from keyboards.keyboards import *
 from config_data.config import Config, load_config
 
 #инициализируем бота
@@ -14,6 +14,20 @@ bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
+
+
+@router.message(Command(commands=["start"]))
+async def process_start_command(message: Message):
+    try:
+        markup = await user_menu(message.from_user.id)
+        await bot.send_message(
+            chat_id=message.from_user.id,
+            text='Привет!\nМеня зовут Эхо-бот!\nНапиши мне что-нибудь',
+            reply_markup=markup
+        )
+    except Exception as e:
+        # Логирование ошибок
+        print(f"Ошибка при обработке команды start: {e}")
 
 #Этот хэндлер срабатывает, если участнк почему-то оказалася без известного статуса.
 #Вообще-то не должен срабатывать

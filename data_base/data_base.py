@@ -1,76 +1,58 @@
 import random
 import time
-
 from data_base.db_member import *
 from data_base.db_vote import *
+import logging
 
-
-# БАЗА ДАННЫХ
-# Первоначальный файл разбит на , которые импортируются сюда.
-# db_func - файл с функциями, которые используются другими функциями
-# В частности, класс для работы с БД
-# db_memder - функции работы с участниками
-# db_vote - функции работы с голосованиями
-# Здесь функции взаимодействия с БД исходя из user_id и member_id пользователей.
-# Функции универсальны независимо от платформы.
-# Специфика телеграм-бота вынесена в telegram_bot_logic.
-# То есть, телеграм-бот взаимодействует с БД и data_base только через telegram_bot_logic
-# (пока это не так, но надо стремиться наверно)
-# А data_base ничего "не знает" о телеграм-боте
-
-
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
 
 # Функция выдачи или отнятия права голоса участнику (присвоение статуса 'votist')
-# Применялась при тестировании
-def votist(member_id):
-    with Database(path_db) as cursor:
-        cursor.execute('''
-        SELECT status FROM Status
-        WHERE member_id = ?
-            '''
-            ,(member_id,)
-            )
-        result = cursor.fetchall()
-        # print(result)
-#     Если у участника нет статуса члена, лишаем его права голоса (если было)
-        if ('member',) not in result:
-            vot = False
-        else:
-#        Если участник член и представитель - имеет право голоса
-            if ('proxy',) in result:
-                vot = True
-#         Если член не пресдатвитель, проверяем, есть ли у него представитель и
-#         имеет ли этот представитель статус представителя
+async def votist(member_id):
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute('''
+                SELECT status FROM Status
+                WHERE member_id = ?
+            ''', (member_id,))
+            result = await cursor.fetchall()
+            logging.info(f"Проверка статусов для member_id={member_id}: {result}")
+
+            # Если у участника нет статуса члена, лишаем его права голоса (если было)
+            if ('member',) not in result:
+                vot = False
             else:
-                cursor.execute(
-            '''SELECT status FROM Status WHERE member_id IN
-            (SELECT proxy FROM Members WHERE id = ?)
-            ''',
-            (member_id,)
-            )
-#           Если есть настоящий представитель, даем статус голосующего
-                st_pr = cursor.fetchall()
-                print('статус представителя: ', st_pr)
-                if ('proxy',) in st_pr:
+                # Если участник член и представитель - имеет право голоса
+                if ('proxy',) in result:
                     vot = True
-#             Если представителя нет или он не настоящий - отбираем статус голсоующего
                 else:
-                    vot = False
-        if vot:
-            cursor.execute(
-            '''INSERT OR IGNORE INTO Status(member_id,status) VALUES(?,'votist')
-            ''',
-                       (member_id,)
-            )
-        else:
-            cursor.execute(
-            '''DELETE FROM Status WHERE member_id = ? AND status = "votist"''',
-            (member_id,)
-            )
+                    # Если член не представитель, проверяем, есть ли у него представитель
+                    # и имеет ли этот представитель статус представителя
+                    await cursor.execute('''
+                        SELECT status FROM Status WHERE member_id IN
+                        (SELECT proxy FROM Members WHERE id = ?)
+                    ''', (member_id,))
+                    st_pr = await cursor.fetchall()
+                    logging.info(f"Статус представителя для member_id={member_id}: {st_pr}")
+                    if ('proxy',) in st_pr:
+                        vot = True
+                    else:
+                        vot = False
 
+            if vot:
+                await cursor.execute('''
+                    INSERT OR IGNORE INTO Status(member_id, status) VALUES (?, 'votist')
+                ''', (member_id,))
+                logging.info(f"Присвоен статус 'votist' для member_id={member_id}")
+            else:
+                await cursor.execute('''
+                    DELETE FROM Status WHERE member_id = ? AND status = 'votist'
+                ''', (member_id,))
+                logging.info(f"Отобран статус 'votist' для member_id={member_id}")
 
-
-
+        except aiosqlite.Error as e:
+            logging.error(f"Ошибка при работе с правом голоса: {e}")
+            raise
 
 
 
