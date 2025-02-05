@@ -1,3 +1,4 @@
+# Модуль data_base. Служит для сборки других модулей, работающих с базой данных.
 import random
 import time
 from data_base.db_member import *

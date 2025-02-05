@@ -1,3 +1,6 @@
+# Модуль FSMs
+# Содержит машины состояний, исползуемые в хэндлерах.
+
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 #from aiogram.fsm.storage.memory import MemoryStorage
@@ -14,7 +17,7 @@ class FSMNewRegistrator(StatesGroup):
     # бот в разные моменты взаимодействия с пользователем
     fill_ID_NewRegistrator = State()        # Состояние ожидания ввода ID
     fill_OK = State()         # Состояние ожидания подтверждения
-    
+
 #FSM создания присвоения нового статуса участникугруппы
 # Cоздаем класс, наследуемый от StatesGroup, для группы состояний нашей FSM
 class FSMNewStatus(StatesGroup):
@@ -25,11 +28,11 @@ class FSMNewStatus(StatesGroup):
     fill_OK = State()         # Состояние ожидания подтверждения
     fill_choice = State()  # Состояние ожидания выбора статуса
     fill_new_status_confirm = State() # Состояние ожидания подтверждения выбранного статуса
-    
+
 
 
 #FSM процедуры регистрации
-   
+
 class FSMRegistration(StatesGroup):
     # Создаем экземпляры класса State, последовательно
     # перечисляя возможные состояния, в которых будет находиться
@@ -48,7 +51,7 @@ class FSMRegistration(StatesGroup):
     fill_range_num = State()   # Состояние ожидания выбора диапазона номеров
     fill_confirm2 = State()    # Состояние ожидания подтверждения адреса
     fill_registrator = State()   # Состояние ожидания выбора модератора
-    
+
 #FSM повторной регистрации
 # Cоздаем класс, наследуемый от StatesGroup, для группы состояний нашей FSM
 class FSMRereg(StatesGroup):
@@ -57,7 +60,7 @@ class FSMRereg(StatesGroup):
     # бот в разные моменты взаимодействия с пользователем
     fill_OK = State()         # Состояние ожидания подтверждения
     fill_no_reg = State()              # Состояние обновления данных - без регистрации (не вызывается выбор регистраторов)
-    
+
 
 #FSM создания нового голосования
 # Cоздаем класс, наследуемый от StatesGroup, для группы состояний нашей FSM

@@ -1,3 +1,5 @@
+# Модуль db_vote. Содержит функции для работы с голосованиями
+# и подсчетом голосов.
 import datetime
 import random
 import time

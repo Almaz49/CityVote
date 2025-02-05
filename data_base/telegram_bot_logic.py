@@ -1,8 +1,15 @@
+# Модуль telegram_bot_logic.
+# Служит "прокладкой" между телеграм-ботом и функциями базы данных.
+# Его функции принимают аргументом телеграм-ID, и обращаются к функциям,
+# работающим с базой данных, отпарвляя им в качестве аргумента user_id и member_id
+# Это нужно для того, чтобы при необходимости поменять базу данных,
+# но не переписывать хэндлеры
 import logging
 from config_data.config import Config, load_config
-from data_base.db_func import *
-from data_base.db_member import *
-from data_base.db_vote import *
+from data_base.data_base import *
+# from data_base.db_func import *
+# from data_base.db_member import *
+# from data_base.db_vote import *
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -312,6 +319,28 @@ async def vote_finish_tg(vote_id, finisher_tg_id=None):
         logging.error(f"Ошибка при завершении голосования: {e}")
         raise
 
+
+# Функция обновления адреса пользователя
+async def update_address(tg_id, city, street, house):
+    try:
+        user_id = await extract_user_id(tg_id)
+        if not user_id:
+            return False, 'Пользователь не найден.'
+
+        member_id = await extract_member_id(club_id, user_id)
+        if not member_id:
+            return False, 'Пользователь не является участником группы.'
+
+        # Здесь должна быть функция для обновления адреса в базе данных
+        # Например, используем функцию db_update из db_func.py
+        result = await db_update(user_id, city=city, street=street, house=house)
+        if result:
+            return True, 'Адрес успешно обновлен.'
+        else:
+            return False, 'Ошибка при обновлении адреса.'
+    except Exception as e:
+        logging.error(f"Ошибка при обновлении адреса: {e}")
+        return False, str(e)
 
 """
 Проверяем работу функций

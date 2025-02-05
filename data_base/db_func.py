@@ -122,6 +122,61 @@ async def db_update(table, key, value, **cv):
             logging.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
+async def extract_user_id(tg_id):
+    """
+    Извлекает ID пользователя по его Telegram ID.
+    :param tg_id: Telegram ID пользователя.
+    :return: ID пользователя в базе данных или None, если пользователь не найден.
+    """
+    logging.info(f"Извлечение user_id для tg_id={tg_id}")
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(
+                '''
+                SELECT id FROM Users WHERE tg_id = ?
+                ''', (tg_id,)
+            )
+            result = await cursor.fetchone()
+            if result:
+                user_id, = result
+                logging.info(f"Найден user_id={user_id} для tg_id={tg_id}")
+                return user_id
+            else:
+                logging.info(f"Пользователь с tg_id={tg_id} не найден.")
+                return None
+        except aiosqlite.Error as e:
+            logging.error(f"Ошибка при извлечении user_id для tg_id={tg_id}: {e}")
+            raise
+
+
+async def extract_member_id(club_id, user_id):
+    """
+    Извлекает ID участника группы по ID группы и ID пользователя.
+    :param club_id: ID группы.
+    :param user_id: ID пользователя.
+    :return: ID участника группы в базе данных или None, если участник не найден.
+    """
+    logging.info(f"Извлечение member_id для club_id={club_id}, user_id={user_id}")
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(
+                '''
+                SELECT id FROM Members
+                WHERE club_id = ? AND user_id = ?
+                ''', (club_id, user_id)
+            )
+            result = await cursor.fetchone()
+            if result:
+                member_id, = result
+                logging.info(f"Найден member_id={member_id} для club_id={club_id}, user_id={user_id}")
+                return member_id
+            else:
+                logging.info(f"Участник с club_id={club_id}, user_id={user_id} не найден.")
+                return None
+        except aiosqlite.Error as e:
+            logging.error(f"Ошибка при извлечении member_id для club_id={club_id}, user_id={user_id}: {e}")
+            raise
+
 # Функция извлечения списка участников с определенным статусом, или всех,
 # если статус указан 'all'
 async def list_of_members(club_id, status):

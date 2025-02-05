@@ -1,3 +1,4 @@
+# Модуль db_member
 # ФУНКЦИИ БАЗЫ ДАННЫХ ПО РАБОТЕ С УЧАСТНИКАМИ
 import datetime
 from data_base.db_func import *
