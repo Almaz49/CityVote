@@ -76,71 +76,56 @@ def button(button: str, text: str = None) -> InlineKeyboardButton:
         raise
 
 
-# Словарь соответствия статуса: клавиатура
-status_keyboards = {
-    'user': [
-        [button('list_of_votes')],
-        [button('registration')]
-    ],
-    'candidate': [
-        [button('list_of_votes')],
-        [button('select_proxy')]
-    ],
-    'member': [
-        [button('list_of_votes')],
-        [button('archive_of_votes')],
-        [button('select_proxy')],
-        [button('become_proxy')]
-    ],
-    'registrator': [
-        [button('new_member')]
-    ],
-    'proxy': [
-        [button('resign_from_proxy')]
-    ],
-    'delegate': [
-        [button('new_vote')],
-        [button('new_variant')]
-    ],
-    'admin': [
-        [button('new_status')]
-    ],
-    'owner': [
-        [button('new_status')]
-    ]
+buttons = {
+    'votes': {  # Категория: Голосования
+        'member': ['list_of_votes', 'archive_of_votes'],  # Для статуса 'member'
+        'candidate': ['list_of_votes'],                  # Для статуса 'candidate'
+        'proxy': ['list_of_votes']                       # Для статуса 'proxy'
+    },
+    'actions': {  # Категория: Действия
+        'member': ['select_proxy', 'become_proxy'],      # Для статуса 'member'
+        'proxy': ['resign_from_proxy'],                  # Для статуса 'proxy'
+        'delegate': ['new_vote', 'new_variant']          # Для статуса 'delegate'
+    },
+    'settings': {  # Категория: Настройки
+        'admin': ['new_status'],                         # Для статуса 'admin'
+        'owner': ['new_status']                          # Для статуса 'owner'
+    }
 }
 
 def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton]]:
-    buttons = {
-        'user': ['list_of_votes', 'registration'],
-        'candidate': ['list_of_votes', 'select_proxy'],
-        'member': ['list_of_votes', 'archive_of_votes', 'select_proxy'],
-        'registrator': ['new_member'],
-        'proxy': ['resign_from_proxy'],  # Кнопка "Уйти из представителей"
-        'delegate': ['new_vote', 'new_variant'],
-        'admin': ['new_status'],
-        'owner': ['new_status']
-    }
-
     # Множество для отслеживания уникальных callback_data
     unique_buttons = set()
     keyboard = []
 
-    for item in status:
-        if item in buttons:
-            current_buttons = []
-            for btn in buttons[item]:
-                # Исключаем "Стать представителем", если есть 'proxy'
-                if btn == 'become_proxy' and 'proxy' in status:
-                    continue
+    # Список категорий в порядке приоритета
+    categories_order = ['votes', 'actions', 'settings']
 
-                # Добавляем кнопку, если её callback_data уникальна
-                if btn not in unique_buttons:
-                    unique_buttons.add(btn)
-                    current_buttons.append(button(btn))
+    for category in categories_order:
+        if category not in buttons:
+            continue
 
-            # Добавляем текущие кнопки в клавиатуру
-            keyboard.extend([[btn] for btn in current_buttons])
+        for item in status:
+            if item in buttons[category]:
+                current_buttons = []
+                for btn in buttons[category][item]:
+                    # Исключаем "Стать представителем", если есть 'proxy'
+                    if btn == 'become_proxy' and 'proxy' in status:
+                        continue
+
+                    # Переименовываем "Выбрать представителя" для 'proxy'
+                    if btn == 'select_proxy' and 'proxy' in status:
+                        text = "Выбрать заместителя"
+                    else:
+                        text = LEXICON.get(btn, btn)  # Используем текст из LEXICON или callback_data
+
+                    # Добавляем кнопку, если её callback_data уникальна
+                    if btn not in unique_buttons:
+                        unique_buttons.add(btn)
+                        current_buttons.append(InlineKeyboardButton(text=text, callback_data=btn))
+
+                # Добавляем текущие кнопки в клавиатуру
+                keyboard.extend([[btn] for btn in current_buttons])
 
     return keyboard
 
