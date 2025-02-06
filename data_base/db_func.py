@@ -1,3 +1,4 @@
+# Модуль db_func.py
 # Это файл с функциями, которые используются другими файлами, работающими
 # с базой данных
 # This is a file with functions that are used by other files that work with
@@ -6,6 +7,17 @@ import sqlite3
 import aiosqlite
 import logging  # Добавляем импорт модуля logging
 from config_data.config import Config, load_config
+from functools import wraps
+
+
+def log_function_call(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        logging.info(f"Вызвана функция {func.__name__}")
+        return func(*args, **kwargs)
+    return wrapper
+
+
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -13,6 +25,14 @@ logging.basicConfig(level=logging.INFO)
 # Загружаем конфиг в переменную config
 config: Config = load_config('.env')
 path_db = config.db.path_db  # путь к базе данных
+
+# Это декоратор, который каждую функцию объявляет в логах
+def log_function_call(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        logging.info(f"Вызвана функция {func.__name__}")
+        return func(*args, **kwargs)
+    return wrapper
 
 # Создаем контекстный менеджер для работы с базой данных
 class Database:
@@ -101,6 +121,7 @@ class AsyncDatabase:
 # Функция редактирования полей в таблице table в строке где столбец key равен value.
 # В поля вставляются значения словаря **cv,
 # где ключ - имя столбца, а значение - значение поля
+@log_function_call
 async def db_update(table, key, value, **cv):
     data = list(cv.values()) + [value]
     column = list(cv.keys())
@@ -122,6 +143,7 @@ async def db_update(table, key, value, **cv):
             logging.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
+@log_function_call
 async def extract_user_id(tg_id):
     """
     Извлекает ID пользователя по его Telegram ID.
@@ -149,6 +171,7 @@ async def extract_user_id(tg_id):
             raise
 
 
+@log_function_call
 async def extract_member_id(club_id, user_id):
     """
     Извлекает ID участника группы по ID группы и ID пользователя.
@@ -179,6 +202,7 @@ async def extract_member_id(club_id, user_id):
 
 # Функция извлечения списка участников с определенным статусом, или всех,
 # если статус указан 'all'
+@log_function_call
 async def list_of_members(club_id, status):
     # Получаем список имен участников из БД
     query = '''
@@ -225,6 +249,7 @@ async def list_of_members(club_id, status):
 
 # Функция извлечения данных о пользователе. *c - список столбцов, данные из которых
 # извлекаются.
+@log_function_call
 async def extract_user_data(user_id, *c):
     cols = ', '.join(c) if c else '*'  # формирую часть строки запроса из имен столбцов или '*'
 
@@ -245,6 +270,7 @@ async def extract_user_data(user_id, *c):
 
 # Функция выявления всех статусов, использующихся в группе.
 # Нужна только для тестирования
+@log_function_call
 async def all_status():
     async with AsyncDatabase(path_db) as cursor:
         # Извлекаем из БД неповторяющиеся статусы
@@ -270,6 +296,7 @@ async def all_status():
 # В качестве аргументов принимает номер группы и список статусов голосований.
 # Извлекаются голосования имеющие эти статусы
 # Возвращает список кортежей из ID и названий
+@log_function_call
 async def list_of_votes(club_id, *vote_status):
     if vote_status:
         placeholders = ', '.join('?' for _ in vote_status)
@@ -302,6 +329,7 @@ async def list_of_votes(club_id, *vote_status):
 # В качестве аргументов принимает id голосования и список статусов вариантов.
 # Извлекаются голосования имеющие эти статусы.
 # Возвращает cписок кортежей из ID, названий вариантов и статусов вариантов
+@log_function_call
 async def list_of_variants(vote_id, *variant_status):
     if variant_status:
         placeholders = ', '.join('?' for _ in variant_status)
@@ -353,7 +381,7 @@ async def list_of_variants(vote_id, *variant_status):
 #         else:
 #             return(['user'])
 
-
+@log_function_call
 async def extract_status(member_id):
     async with AsyncDatabase(path_db) as cursor:
         await cursor.execute(
@@ -387,41 +415,7 @@ async def extract_status(member_id):
             logging.info("Статусы не найдены, возвращается ['user']")
             return ['user']
 
-#       //////////////////////////////////////
-#           Проверяем работу функций
-#       \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
-# print('losers: ', vote_final(3))
-# print(vote_finish(3))
-
-
-# c='tg_id','last_name'
-#new_status(1,2,'not_status')
-#print(extract_member_id(101))
-#print(extract_user_id(24))
-# print(extract_status(1))
-# new_status(1,2,'registrator')
-#new_vote(1, 2,'Важное голосование')
-#cv = {'first_name':'Василий'}
-
-# print(extract_user_id(101))
-#print(extract_member_id(1,101))
-# print(extract_user_data(3))
-# print(all_status())
-# print(list_of_registrators(1))
-# print(list_of_members(1,'proxy'))
-#print(list_of_votes(1,'bbbb'))
-# print(new_variant(1,1,'за всё','cjdctv'))
-# print('я работаю')
-# print(path_db)
-# trust(1,4)
-# vote_start(3,1)
-# print(past_choise(15,3))
-# print(count_directly_votes(1))
-# print(count_directly_empty_votes(4))
-# print(count_proxy_votes(1))
-# print(extract_status(102))
-# print(election(102,1))
 """
 for i in range(5):
     a = count_directly_votes(i+1)

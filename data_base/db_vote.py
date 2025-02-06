@@ -1,16 +1,19 @@
 # Модуль db_vote. Содержит функции для работы с голосованиями
 # и подсчетом голосов.
+
 import datetime
 import random
 import time
 from data_base.db_func import *
 import logging
 
+
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
 # Создание нового голосования. Создается название голосования и описание,
 # также может быть введен тип голосования и ссылка. Варианты добавляются позже.
+@log_function_call
 async def new_vote(club_id, creator, title, text=None, vote_type='usual', vote_status='add_variants'):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if len(title) > 40:
@@ -50,6 +53,7 @@ async def new_vote(club_id, creator, title, text=None, vote_type='usual', vote_s
 # В БД вносится автор (member_id), заголовок варианта, текст варианта,
 # если есть - ссылка.
 # Возвращает комментарий по итогам добавления.
+@log_function_call
 async def new_variant(vote_id, author, title, text=None, variant_status='valid'):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if len(title) > 40:
@@ -94,6 +98,7 @@ async def new_variant(vote_id, author, title, text=None, variant_status='valid')
 
 # Функция старта голосования. Меняем статус голосования на 'ongoing'.
 # Указываем, кто запустил голосование (если не автоматически).
+@log_function_call
 async def vote_start(vote_id, starter=None):
     time_start = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     async with AsyncDatabase(path_db) as cursor:
@@ -116,16 +121,10 @@ async def vote_start(vote_id, starter=None):
             raise
 
 
-import datetime
-import random
-import time
-from data_base.db_func import *
-import logging
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
 
 # Функция возвращает ID голосования по ID варианта
+@log_function_call
 async def extract_vote_id(variant_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -147,6 +146,7 @@ async def extract_vote_id(variant_id):
             raise
 
 # Функция возвращает ID группы по ID голосования
+@log_function_call
 async def extract_group_id(vote_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -169,6 +169,7 @@ async def extract_group_id(vote_id):
 
 # Функция выясняет, за какие варианты в данном голосовании голосовал (лично) пользователь
 # Возвращает ID вариантов (список кортежей с одним членом) или None
+@log_function_call
 async def past_choise(member_id, vote_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -186,6 +187,7 @@ async def past_choise(member_id, vote_id):
             raise
 
 # Функция подсчета числа членов группы, имеющих право голоса
+@log_function_call
 async def count_votist(club_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -209,16 +211,8 @@ async def count_votist(club_id):
 
 
 
-import datetime
-import random
-import time
-from data_base.db_func import *
-import logging
-
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
-
 # Функция подсчета голосов, отданых за вариант лично теми, кто имеет право голоса
+@log_function_call
 async def count_directly_votes(variant_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -241,6 +235,7 @@ async def count_directly_votes(variant_id):
             raise
 
 # Функция подсчета голосов, отданых за вариант лично теми, кто не имеет право голоса
+@log_function_call
 async def count_directly_empty_votes(variant_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -263,6 +258,7 @@ async def count_directly_empty_votes(variant_id):
             raise
 
 # Функция подсчета голосов, отданых за вариант через представителей
+@log_function_call
 async def count_proxy_votes(variant_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -290,6 +286,7 @@ async def count_proxy_votes(variant_id):
             raise
 
 # Функция выбора варианта при голосовании
+@log_function_call
 async def election(member_id, variant_id):
     time_election = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     vote_id = await extract_vote_id(variant_id)
@@ -341,16 +338,11 @@ async def election(member_id, variant_id):
             raise
 
 
-import datetime
-from data_base.db_func import *
-import logging
-
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
 
 # Функция завершения промежуточного этапа голосования. Переводит в статус "loser" наименее популярные варианты.
 # Оставшиеся варианты должны в сумме набирать 50% голосов от имеющих право голоса.
 # Возвращает кортеж из ID проигравших вариантов.
+@log_function_call
 async def vote_stage(vote_id, stager=None):
     time_stage = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(vote_id, 'valid')
@@ -412,6 +404,7 @@ async def vote_stage(vote_id, stager=None):
 
 # Функция создания финального этапа голосования (где голосуется два варианта или больше, если есть варианты,
 # которые набрали столько же, сколько второй)
+@log_function_call
 async def vote_final(vote_id, finaler=None):
     time_final = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(vote_id, 'valid')
@@ -456,6 +449,7 @@ async def vote_final(vote_id, finaler=None):
 
 # Функция завершения голосования. Определяет вариант - победитель.
 # При прочих равных (что вряд ли) побеждает тот вариант, который создан раньше.
+@log_function_call
 async def vote_finish(vote_id, finisher=None):
     time_finish = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(vote_id, 'valid')
@@ -526,112 +520,3 @@ async def vote_finish(vote_id, finisher=None):
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при завершении голосования: {e}")
             raise
-
-#       //////////////////////////////////////
-#           Проверяем работу функций
-#       \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-
-# print('losers: ', vote_final(3))
-# print(vote_finish(3))
-
-
-# c='tg_id','last_name'
-#new_status(1,2,'not_status')
-#print(extract_member_id(101))
-#print(extract_user_id(24))
-# print(extract_status(1))
-# new_status(1,2,'registrator')
-#new_vote(1, 2,'Важное голосование')
-#cv = {'first_name':'Василий'}
-
-# print(extract_user_id(101))
-#print(extract_member_id(1,101))
-# print(extract_user_data(3))
-# print(all_status())
-# print(list_of_registrators(1))
-# print(list_of_members(1,'proxy'))
-#print(list_of_votes(1,'bbbb'))
-# print(new_variant(1,1,'за всё','cjdctv'))
-# print('я работаю')
-# print(path_db)
-# trust(1,4)
-# vote_start(3,1)
-# print(past_choise(15,3))
-# print(count_directly_votes(1))
-# print(count_directly_empty_votes(4))
-# print(count_proxy_votes(1))
-# print(extract_status(102))
-# print(election(102,1))
-
-# for i in range(5):
-#     a = count_directly_votes(i+1)
-
-#     b = count_proxy_votes(i+1)
-
-#     print('вариант ',i+1,': всего голосов - ', a+b, ', отданных напрямую - ', a,
-#           ', через преставителя',b, ', голосов неголосующх - ', count_directly_empty_votes(i+2))
-
-# print(list_of_variants(3))
-# votist(10)
-
-# добавляем пользователей в бд
-
-# with open('names.txt',encoding="UTF-8") as f:
-#     stroka = f.read()
-# spisok = stroka.splitlines()
-
-# with Database(path_db) as cursor:
-#     for FIO in spisok:
-#         fam,im,otch = FIO.split(' ')
-#         tg_id = random.randint(100000,999999)
-#         tg_phone_number = random.randint(100000000,999999999)
-#         bithyear = random.randint(1928,2008)
-#         cursor.execute('''INSERT INTO Users
-#         (tg_id, tg_phone_number,tg_first_name,tg_last_name, first_name,middle_name,
-#         last_name,bithyear) VALUES (?,?,?,?,?,?,?,?)''',
-#         (tg_id,tg_phone_number,im,fam,im,otch,fam,bithyear))
-
-
-# # Добавляем участников в группу 1
-# with Database(path_db) as cursor:
-#     for i in range(100):
-#         cursor.execute('''INSERT OR IGNORE INTO Members
-#         (club_id, user_id, proxy)  VALUES (?,?,?)''',
-#         (1, i+2,  random.randint(1,5))
-#                        )
-
-
-# # Присваиваем части участникам статус member, другим - candidate
-# with Database(path_db) as cursor:
-#     for i in range(100):
-#         cursor.execute('''INSERT OR IGNORE INTO Status
-#         (member_id, status)  VALUES (?,?)''',
-#         (i+2,
-#          'member' if random.randint(1,5) < 5 else 'candidate'
-#          )
-#                        )
-
-
-# # Голосуем за участников
-# with Database(path_db) as cursor:
-#     for i in range(101):
-#         if random.randint(1,5) > 4:
-#             cursor.execute('''INSERT OR IGNORE INTO Elections
-#         (member_id, variant_id, time_election, status)  VALUES (?,?,?,?)''',
-#         (i+1,
-#          random.randint(1,4),
-#          datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-#          'valid'
-#          )
-#                        )
-#             time.sleep(1)
-#             print( 'участник ', i+2, ' выбрал вариант ')
-
-
-# # Добавляем участников в группу 1
-# with Database(path_db) as cursor:
-#     for i in range(90):
-#         cursor.execute('''UPDATE Members SET proxy = ?
-#         WHERE id = ?''',
-#         (random.randint(1,5), i+6)
-#                   )

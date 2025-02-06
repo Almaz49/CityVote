@@ -4,12 +4,14 @@
 # работающим с базой данных, отпарвляя им в качестве аргумента user_id и member_id
 # Это нужно для того, чтобы при необходимости поменять базу данных,
 # но не переписывать хэндлеры
+
+
+
 import logging
 from config_data.config import Config, load_config
-from data_base.data_base import *
-# from data_base.db_func import *
-# from data_base.db_member import *
-# from data_base.db_vote import *
+from data_base.db_func import *
+from data_base.db_member import *
+from data_base.db_vote import *
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +19,9 @@ logging.basicConfig(level=logging.INFO)
 # Загружаем конфиг в переменную config
 config: Config = load_config('.env')
 club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
+
+
+
 
 # Функция выяснения статуса участника по tg_id.
 # Если участник с таким телеграм id не обнаружен,
@@ -26,6 +31,7 @@ club_id = config.tg_bot.club_id  # id группы в БД (не телегра�
 # Возвращает список кортежей типа [(admin,), (registrator,)]
 # В каждом кортеже только один элемент. Кортежей столько, сколько статусов у участника.
 # Функция используется в фильтрах для хендлеров
+@log_function_call
 async def status_member(tg_id):
     logging.info(f"Проверка статуса участника по tg_id={tg_id}")
     user_id = await extract_user_id(tg_id)
@@ -52,6 +58,7 @@ async def status_member(tg_id):
 # Функция извлечения данных о пользователе по его tg_id
 # *c - список (точнее кортеж) колонок, из которых извлекаются данные.
 # При отсутствии *c извлекаются все данные.
+@log_function_call
 async def extract_user_data_tg(tg_id, *c):
     user_id = await extract_user_id(tg_id)
     if user_id:
@@ -60,6 +67,7 @@ async def extract_user_data_tg(tg_id, *c):
         return None
 
 # Функция создания нового голосования
+@log_function_call
 async def new_vote_tg(creator_tg_id, title, text=None, vote_type='usual', vote_status='add_variants'):
     creator = await member_id_tg(creator_tg_id)
     if creator:
@@ -71,6 +79,7 @@ async def new_vote_tg(creator_tg_id, title, text=None, vote_type='usual', vote_s
         return False, 'Вы не являетесь участником группы'
 
 # Функция извлечения member_id по tg_id
+@log_function_call
 async def member_id_tg(tg_id):  # Добавляем club_id как параметр
     try:
         user_id = await extract_user_id(tg_id)
@@ -89,6 +98,7 @@ async def member_id_tg(tg_id):  # Добавляем club_id как параме
 # Используется при создании нового регистратора
 # Возвращает (flag, ans_str). Если flag == true, значит участник может быть назначен регистратором.
 # ans_str - комментарий, который выдается по итогу извлечения данных
+@log_function_call
 async def extract_new_registrator_data(tg_id):
     user_id = await extract_user_id(tg_id)
     member_id = await extract_member_id(club_id, user_id)
@@ -117,20 +127,9 @@ async def extract_new_registrator_data(tg_id):
     return flag, ans_str
 
 
-import logging
-from config_data.config import Config, load_config
-from data_base.db_func import *
-from data_base.db_member import *
-from data_base.db_vote import *
-
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
-
-# Загружаем конфиг в переменную config
-config: Config = load_config('.env')
-club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
 
 # Присвоение нового статуса - в качестве аргументов функции tg_id регистратора и участника группы
+@log_function_call
 async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
     ans_str = ''
     registrator_user_id = await extract_user_id(registrator_tg_id)
@@ -167,6 +166,7 @@ async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
     return ans_str
 
 # Создание нового голосования
+@log_function_call
 async def new_vote_tg(creator_tg_id, title, text=None, vote_type='usual', vote_status='add_variants'):
     creator_user_id = await extract_user_id(creator_tg_id)
     if not creator_user_id:
@@ -184,6 +184,7 @@ async def new_vote_tg(creator_tg_id, title, text=None, vote_type='usual', vote_s
 
 # Создание варианта для голосования. Добавляется в голосования со статусом ожидания вариантов.
 # В БД вносится автор, заголовок варианта, текст варианта, если есть и мб - ссылка
+@log_function_call
 async def new_variant_tg(vote_id, creator_tg_id, title, text=None):
     user_id = await extract_user_id(creator_tg_id)
     if not user_id:
@@ -200,6 +201,7 @@ async def new_variant_tg(vote_id, creator_tg_id, title, text=None):
     return result
 
 # Извлечение статусов участника группы (отдает список статусов)
+@log_function_call
 async def extract_status_tg(tg_id):
     user_id = await extract_user_id(tg_id)
     if not user_id:
@@ -216,6 +218,7 @@ async def extract_status_tg(tg_id):
     return status
 
 # Функция извлечения списка идущих голосований
+@log_function_call
 async def list_of_votes_tg(*vote_status):
     try:
         votes = await list_of_votes(club_id, *vote_status)
@@ -225,17 +228,33 @@ async def list_of_votes_tg(*vote_status):
         logging.error(f"Ошибка при извлечении голосований: {e}")
         raise
 
-# Функция извлечения списка участников с указанными статусами
-async def list_of_members_tg(*status):
+# Функция извлечения списка участников с указанным статусом
+@log_function_call
+async def list_of_members_tg(status):
     try:
-        members = await list_of_members(club_id, *status)
+        members = await list_of_members(club_id, status)
         logging.info(f"Извлечены участники для club_id={club_id} с status={status}: {members}")
         return members
     except Exception as e:
         logging.error(f"Ошибка при извлечении участников: {e}")
         raise
 
+# Функция выбора представителя. Принимает в качестве аргумента tg_id пользователя,
+# который доверяет голос и member_id представителя
+@log_function_call
+async def trust_tg(tg_id, proxy_member_id):
+    try:
+        logging.info(f"Вызвана функция trust_tg")
+        member_id = await member_id_tg(tg_id)
+        result =  await trust(member_id,proxy_member_id)
+        logging.info(f"Пользователь  с tg_id {tg_id} выбрал представителем учатника с member_id {member_id}")
+        return True, result
+    except Exception as e:
+        logging.error(f"Произошла ошибка при выборе представителя пользователем {tg_id}: {e}")
+        return False, f"Произошла ошибка: {str(e)}"
+
 # Функция выбора варианта при голосовании (от ТГ-id)
+@log_function_call
 async def election_tg(tg_id, variant_id):
     try:
         member_id = await extract_member_id(club_id, await extract_user_id(tg_id))
@@ -252,6 +271,7 @@ async def election_tg(tg_id, variant_id):
 
 # Функция старта голосования. Меняем статус голосования на 'ongoing'.
 # Указываем, кто запустил голосование (если не автоматически).
+@log_function_call
 async def vote_start_tg(vote_id, starter_tg_id=None):
     try:
         if starter_tg_id:
@@ -267,6 +287,7 @@ async def vote_start_tg(vote_id, starter_tg_id=None):
 # Функция завершения промежуточного этапа голосования. Переводит в статус "loser" наименее популярные варианты.
 # Оставшиеся варианты должны в сумме набирать 50% голосов от имеющих право голоса.
 # Возвращает кортеж из ID проигравших вариантов.
+@log_function_call
 async def vote_stage_tg(vote_id, stager_tg_id=None):
     try:
         if stager_tg_id:
@@ -284,6 +305,7 @@ async def vote_stage_tg(vote_id, stager_tg_id=None):
 
 # Функция создания финального этапа голосования (где голосуется два варианта или больше, если есть варианты,
 # которые набрали столько же, сколько второй)
+@log_function_call
 async def vote_final_tg(vote_id, finaler_tg_id=None):
     try:
         if finaler_tg_id:
@@ -302,6 +324,7 @@ async def vote_final_tg(vote_id, finaler_tg_id=None):
         raise
 
 # Функция завершения голосования. Определяет вариант - победитель.
+@log_function_call
 async def vote_finish_tg(vote_id, finisher_tg_id=None):
     try:
         if finisher_tg_id:
@@ -321,6 +344,7 @@ async def vote_finish_tg(vote_id, finisher_tg_id=None):
 
 
 # Функция обновления адреса пользователя
+@log_function_call
 async def update_address(tg_id, city, street, house):
     try:
         user_id = await extract_user_id(tg_id)
@@ -341,16 +365,3 @@ async def update_address(tg_id, city, street, house):
     except Exception as e:
         logging.error(f"Ошибка при обновлении адреса: {e}")
         return False, str(e)
-
-"""
-Проверяем работу функций
-"""
-#print(new_status_tg(101,103,'not_status'))
-#print(extract_member_id(1,101))
-#print(extract_user_id(101))
-#print(extract_new_registrator_data(101))
-#new_status_tg(101,103,'status')
-#new_vote_tg(1,101,'Очень важное голосование')
-#print(extract_user_data_tg(101))
-# print(status_member(12345))
-# print(extract_status_tg(12345))
