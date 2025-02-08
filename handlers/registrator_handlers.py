@@ -5,7 +5,7 @@ from aiogram import Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import CallbackQuery, Message
 from filters.filters import filter_isRegistrator
-from keyboards.keyboards import reg_markup, contact_markup, remove_markup
+from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import db_update, extract_user_data_tg, member_id_tg
 import logging
@@ -70,7 +70,7 @@ async def process_registrator_yes_press(callback: CallbackQuery):
         # Отправляем уведомление о успешном подтверждении
         await callback.message.answer(
             text=f"Спасибо! Пользователь {tg_id} получил статус 'Участник'.",
-            reply_markup=remove_markup
+            reply_markup=await user_menu(callback.from_user.id)
         )
     except Exception as e:
         logging.error(f"Ошибка при подтверждении членства пользователя {tg_id}: {e}")
@@ -102,8 +102,11 @@ async def process_registrator_no_press(callback: CallbackQuery):
         # Отправляем уведомление об отказе
         await callback.message.answer(
             text=f"Спасибо! Пользователь {tg_id} не получил статус 'Участник'.",
-            reply_markup=remove_markup
+            reply_markup=await user_menu(callback.from_user.id)
         )
     except Exception as e:
         logging.error(f"Ошибка при отклонении членства пользователя {tg_id}: {e}")
-        await callback.message.answer(text="Произошла ошибка при отклонении членства.")
+        await callback.message.answer(
+            text="Произошла ошибка при отклонении членства.",
+            reply_markup=await user_menu(callback.from_user.id)
+            )

@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from filters.filters import filter_isDelegate
 from FSMs.FSMs import FSMNewVoting, FSMNewVariant
-from keyboards.keyboards import confirm_markup, variant_markup, create_inline_kb
+from keyboards.keyboards import confirm_markup, variant_markup, create_inline_kb, user_menu
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import new_vote_tg, new_variant_tg, list_of_votes_tg
 import logging
@@ -106,7 +106,11 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
             await callback.message.edit_text(text=f'Ошибка: {comment}')
     except Exception as e:
         logging.error(f"Ошибка при создании голосования: {e}")
-        await callback.message.edit_text(text=f"Произошла ошибка: {str(e)}")
+        await callback.message.edit_text(
+            text=f"Произошла ошибка: {str(e)}",
+            reply_markup=user_menu(callback.from_user.id)
+            )
+        await state.clear()
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
@@ -148,7 +152,11 @@ async def process_new_variant_start(message: Message, state: FSMContext):
         await state.set_state(FSMNewVariant.fill_vote_choise)
     except Exception as e:
         logging.error(f"Ошибка при получении списка голосований: {e}")
-        await message.answer(text=f"Произошла ошибка: {str(e)}")
+        await message.answer(
+            text=f"Произошла ошибка: {str(e)}",
+            reply_markup=user_menu(message.from_user.id)
+            )
+        await state.clear()
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки с названием голосования
@@ -232,7 +240,10 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
             await callback.message.edit_text(text=f'Ошибка: {comment}')
     except Exception as e:
         logging.error(f"Ошибка при добавлении варианта: {e}")
-        await callback.message.edit_text(text=f"Произошла ошибка: {str(e)}")
+        await callback.message.edit_text(
+            text=f"Произошла ошибка: {str(e)}",
+            reply_markup=user_menu(callback.from_user.id))
+        await state.clear()
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "Добавить ещё вариант"

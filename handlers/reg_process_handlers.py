@@ -11,7 +11,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration, FSMRereg
 from data_base.telegram_bot_logic import status_member, extract_user_data_tg, new_status_tg, list_of_members_tg, update_address
-from keyboards.keyboards import reg_markup, contact_markup, remove_markup
+from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu
 from filters.filters import filter_contact
 from config_data.config import Config, load_config
 
@@ -231,7 +231,8 @@ async def process_no_rereg(callback: CallbackQuery, state: FSMContext):
 async def process_cancel_command_state(message: Message, state: FSMContext):
     try:
         await message.answer(
-            text='Вы вышли из анкеты регистрации\n\nЧтобы снова перейти к заполнению анкеты - снова нажмите кнопку "регистрация"'
+            text='Вы вышли из машины состояний',
+            reply_markup=await user_menu(message.from_user.id)
         )
         # Сбрасываем состояние и очищаем данные, полученные внутри состояний
         await state.clear()

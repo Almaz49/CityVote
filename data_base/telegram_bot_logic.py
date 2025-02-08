@@ -242,10 +242,11 @@ async def list_of_members_tg(status):
 # Функция выбора представителя. Принимает в качестве аргумента tg_id пользователя,
 # который доверяет голос и member_id представителя
 @log_function_call
-async def trust_tg(tg_id, proxy_member_id):
+async def trust_tg(tg_id, proxy_tg_id):
     try:
         logging.info(f"Вызвана функция trust_tg")
         member_id = await member_id_tg(tg_id)
+        proxy_member_id = await member_id_tg(proxy_tg_id)
         result =  await trust(member_id,proxy_member_id)
         logging.info(f"Пользователь  с tg_id {tg_id} выбрал представителем учатника с member_id {member_id}")
         return True, result

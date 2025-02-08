@@ -133,7 +133,6 @@ async def user_menu(tg_id: int) -> InlineKeyboardMarkup | None:
     try:
         status = await extract_status_tg(tg_id)
         logging.info(f"Создание меню для пользователя {tg_id} со статусами: {status}")
-
         if not status or 'member' not in status:
             if 'user' in status:
                 keyboard = get_keyboard_for_status(['user'])
@@ -145,11 +144,14 @@ async def user_menu(tg_id: int) -> InlineKeyboardMarkup | None:
         else:
             keyboard = get_keyboard_for_status(status)
 
+        # Добавляем кнопку "помощь"
+        help_button = InlineKeyboardButton(text=LEXICON.get('help', 'Помощь'), callback_data='help')
+        keyboard.append([help_button])
+
         kb_builder = InlineKeyboardBuilder()
         for row in keyboard:
             kb_builder.row(*row)
         return kb_builder.as_markup()
-
     except Exception as e:
         logging.error(f"Ошибка при создании меню для пользователя {tg_id}: {e}")
         raise
