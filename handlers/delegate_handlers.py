@@ -41,6 +41,18 @@ async def process_new_voting_start(message: Message, state: FSMContext):
     await message.answer(text='Пожалуйста, введите название голосования.')
     await state.set_state(FSMNewVoting.fill_vote_title)
 
+# Этот хэндлер будет срабатывать на нажатие кнопки "создать голосование"
+# и переводить бота в состояние ожидания ввода названия голосования
+@router.callback_query(StateFilter(default_state), F.data == 'new_vote')
+async def process_new_voting_start(callback: CallbackQuery, state: FSMContext):
+    """
+    Обработчик команды /new_vote.
+    Запускает процесс создания нового голосования.
+    """
+    logging.info(f"Пользователь {callback.from_user.id} начал создание голосования.")
+    await callback.message.answer(text='Пожалуйста, введите название голосования.')
+    await state.set_state(FSMNewVoting.fill_vote_title)
+
 
 # Этот хэндлер будет срабатывать на ввод названия
 # и переводить бота в состояние ожидания ввода описания голосования

@@ -3,7 +3,7 @@
 from aiogram import Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import Message, CallbackQuery
-from aiogram.fsm.state import default_state
+from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from keyboards.keyboards import user_menu, remove_markup, create_inline_kb
 from config_data.config import Config, load_config
@@ -220,5 +220,35 @@ async def process_main_menu_button(callback: CallbackQuery):
     markup = await user_menu(callback.from_user.id)
     await callback.message.edit_text(
         text='Главное меню',
+        reply_markup=markup
+    )
+
+# Хэндлер для кнопки 'Главное меню' в основном состоянии
+@router.callback_query(F.data == 'main_menu',StateFilter(default_state))
+async def process_main_menu_button(callback: CallbackQuery):
+    """
+    Обработчик кнопки "Главное меню".
+    """
+    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+    markup = await user_menu(callback.from_user.id)
+    await callback.message.edit_text(
+        text='Главное меню для администраторов:',
+        reply_markup=markup
+    )
+
+# Хэндлер для кнопки 'Главное меню' внутри машины состояний.
+@router.callback_query(F.data == 'main_menu',~StateFilter(default_state))
+async def process_main_menu_button_state(callback: CallbackQuery, state: FSMContext):
+    """
+    Обработчик кнопки "Главное меню".
+    """
+    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+    markup = await user_menu(callback.from_user.id)
+    # Сбрасываем состояние и очищаем данные, полученные внутри состояний
+    await state.clear()
+    await callback.message.edit_text(
+        text='Главное меню для администраторов:',
         reply_markup=markup
     )

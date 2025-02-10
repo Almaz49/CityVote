@@ -78,7 +78,7 @@ def button(button: str, text: str = None) -> InlineKeyboardButton:
 
 buttons = {
     'votes': {  # Категория: Голосования
-        'member': ['list_of_votes', 'archive_of_votes'],  # Для статуса 'member'
+        'member': ['list_of_votes', 'archive_of_votes', 'future_votes'],  # Для статуса 'member'
         'candidate': ['list_of_votes'],                  # Для статуса 'candidate'
         'proxy': ['list_of_votes']                       # Для статуса 'proxy'
     },

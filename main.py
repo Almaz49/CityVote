@@ -46,13 +46,13 @@ logger = logging.getLogger(__name__)
 
 # Регистрируем роутеры
 routers = [
-    admin_handlers.router,
-    registrator_handlers.router,
     member_handlers.router,
-    candidate_handlers.router,
-    reg_process_handlers.router,
     new_user_handlers.router,
     delegate_handlers.router,
+    registrator_handlers.router,
+    admin_handlers.router,
+    candidate_handlers.router,
+    reg_process_handlers.router,
     oll_users_handlers.router
 ]
 

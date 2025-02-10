@@ -358,6 +358,26 @@ async def list_of_variants(vote_id, *variant_status):
             logging.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
+# Функция извлечения названия и текста варианта по его ID
+@log_function_call
+async def extract_variant_data(variant_id):
+    async with AsyncDatabase(path_db) as cursor:
+        ins_str = '''
+            SELECT title, text FROM Variants
+            WHERE id = ?
+        '''
+        try:
+            await cursor.execute(ins_str,(variant_id,))
+            result = await cursor.fetchone()
+            logging.info("Запрос успешно выполнен.")
+            return result
+        except aiosqlite.Error as e:
+            logging.error(f"Ошибка при выполнении запроса: {e}")
+            raise
+
+
+
+
 # Извлечение статусов участника группы (отдает список статусов)
 # def extract_status(member_id):
 #     with Database(path_db) as cursor:
