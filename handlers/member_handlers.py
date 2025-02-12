@@ -2,6 +2,7 @@ from aiogram import Bot, Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
+from aiogram.exceptions import TelegramBadRequest
 from filters.filters import filter_isMember
 from LEXICON.LEXICON import LEXICON
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, create_inline_kb
@@ -123,7 +124,6 @@ async def process_vote_selection(callback: CallbackQuery):
             reply_markup=await user_menu(callback.from_user.id)
         )
 
-# !!!!!!!!!!!!!!!!!
 # Хэндлер для просмотра вариантов (обрабатывает кнопку "посмотреть варианты")
 # Присылает по сообщению на каждый вариант, к последнему прикладывает клавиаттуру из вариантов
 @router.callback_query(F.data.regexp(r'^show_variants:\d+$'))
@@ -167,7 +167,7 @@ async def process_show_variants(callback: CallbackQuery):
             text='Произошла ошибка при выборе голосования.',
             reply_markup=await user_menu(callback.from_user.id)
         )
-# !!!!!!!!!!!!!!!!!
+
 
 
 
@@ -231,9 +231,20 @@ async def process_variant_selection(callback: CallbackQuery):
             text=text,
             reply_markup=markup
         )
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e):
+            # Обработка случая, когда сообщение не было изменено
+            await callback.message.answer(text = "Сообщение уже устарело", reply_markup=user_menu(callback.from_user.id))
+        elif "message to edit not found" in str(e):
+            # Обработка случая, когда сообщение для редактирования не найдено
+            await callback.message.answer(text="Не удалось найти сообщение для редактирования", reply_markup=user_menu(callback.from_user.id))
+        else:
+            # Обработка других ошибок TelegramBadRequest
+            logging.error(f"Ошибка при редактировании сообщения: {e}")
+            await callback.message.answer(text="Произошла ошибка при обработке запроса",  reply_markup=user_menu(callback.from_user.id))
     except Exception as e:
         logging.error(f"Ошибка при выборе конкретного варианта голосования: {e}")
-        await callback.message.edit_text(
+        await callback.message.answer(
             text='Произошла ошибка при голосовании.',
             reply_markup=await user_menu(callback.from_user.id)
         )
@@ -356,5 +367,32 @@ async def process_become_proxy(callback: CallbackQuery):
         logging.error(f"Ошибка при обработке кнопки 'become_proxy': {e}")
         await callback.message.edit_text(
             text='Произошла ошибка при присвоении статуса.',
+            reply_markup=await user_menu(callback.from_user.id)
+        )
+
+
+# Хэндлер для кнопки ''resign_from_proxy''
+@router.callback_query(F.data == 'resign_from_proxy')
+async def process_resign_from_proxy(callback: CallbackQuery):
+    try:
+        logging.info(f"Пользователь {callback.from_user.id} отказывается от статуса 'proxy'.")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+        member_id = await extract_member_id(club_id, await extract_user_id(callback.from_user.id))
+        if not member_id:
+            await callback.message.edit_text(
+                text='Вы не являетесь участником группы.',
+                reply_markup=await user_menu(callback.from_user.id)
+            )
+            return
+        # Убираем статус 'proxy'
+        await new_status_tg(callback.from_user.id, callback.from_user.id, 'not_proxy')
+        await callback.message.edit_text(
+            text='Вы перестали быть стали представителем!',
+            reply_markup=await user_menu(callback.from_user.id)
+        )
+    except Exception as e:
+        logging.error(f"Ошибка при обработке кнопки 'resign_from_proxy': {e}")
+        await callback.message.edit_text(
+            text='Произошла ошибка при удалении статуса представителя.',
             reply_markup=await user_menu(callback.from_user.id)
         )

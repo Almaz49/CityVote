@@ -7,6 +7,7 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.methods import GetChatMember
 from aiogram.fsm.storage.memory import MemoryStorage
 from config_data.config import Config, load_config
+from middlewares import LoggingAndErrorHandlingMiddleware, SafeEditMiddleware
 from handlers import (
     admin_handlers, candidate_handlers, member_handlers, delegate_handlers,
     new_user_handlers, registrator_handlers, oll_users_handlers, reg_process_handlers
@@ -44,6 +45,10 @@ logging.basicConfig(
 # Инициализируем логгер модуля
 logger = logging.getLogger(__name__)
 
+# Регистрируем middleware
+dp.update.middleware(LoggingAndErrorHandlingMiddleware())  # Первым идет логгирование
+dp.update.middleware(SafeEditMiddleware())  # Затем middleware для safe_edit
+
 # Регистрируем роутеры
 routers = [
     member_handlers.router,
@@ -55,6 +60,7 @@ routers = [
     reg_process_handlers.router,
     oll_users_handlers.router
 ]
+
 
 for router in routers:
     if router is not None:

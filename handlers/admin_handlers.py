@@ -73,10 +73,7 @@ async def process_new_registrator2(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMNewRegistrator.fill_ID_NewRegistrator), (lambda x: x.text.isdigit()) | F.contact)
 async def process_registrator_id_sent(message: Message, state: FSMContext, contact: Contact = None):
     logging.info(f"Введенный ID нового регистратора: {message.text} от пользователя {message.from_user.id}")
-    if contact:
-        member_tg_id = contact.user_id
-    else:
-        member_tg_id = int(message.text)
+    member_tg_id = contact.user_id if contact else int(message.text)
     await state.update_data(ID=member_tg_id)
     flag, ans_str = await extract_new_registrator_data(member_tg_id)  # извлекаем данные о новом регистраторе
     # Создаем объекты инлайн-кнопок
