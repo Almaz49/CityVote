@@ -71,11 +71,14 @@ async def process_new_registrator2(message: Message, state: FSMContext):
 # или отправлен контакт с ID
 # и переводить в состояние подтверждения
 @router.message(StateFilter(FSMNewRegistrator.fill_ID_NewRegistrator), (lambda x: x.text.isdigit()) | F.contact)
-async def process_registrator_id_sent(message: Message, state: FSMContext, contact: Contact = None):
+async def process_registrator_id_sent(message: Message, state: FSMContext, contact: Contact = None, data: dict = None):
     logging.info(f"Введенный ID нового регистратора: {message.text} от пользователя {message.from_user.id}")
+
     member_tg_id = contact.user_id if contact else int(message.text)
     await state.update_data(ID=member_tg_id)
+
     flag, ans_str = await extract_new_registrator_data(member_tg_id)  # извлекаем данные о новом регистраторе
+
     # Создаем объекты инлайн-кнопок
     ok_mod_button = InlineKeyboardButton(
         text='ВСЁ ВЕРНО',
@@ -89,68 +92,100 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, conta
         text='Главное меню',
         callback_data='main_menu'
     )
+
     # Добавляем кнопки в клавиатуру
     keyboard: list[list[InlineKeyboardButton]] = [
         [ok_mod_button, no_mod_button, main_menu_button],
     ]
+
     # Создаем объект инлайн-клавиатуры
     markup = InlineKeyboardMarkup(one_time_keyboard=True, inline_keyboard=keyboard)
-    # Отправляем пользователю сообщение с клавиатурой
+
     if flag:
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = f'Данные участника, которому вы меняете статус\n{ans_str}\nВсё верно?'
+        data['reply_markup'] = markup
+
+        # Отправляем пользователю сообщение с клавиатурой
         await message.answer(
-            text=f'Данные участника, которому вы меняете статус\n{ans_str}\nВсё верно?',
-            reply_markup=markup
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
         )
+
         # Устанавливаем состояние ожидания подтверждения
         await state.set_state(FSMNewStatus.fill_OK)
+
     else:
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = ans_str
+        data['reply_markup'] = None  # Клавиатура не нужна
+
+        # Отправляем сообщение об ошибке
         await message.answer(
-            text=ans_str,
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
         )
-        # Сбрасываем состояние и очищаем данные, полученные внутри состояний
+
+        # Сбрасываем состояние и очищаем данные
         await state.clear()
 
-# Этот хэндлер будет срабатывать на нажатие кнопки "ВСЁ ВЕРНО"
+# Хэндлер для обработки нажатии кнопки ВСЁ ВЕРНО
 @router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == 'NewRegistratorOK')
-async def process_yes_registrator_press(callback: CallbackQuery, state: FSMContext):
+async def process_yes_registrator_press(callback: CallbackQuery, state: FSMContext, data: dict):
     logging.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    # Меняем в базе данных статус пользователя по ключу tg_id пользователя и tg_id регистратора (админа в данном случае)
-    data = await state.get_data()
-    member_tg_id = data['ID']
+
+    # Меняем в базе данных статус пользователя по ключу tg_id пользователя и tg_id регистратора
+    fsm_data = await state.get_data()
+    member_tg_id = fsm_data['ID']
     registrator_tg_id = callback.from_user.id
+
     try:
-        ans_str = await new_status_tg(registrator_tg_id, member_tg_id, 'registrator')  # вызов функции присвоения нового статуса
+        ans_str = await new_status_tg(registrator_tg_id, member_tg_id, 'registrator')  # Вызов функции присвоения нового статуса
         if isinstance(ans_str, str) and 'Ошибка' in ans_str:
-            await callback.message.edit_text(text=f'Произошла ошибка: {ans_str}', reply_markup=await user_menu(callback.from_user.id))
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = f'Произошла ошибка: {ans_str}'
+            data['reply_markup'] = await user_menu(callback.from_user.id)
+            # Пытаемся отредактировать сообщение
+            await callback.message.edit_text(text=data['response_text'], reply_markup=data['reply_markup'])
             return
+
         # Завершаем машину состояний
         await state.clear()
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Спасибо! Регистратор добавлен!\n\nВы вышли из машины состояний'
+        data['reply_markup'] = await user_menu(callback.from_user.id)
+
         # Отправляем в чат сообщение о выходе из машины состояний
         await callback.message.edit_text(
-            text='Спасибо! Регистратор добавлен!\n\n'
-                 'Вы вышли из машины состояний',
-            reply_markup=await user_menu(callback.from_user.id)
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
         )
+
     except Exception as e:
         logging.error(f"Ошибка при назначении регистратора: {e}")
-        await callback.message.edit_text(
-            text=f'Произошла ошибка: {str(e)}',
-            reply_markup=await user_menu(callback.from_user.id))
-        await state.clear()
+        # Необходимость явной обработки ошибок здесь минимальна,
+        # так как LoggingAndErrorHandlingMiddleware уже позаботится об этом.
+        raise  # Передаем исключение middleware для обработки
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕВЕРНО"
 @router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == 'NewRegistratorNotOK')
-async def process_no_registrator_press(callback: CallbackQuery, state: FSMContext):
+async def process_no_registrator_press(callback: CallbackQuery, state: FSMContext, data: dict):
     logging.info(f"Кнопка 'НЕВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
     # Завершаем машину состояний
     await state.clear()
-    # Отправляем в чат сообщение о выходе из машины состояний
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Спасибо! Регистратор не добавлен!\nПопробуйте еще раз.\nВы вышли из машины состояний'
+    data['reply_markup'] = await user_menu(callback.from_user.id)
+
+    # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
-        text='Спасибо! Регистратор не добавлен!\nПопробуйте еще раз.\n'
-             'Вы вышли из машины состояний',
-        reply_markup=await user_menu(callback.from_user.id)
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
     )
 
 # Этот хэндлер будет срабатывать, если во время подтверждения
@@ -179,11 +214,21 @@ async def process_new_status(message: Message, state: FSMContext):
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "новый статус" в меню админа
 @router.callback_query(StateFilter(default_state), F.data == 'new_status')
-async def process_new_status_cb(callback: CallbackQuery, state: FSMContext):
+async def process_new_status_cb(callback: CallbackQuery, state: FSMContext, data: dict):
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    await callback.message.edit_text(text='''Пожалуйста, введите телеграм-ID участника,
-которому вы хотите присвоить новый статус или отправьте контакт с ID''')
-    # Устанавливаем состояние ожидания ввода имени
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = '''Пожалуйста, введите телеграм-ID участника,
+которому вы хотите присвоить новый статус или отправьте контакт с ID'''
+    data['reply_markup'] = None  # Если клавиатура не нужна, устанавливаем None
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+    # Устанавливаем состояние ожидания ввода ID
     await state.set_state(FSMNewStatus.fill_ID_User)
 
 # Этот хэндлер будет срабатывать, если введен корректный ID (число)
@@ -245,54 +290,79 @@ async def process_user_id_sent(message: Message, state: FSMContext, contact: Con
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "ВСЁ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewStatus.fill_OK), F.data == 'ConfirmOK')
-async def process_status_choice(callback: CallbackQuery, state: FSMContext):
+async def process_status_choice(callback: CallbackQuery, state: FSMContext, data: dict):
     logging.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    data = await state.get_data()
-    member_tg_id = data['ID']
+
+    fsm_data = await state.get_data()
+    member_tg_id = fsm_data['ID']
+
     try:
         status = await extract_status_tg(member_tg_id)
         all_st = await all_status()
         vacansy = list(set(all_st) - set(status) - {'owner', 'user', 'candidate'})
         status = list(set(status) - {'owner', 'member', 'user', 'candidate'})
+
         keyboards = []
         for item in vacansy:
             keyboards.append('AppointAs_' + item)
         for item in status:
             keyboards.append('not_' + item)
+
         main_menu_button = InlineKeyboardButton(
             text='Главное меню',
             callback_data='main_menu'
         )
         keyboards.append(main_menu_button)
         markup = create_inline_kb(1, *keyboards)
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = '''Выберите, какой статус вы хотите добавить пользователю, или удалить.
+\nЕсли хотите прервать процедуру - наберите /cancel'''
+        data['reply_markup'] = markup
+
+        # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
-            text='''Выберите, какой статус вы хотите добавить пользователю, или удалить.
-\nЕсли хотите прервать процедуру - наберите /cancel''',
-            reply_markup=markup  # клавиатура из статусов
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
         )
-        # Устанавливаем состояние ожидания подтверждения
+
+        # Устанавливаем состояние ожидания выбора статуса
         await state.set_state(FSMNewStatus.fill_choice)
+
     except Exception as e:
         logging.error(f"Ошибка при формировании клавиатуры статусов: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = f'Произошла ошибка: {str(e)}'
+        data['reply_markup'] = await user_menu(callback.from_user.id)
+
+        # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
-            text=f'Произошла ошибка: {str(e)}',
-            reply_markup=await user_menu(callback.from_user.id)
-            )
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
         await state.clear()
+        raise  # Передаем исключение middleware для обработки
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewStatus.fill_OK), F.data == 'ConfirmNotOK')
-async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMContext):
+async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMContext, data: dict):
     logging.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
     # Завершаем машину состояний
     await state.clear()
-    # Отправляем в чат сообщение о выходе из машины состояний
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Спасибо! Новый статус не добавлен!\nПопробуйте еще раз.\nВы вышли из машины состояний'
+    data['reply_markup'] = await user_menu(callback.from_user.id)
+
+    # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
-        text='Спасибо! Новый статус не добавлен!\nПопробуйте еще раз.\n'
-             'Вы вышли из машины состояний',
-        reply_markup=await user_menu(callback.from_user.id)
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
     )
 
 # Этот хэндлер будет срабатывать, если во время подтверждения
@@ -308,87 +378,140 @@ async def warning_registrator(message: Message):
 
 # Этот хэндлер будет срабатывать на выбор одного из статусов (или его отмены)
 @router.callback_query(StateFilter(FSMNewStatus.fill_choice))
-async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext):
+async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext, data: dict):
     logging.info(f"Выбран статус: {callback.data} пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
     await state.update_data(status=callback.data)
     status = callback.data
-    data = await state.get_data()
-    member_tg_id = data['ID']
+    fsm_data = await state.get_data()
+    member_tg_id = fsm_data['ID']
+
     try:
-        user_data = await extract_user_data_tg(member_tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')  # извлекаем данные о пользователе
+        user_data = await extract_user_data_tg(member_tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')  # Извлекаем данные о пользователе
         status_text = LEXICON[status] if status in LEXICON else status
-        await callback.message.edit_text(
-            text=f'''Данные пользователя\nИмя: {user_data[1]},
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = f'''Данные пользователя\nИмя: {user_data[1]},
 Фамилия: {user_data[2]}, \n Телефон: {user_data[3]}
 \nВы хотите изменить его статус:
 \n{status_text}
-\nВсё верно?''',
-            reply_markup=confirm_markup
+\nВсё верно?'''
+        data['reply_markup'] = confirm_markup
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
         )
+
         await state.set_state(FSMNewStatus.fill_new_status_confirm)
+
     except Exception as e:
         logging.error(f"Ошибка при извлечении данных пользователя или формировании сообщения: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = f'Произошла ошибка: {str(e)}'
+        data['reply_markup'] = await user_menu(callback.from_user.id)
+
+        # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
-            text=f'Произошла ошибка: {str(e)}',
-            reply_markup=await user_menu(callback.from_user.id)
-            )
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
         await state.clear()
+        raise  # Передаем исключение middleware для обработки
 
 # Этот хендлер будет срабатывать на нажатие кнопки "всё верно" при подтверждении
 # нового статуса, присваиваемого пользователю
 @router.callback_query(StateFilter(FSMNewStatus.fill_new_status_confirm), F.data == 'ConfirmOK')
-async def process_new_status_entry(callback: CallbackQuery, state: FSMContext):
+async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, data: dict):
     logging.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    data = await state.get_data()
-    status = data['status']
+
+    fsm_data = await state.get_data()
+    status = fsm_data['status']
     st = status.split('_')[1] if '_' in status else status
+
     try:
         if st not in await all_status():
             await state.clear()
-            # Отправляем в чат сообщение о выходе из машины состояний
+
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Извините, такого статуса нет.\n\n Попробуйте снова.' \
+                                    'Вы вышли из машины состояний'
+            data['reply_markup'] = await user_menu(callback.from_user.id)
+
+            # Пытаемся отредактировать сообщение
             await callback.message.edit_text(
-                text='Извините, такого статуса нет.\n\n Попробуйте снова.'
-                     'Вы вышли из машины состояний',
-                reply_markup=await user_menu(callback.from_user.id)
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
             )
         else:
-            member_tg_id = data['ID']
+            member_tg_id = fsm_data['ID']
             registrator_tg_id = callback.from_user.id
-            ans_str = await new_status_tg(registrator_tg_id, member_tg_id, st)  # вызов функции присвоения нового статуса
-            if isinstance(ans_str, str) and 'Ошибка' in ans_str:
-                await callback.message.edit_text(
-                    text=f'Произошла ошибка: {ans_str}',
-                    reply_markup=await user_menu(callback.from_user.id)
-                    )
+            ans_str = await new_status_tg(registrator_tg_id, member_tg_id, st)  # Вызов функции присвоения нового статуса
 
+            if isinstance(ans_str, str) and 'Ошибка' in ans_str:
+                # Добавляем данные для SafeEditMiddleware
+                data['response_text'] = f'Произошла ошибка: {ans_str}'
+                data['reply_markup'] = await user_menu(callback.from_user.id)
+
+                # Пытаемся отредактировать сообщение
+                await callback.message.edit_text(
+                    text=data['response_text'],
+                    reply_markup=data['reply_markup']
+                )
                 return
+
             # Завершаем машину состояний
             await state.clear()
-            # Отправляем в чат сообщение о выходе из машины состояний
+
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Спасибо! Статус участника обновлен!\n\n' \
+                                    'Вы вышли из машины состояний'
+            data['reply_markup'] = await user_menu(callback.from_user.id)
+
+            # Пытаемся отредактировать сообщение
             await callback.message.edit_text(
-                text='Спасибо! Статус участника обновлен!\n\n'
-                     'Вы вышли из машины состояний',
-                reply_markup=await user_menu(callback.from_user.id)
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
             )
+
     except Exception as e:
         logging.error(f"Ошибка при присвоении нового статуса: {e}")
-        await callback.message.edit_text(text=f'Произошла ошибка: {str(e)}', reply_markup=await user_menu(callback.from_user.id))
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = f'Произошла ошибка: {str(e)}'
+        data['reply_markup'] = await user_menu(callback.from_user.id)
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
         await state.clear()
+        raise  # Передаем исключение middleware для обработки
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewStatus.fill_new_status_confirm), F.data == 'ConfirmNotOK')
-async def process_no_confirm_sttus_press(callback: CallbackQuery, state: FSMContext):
+async def process_no_confirm_sttus_press(callback: CallbackQuery, state: FSMContext, data: dict):
     logging.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
     # Завершаем машину состояний
     await state.clear()
-    # Отправляем в чат сообщение о выходе из машины состояний
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Спасибо! Новый статус не добавлен!\nПопробуйте еще раз.\nВы вышли из машины состояний'
+    data['reply_markup'] = await user_menu(callback.from_user.id)
+
+    # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
-        text='Спасибо! Новый статус не добавлен!\nПопробуйте еще раз.\n'
-             'Вы вышли из машины состояний',
-        reply_markup=await user_menu(callback.from_user.id)
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
     )
 
 # Этот хэндлер будет срабатывать, если во время подтверждения
@@ -406,31 +529,46 @@ async def warning_new_status(message: Message):
 
 
 # Хэндлер для кнопки 'Главное меню' в основном состоянии
-@router.callback_query(F.data == 'main_menu',StateFilter(default_state))
-async def process_main_menu_button(callback: CallbackQuery):
+@router.callback_query(F.data == 'main_menu', StateFilter(default_state))
+async def process_main_menu_button(callback: CallbackQuery, data: dict):
     """
     Обработчик кнопки "Главное меню".
     """
     logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
     markup = await user_menu(callback.from_user.id)
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Главное меню для администраторов:'
+    data['reply_markup'] = markup
+
+    # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
-        text='Главное меню для администраторов:',
-        reply_markup=markup
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
     )
 
 # Хэндлер для кнопки 'Главное меню' внутри машины состояний.
-@router.callback_query(F.data == 'main_menu',~StateFilter(default_state))
-async def process_main_menu_button_state(callback: CallbackQuery, state: FSMContext):
+@router.callback_query(F.data == 'main_menu', ~StateFilter(default_state))
+async def process_main_menu_button_state(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик кнопки "Главное меню".
     """
     logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
     markup = await user_menu(callback.from_user.id)
+
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Главное меню для администраторов:'
+    data['reply_markup'] = markup
+
+    # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
-        text='Главное меню для администраторов:',
-        reply_markup=markup
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
     )

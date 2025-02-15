@@ -1,4 +1,5 @@
-# 📜safe_edit_middleware.py  # Middleware для замены edit_text на answer
+# 📜safe_edit_middleware.py  # Middleware для замены edit_text на answer в том случае,
+# если сообщение, которое надо редактировать устарело (не подлежит редактированию) или не найдено
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery
 from aiogram.exceptions import TelegramBadRequest  # Обрати внимание на новый путь

@@ -493,20 +493,40 @@ async def process_yes_contact(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать на нажатие кнопки "Не верно" при подтверждении личных данных.
 # Стираем кнопки и выходим из машины состояний.
 @router.callback_query(StateFilter(FSMRegistration.fill_confirm1), F.data == 'no_contact')
-async def process_no_contact(callback: CallbackQuery, state: FSMContext):
+async def process_no_contact(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
         logging.info(f"Кнопка 'Не верно' нажата пользователем {callback.from_user.id}")
+
         # Удаляем сообщение с кнопками подтверждения
         await callback.message.delete()
+
         # Завершаем машину состояний
         await state.clear()
-        # Отправляем в чат сообщение о выходе из машины состояний
-        await callback.message.edit_text(
-            text='Спасибо! Ваши данные не добавлены\nПопробуйте еще раз.\nВы вышли из машины состояний'
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Спасибо! Ваши данные не добавлены\nПопробуйте еще раз.\nВы вышли из машины состояний'
+        data['reply_markup'] = None  # Клавиатура не нужна
+
+        # Отправляем сообщение о выходе из машины состояний
+        await callback.message.answer(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
         )
+
     except Exception as e:
         logging.error(f"Ошибка при отказе от подтверждения личных данных: {e}")
-        await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = f'Произошла ошибка: {str(e)}'
+        data['reply_markup'] = None  # Клавиатура не нужна
+
+        # Отправляем сообщение об ошибке
+        await callback.message.answer(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
 
 
 # Этот хэндлер будет срабатывать, если во время подтверждения личных данных будет введено/отправлено что-то некорректное
@@ -858,20 +878,40 @@ async def process_yes_adress(callback: CallbackQuery, state: FSMContext):
 
 # Этот хэндлер будет срабатывать на отказ подтвердить адрес
 @router.callback_query(StateFilter(FSMRegistration.fill_confirm2), F.data == 'no_address')
-async def process_no_address(callback: CallbackQuery, state: FSMContext):
+async def process_no_address(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
         logging.info(f"Кнопка 'Не верно' нажата пользователем {callback.from_user.id}")
+
         # Удаляем сообщение с кнопками подтверждения
         await callback.message.delete()
+
         # Завершаем машину состояний
         await state.clear()
-        # Отправляем в чат сообщение о выходе из машины состояний
-        await callback.message.edit_text(
-            text='Спасибо! Ваши данные не добавлены\nПопробуйте еще раз.\nВы вышли из машины состояний'
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Спасибо! Ваши данные не добавлены\nПопробуйте еще раз.\nВы вышли из машины состояний'
+        data['reply_markup'] = None  # Клавиатура не нужна
+
+        # Отправляем сообщение о выходе из машины состояний
+        await callback.message.answer(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
         )
+
     except Exception as e:
         logging.error(f"Ошибка при отказе от подтверждения адреса: {e}")
-        await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = f'Произошла ошибка: {str(e)}'
+        data['reply_markup'] = None  # Клавиатура не нужна
+
+        # Отправляем сообщение об ошибке
+        await callback.message.answer(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
 
 
 # Этот хэндлер будет срабатывать, если вместо подтверждения адреса

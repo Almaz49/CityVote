@@ -54,16 +54,22 @@ async def process_help_command(message: Message):
 
 # Хэндлер для нажатия на кнопку "помощь"
 @router.callback_query(F.data == 'help')
-async def process_help_callback(callback: CallbackQuery):
+async def process_help_callback(callback: CallbackQuery, data: dict):
     """
     Обработчик нажатия на кнопку "помощь".
     Отправляет справочную информацию о боте.
     """
     logging.info(f"Пользователь {callback.from_user.id} запросил справку через кнопку.")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Здесь будет описание функционала бота и инструкции по использованию.'
+    data['reply_markup'] = create_inline_kb(1, 'back', 'main_menu')
+
+    # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
-        text='Здесь будет описание функционала бота и инструкции по использованию.',
-        reply_markup=create_inline_kb(1, 'back', 'main_menu')
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
     )
 
 # Хэндлер для команды /cancel в состоянии по умолчанию
@@ -110,145 +116,50 @@ async def send_echo(message: Message):
         reply_markup = await user_menu(message.from_user.id)
     )
 
-# Хэндлеры для кнопок основного меню
-@router.callback_query(F.data.in_(['list_of_votes', 'archive_of_votes']))
-async def process_vote_button(callback: CallbackQuery):
-    """
-    Обработчик кнопок голосований.
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    await callback.message.edit_text(
-        text='Список голосований',
-        reply_markup=create_inline_kb(1, 'back', 'main_menu')
-    )
 
-@router.callback_query(F.data == 'select_proxy')
-async def process_select_proxy_button(callback: CallbackQuery):
-    """
-    Обработчик кнопки выбора представителя.
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    await callback.message.edit_text(
-        text='Выбор представителя',
-        reply_markup=create_inline_kb(1, 'back', 'main_menu')
-    )
 
-@router.callback_query(F.data == 'become_proxy')
-async def process_become_proxy_button(callback: CallbackQuery):
-    """
-    Обработчик кнопки стать представителем.
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    await callback.message.edit_text(
-        text='Стать представителем',
-        reply_markup=create_inline_kb(1, 'back', 'main_menu')
-    )
-
-@router.callback_query(F.data == 'resign_from_proxy')
-async def process_resign_from_proxy_button(callback: CallbackQuery):
-    """
-    Обработчик кнопки отказаться от роли представителя.
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    await callback.message.edit_text(
-        text='Отказаться от роли представителя',
-        reply_markup=create_inline_kb(1, 'back', 'main_menu')
-    )
-
-@router.callback_query(F.data == 'new_vote')
-async def process_new_vote_button(callback: CallbackQuery):
-    """
-    Обработчик кнопки создания нового голосования.
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    await callback.message.edit_text(
-        text='Создание нового голосования',
-        reply_markup=create_inline_kb(1, 'back', 'main_menu')
-    )
-
-@router.callback_query(F.data == 'new_variant')
-async def process_new_variant_button(callback: CallbackQuery):
-    """
-    Обработчик кнопки создания нового варианта голосования.
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    await callback.message.edit_text(
-        text='Создание нового варианта голосования',
-        reply_markup=create_inline_kb(1, 'back', 'main_menu')
-    )
-
-@router.callback_query(F.data == 'new_status')
-async def process_new_status_button(callback: CallbackQuery):
-    """
-    Обработчик кнопки назначения нового статуса.
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    await callback.message.edit_text(
-        text='Назначение нового статуса',
-        reply_markup=create_inline_kb(1, 'back', 'main_menu')
-    )
-
-# Хэндлер для кнопки "назад"
-@router.callback_query(F.data == 'back')
-async def process_back_button(callback: CallbackQuery):
-    """
-    Обработчик кнопки "назад".
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    markup = await user_menu(callback.from_user.id)
-    await callback.message.edit_text(
-        text='Главное меню',
-        reply_markup=markup
-    )
-
-# Хэндлер для кнопки "Главное меню"
-@router.callback_query(F.data == 'main_menu')
-async def process_main_menu_button(callback: CallbackQuery):
-    """
-    Обработчик кнопки "Главное меню".
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-    markup = await user_menu(callback.from_user.id)
-    await callback.message.edit_text(
-        text='Главное меню',
-        reply_markup=markup
-    )
 
 # Хэндлер для кнопки 'Главное меню' в основном состоянии
-@router.callback_query(F.data == 'main_menu',StateFilter(default_state))
-async def process_main_menu_button(callback: CallbackQuery):
+@router.callback_query(F.data == 'main_menu', StateFilter(default_state))
+async def process_main_menu_button(callback: CallbackQuery, data: dict):
     """
     Обработчик кнопки "Главное меню".
     """
     logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
     markup = await user_menu(callback.from_user.id)
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Главное меню для администраторов:'
+    data['reply_markup'] = markup
+
+    # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
-        text='Главное меню для администраторов:',
-        reply_markup=markup
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
     )
 
 # Хэндлер для кнопки 'Главное меню' внутри машины состояний.
-@router.callback_query(F.data == 'main_menu',~StateFilter(default_state))
-async def process_main_menu_button_state(callback: CallbackQuery, state: FSMContext):
+@router.callback_query(F.data == 'main_menu', ~StateFilter(default_state))
+async def process_main_menu_button_state(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик кнопки "Главное меню".
     """
     logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
     markup = await user_menu(callback.from_user.id)
+
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Главное меню для администраторов:'
+    data['reply_markup'] = markup
+
+    # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
-        text='Главное меню для администраторов:',
-        reply_markup=markup
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
     )
