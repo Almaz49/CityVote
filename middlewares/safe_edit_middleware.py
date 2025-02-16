@@ -7,8 +7,19 @@ import logging
 
 class SafeEditMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data: dict):
+        logging.info(f"Data in SafeEditMiddleware: {data}\n")
         try:
-            return await handler(event, data)
+            # Создаем ключ 'data', если его еще нет
+            if 'data' not in data:
+                data['data'] = {
+
+                    # Добавьте другие необходимые данные
+                }
+            logging.info(f'Создан словарь дата в мидлваре исправления едит на ансвер \n\n')
+
+            result = await handler(event, data)
+            print('Снова data:', data,'\n')
+            return result
         except TelegramBadRequest as e:
             if "message is not modified" in str(e) or "message to edit not found" in str(e):
                 if isinstance(event, CallbackQuery):

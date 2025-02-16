@@ -6,11 +6,20 @@ import traceback
 
 class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Update, data: dict):
+        logging.info(f"Data in LoggingAndErrorHandlingMiddleware: {data}\n")
         try:
             if isinstance(event, Update):
                 user_id = event.from_user.id if hasattr(event, "from_user") and event.from_user else "Unknown"
                 event_type = event.__class__.__name__
-                logging.info(f"Получено событие {event_type} от пользователя {user_id}: {event}")
+                logging.info(f"Получено событие {event_type} от пользователя {user_id}: {event}\n")
+
+            # Создаем ключ 'data', если его еще нет
+            if 'data' not in data:
+                data['data'] = {
+
+                    # Добавьте другие необходимые данные
+                }
+                logging.info(f'Создан словарь дата в мидлваре логировани \n\n')
 
             return await handler(event, data)
 
