@@ -3,7 +3,7 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
 from aiogram.exceptions import TelegramBadRequest
-from filters.filters import filter_isMember
+from filters.filters import StatusFilter
 from LEXICON.LEXICON import LEXICON
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, create_inline_kb
 from config_data.config import Config, load_config
@@ -17,7 +17,7 @@ bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
-router.message.filter(filter_isMember)
+router.message.filter(StatusFilter(required_status = 'member'))
 
 # Хэндлер для кнопки 'list_of_votes'
 @router.callback_query(F.data == 'list_of_votes')

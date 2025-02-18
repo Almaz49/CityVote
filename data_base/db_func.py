@@ -10,14 +10,6 @@ from config_data.config import Config, load_config
 from functools import wraps
 
 
-def log_function_call(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        logging.info(f"Вызвана функция {func.__name__}")
-        return func(*args, **kwargs)
-    return wrapper
-
-
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)

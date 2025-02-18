@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
-from filters.filters import filter_isAdmin, filter_isOwner
+from filters.filters import StatusFilter
 from FSMs.FSMs import FSMNewRegistrator, FSMNewVoting, FSMNewStatus
 from data_base.telegram_bot_logic import *
 from keyboards.keyboards import *
@@ -22,7 +22,7 @@ club_id = config.tg_bot.club_id  # id группы в БД (не телегра�
 
 # Инициализируем роутер уровня модуля
 router = Router()
-router.message.filter(filter_isAdmin or filter_isOwner)
+router.message.filter(StatusFilter(required_status = 'admin') or StatusFilter(required_status = 'owner'))
 
 # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии по умолчанию
 # и сообщать, что эта команда работает внутри машины состояний

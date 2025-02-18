@@ -8,6 +8,9 @@ from aiogram.fsm.context import FSMContext
 from keyboards.keyboards import user_menu, remove_markup, create_inline_kb
 from config_data.config import Config, load_config
 import logging
+# from data_base.db_func import log_function_call
+from data_base.telegram_bot_logic import log_function_call
+from utils import log_handler_call
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +27,7 @@ router = Router()
 
 # Хэндлер для команды /start
 @router.message(Command(commands=["start"]))
+@log_handler_call
 async def process_start_command(message: Message):
     """
     Обработчик команды /start.

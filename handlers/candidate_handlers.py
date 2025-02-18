@@ -2,7 +2,7 @@ import logging
 from aiogram import Bot, Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, PhotoSize
-from filters.filters import filter_isCandidate
+from filters.filters import StatusFilter
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup
 from config_data.config import Config, load_config
 from aiogram.fsm.context import FSMContext
@@ -20,7 +20,7 @@ club_id = config.tg_bot.club_id  # id группы в БД (не телегра�
 
 # Инициализируем роутер уровня модуля
 router = Router()
-router.message.filter(filter_isCandidate)
+router.message.filter(StatusFilter(required_status = 'candidate'))
 
 """
 # Определяем состояния FSM для регистрации кандидата

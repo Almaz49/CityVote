@@ -4,7 +4,7 @@
 from aiogram import Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import CallbackQuery, Message
-from filters.filters import filter_isRegistrator
+from filters.filters import StatusFilter
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import db_update, extract_user_data_tg, member_id_tg
@@ -20,7 +20,7 @@ config: Config = load_config('.env')
 router = Router()
 
 # Навешиваем фильтр, проверяющий, является ли пользователь Регистратором
-router.message.filter(filter_isRegistrator)
+router.message.filter(StatusFilter(required_status = 'registrator'))
 
 """
 ХЭНДЛЕРЫ

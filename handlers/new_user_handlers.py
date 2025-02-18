@@ -2,7 +2,7 @@ from aiogram import Bot, Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
-from filters.filters import filter_isUser
+from filters.filters import StatusFilter
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup
 from config_data.config import Config, load_config
 
@@ -13,7 +13,7 @@ bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
-router.message.filter(filter_isUser)
+router.message.filter(StatusFilter(required_status = 'user'))
 
 # #Хэндлер на кманду "старт"
 # @router.message(Command(commands=["start"]))

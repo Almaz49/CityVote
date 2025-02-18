@@ -4,73 +4,97 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.filters.callback_data import CallbackData
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import CallbackQuery, Message, PhotoSize
+from aiogram.filters import BaseFilter
 from data_base.telegram_bot_logic import status_member
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
+
+
 """
 ФИЛЬТРЫ
 """
 
+# Универсальный фильтр для проверки статуса пользователя
+
+class StatusFilter(BaseFilter):
+    def __init__(self, required_status: str):
+        """
+        Инициализация фильтра с требуемым статусом.
+        :param required_status: Требуемый статус (например, "admin", "member").
+        """
+        self.required_status = required_status.lower()
+
+    async def __call__(self, event: Message, data: dict) -> bool:
+        """
+        Проверяет, содержит ли список статусов пользователя требуемый статус.
+        :param event: Объект события (например, Message).
+        :param data: Словарь данных, содержащий user_status.
+        :return: True, если статус найден, иначе False.
+        """
+        # Извлекаем user_status из словаря data
+        user_status = data.get("user_status", [])
+        return self.required_status in user_status
+
+# Фильтр на статус администратора
+class filter_isAdmin(StatusFilter):
+    def __init__(self):
+        super().__init__(required_status="admin")
 
 
+# Фильтр на статус владельца
+class filter_isOwner(StatusFilter):
+    def __init__(self):
+        super().__init__(required_status="owner")
 
 
-# Универсальный фильтр от Qwen
-async def filter_by_status(message: Message, required_status: str) -> bool:
-    try:
-        status = await status_member(message.from_user.id)
-        if status is None:
-            logging.warning(f"Status for user {message.from_user.id} is None")
-            return False
-        return required_status in [s.lower() for s in status]
-    except Exception as e:
-        logging.error(f"An error occurred: {e}")
-        return False
-
-# Пример использования универсального фильра:
-async def filter_isAdmin(message: Message) -> bool:
-    return await filter_by_status(message, 'admin')
-
-async def filter_isOwner(message: Message) -> bool:
-    return await filter_by_status(message, 'owner')
-
-async def filter_isRegistrator(message: Message) -> bool:
-    return await filter_by_status(message, 'registrator')
-
+# Фильтр на статус регистратора
+class filter_isRegistrator(StatusFilter):
+    def __init__(self):
+        super().__init__(required_status="registrator")
 
 
 # Фильтр на статус участника
-async def filter_isMember(message: Message) -> bool:
-    return await filter_by_status(message, 'member')
+class filter_isMember(StatusFilter):
+    def __init__(self):
+        super().__init__(required_status="member")
 
 
 # Фильтр на статус делегата
-async def filter_isDelegate(message: Message) -> bool:
-    return await filter_by_status(message, 'delegate')
+class filter_isDelegate(StatusFilter):
+    def __init__(self):
+        super().__init__(required_status="delegate")
 
 
 # Фильтр на статус представителя
-async def filter_isProxy(message: Message) -> bool:
-    return await filter_by_status(message, 'proxy')
+class filter_isProxy(StatusFilter):
+    def __init__(self):
+        super().__init__(required_status="proxy")
 
 
 # Фильтр на статус кандидата
-async def filter_isCandidate(message: Message) -> bool:
-    return await filter_by_status(message, 'candidate')
+class filter_isCandidate(StatusFilter):
+    def __init__(self):
+        super().__init__(required_status="candidate")
 
 
 # Фильтр на статус пользователя
-async def filter_isUser(message: Message) -> bool:
-    return await filter_by_status(message, 'user')
+class filter_isUser(StatusFilter):
+    def __init__(self):
+        super().__init__(required_status="user")
 
 
-
-# Фильтр на контакт message.contact.user_id == message.from_user.id
-async def filter_contact(message: Message) -> bool:
-    try:
-        return message.contact and message.contact.user_id == message.from_user.id
-    except Exception as e:
-        logging.error(f"An error occurred: {e}")
-        return False
+# Фильтр на контакт (message.contact.user_id == message.from_user.id)
+class filter_contact(BaseFilter):
+    async def __call__(self, message: Message) -> bool:
+        """
+        Проверяет, соответствует ли контакт отправителю сообщения.
+        :param message: Объект сообщения.
+        :return: True, если контакт совпадает с отправителем, иначе False.
+        """
+        try:
+            return message.contact and message.contact.user_id == message.from_user.id
+        except Exception as e:
+            logging.error(f"An error occurred in ContactFilter: {e}")
+            return False

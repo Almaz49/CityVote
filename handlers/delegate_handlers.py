@@ -5,7 +5,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-from filters.filters import filter_isDelegate
+from filters.filters import StatusFilter
 from FSMs.FSMs import FSMNewVoting, FSMNewVariant
 from keyboards.keyboards import confirm_markup, variant_markup, create_inline_kb, user_menu
 from config_data.config import Config, load_config
@@ -23,7 +23,7 @@ bot = Bot(token=config.tg_bot.token)
 router = Router()
 
 # Навешиваем на роутер фильтр, проверяющий, является ли пользователь Делегатом
-router.message.filter(filter_isDelegate)
+router.message.filter(StatusFilter(required_status = 'delegate'))
 
 """
 СОЗДАНИЕ ГОЛОСОВАНИЯ

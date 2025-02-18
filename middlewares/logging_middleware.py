@@ -3,10 +3,11 @@ from aiogram import BaseMiddleware
 from aiogram.types import Update
 import logging
 import traceback
+from pprint import pformat
 
 class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Update, data: dict):
-        logging.info(f"Data in LoggingAndErrorHandlingMiddleware: {data}\n")
+        # logging.info(f"Data in LoggingAndErrorHandlingMiddleware: {data}\n")
         try:
             if isinstance(event, Update):
                 user_id = event.from_user.id if hasattr(event, "from_user") and event.from_user else "Unknown"
@@ -21,7 +22,16 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
                 }
                 logging.info(f'Создан словарь дата в мидлваре логировани \n\n')
 
-            return await handler(event, data)
+
+
+            response = await handler(event, data)
+
+            logging.info(f'Данные data после прохождения хэндлера: \n{pformat(data)}\n')
+
+
+
+            return response
+
 
         except Exception as e:
             logging.error(f"Необработанное исключение в хэндлере: {e}\n{traceback.format_exc()}")
