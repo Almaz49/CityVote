@@ -12,6 +12,7 @@ from config_data.config import Config, load_config
 from data_base.db_func import *
 from data_base.db_member import *
 from data_base.db_vote import *
+from utils import log_function_call
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)

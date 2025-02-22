@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 def log_function_call(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        logging.info(f"Вызвана функция {func.__name__}")
+        logging.info(f"Вызвана функция {func.__name__} из модуля {func.__module__} ")
         return func(*args, **kwargs)
     return wrapper
 
@@ -23,6 +23,6 @@ def log_function_call(func):
 def log_handler_call(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        logging.info(f"Вызван хэндлер {func.__name__}\n")
+        logging.info(f"Вызван хэндлер {func.__name__} из модуля {func.__module__} \n")
         return func(*args, **kwargs)
     return wrapper

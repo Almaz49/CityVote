@@ -5,11 +5,9 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from keyboards.keyboards import user_menu, remove_markup, create_inline_kb
+from keyboards.keyboards import user_menu, remove_markup, create_inline_kb, status_menu
 from config_data.config import Config, load_config
 import logging
-# from data_base.db_func import log_function_call
-from data_base.telegram_bot_logic import log_function_call
 from utils import log_handler_call
 
 # Настройка логирования
@@ -28,13 +26,13 @@ router = Router()
 # Хэндлер для команды /start
 @router.message(Command(commands=["start"]))
 @log_handler_call
-async def process_start_command(message: Message):
+async def process_start_command(message: Message,data):
     """
     Обработчик команды /start.
     Отправляет приветственное сообщение и главное меню.
     """
     try:
-        markup = await user_menu(message.from_user.id)
+        markup = await status_menu(data['user_status'])
         await message.answer(
             text='Привет!\nЭто бот для проведения голосований',
             reply_markup=markup
@@ -46,18 +44,21 @@ async def process_start_command(message: Message):
 
 # Хэндлер для команды /help
 @router.message(Command(commands=['help']))
-async def process_help_command(message: Message):
+@log_handler_call
+async def process_help_command(message: Message, data: dict):
     """
     Обработчик команды /help.
     Отправляет справочную информацию о боте.
     """
     logging.info(f"Пользователь {message.from_user.id} запросил справку.")
     await message.answer(
-        text='Здесь будет описание функционала бота и инструкции по использованию.'
+        text='Здесь будет описание функционала бота и инструкции по использованию.',
+        reply_markup=await user_menu(message.from_user.id, status = data['user_status'])
     )
 
 # Хэндлер для нажатия на кнопку "помощь"
 @router.callback_query(F.data == 'help')
+@log_handler_call
 async def process_help_callback(callback: CallbackQuery, data: dict):
     """
     Обработчик нажатия на кнопку "помощь".
@@ -78,13 +79,14 @@ async def process_help_callback(callback: CallbackQuery, data: dict):
 
 # Хэндлер для команды /cancel в состоянии по умолчанию
 @router.message(Command(commands='cancel'), StateFilter(default_state))
-async def process_cancel_command(message: Message):
+@log_handler_call
+async def process_cancel_command(message: Message, data:dict):
     """
     Обработчик команды /cancel.
     Уведомляет пользователя, что команда работает только внутри машин состояний.
     """
     logging.info(f"Пользователь {message.from_user.id} попытался использовать /cancel вне машины состояний.")
-    markup = await user_menu(message.from_user.id)
+    markup = await user_menu(message.from_user.id, data['user_status'])
     await message.answer(
         text='Вы вышли в главное меню.',
         reply_markup=markup
@@ -92,13 +94,14 @@ async def process_cancel_command(message: Message):
 
 # Хэндлер для команды /cancel в любом состоянии, кроме состояния по умолчанию
 @router.message(Command(commands='cancel'), ~StateFilter(default_state))
+@log_handler_call
 async def process_cancel_command_state(message: Message, state: FSMContext):
     """
     Обработчик команды /cancel.
     Завершает текущую машину состояний.
     """
     logging.info(f"Пользователь {message.from_user.id} вышел из машины состояний.")
-    markup = await user_menu(message.from_user.id)
+    markup = await user_menu(message.from_user.id, data['user_status'])
     await message.answer(
         text='Вы вышли из машины состояний и вернулись в главное меню.',
         reply_markup=markup
@@ -108,7 +111,8 @@ async def process_cancel_command_state(message: Message, state: FSMContext):
 
 # Хэндлер для текстовых сообщений, не являющихся командами
 @router.message()
-async def send_echo(message: Message):
+@log_handler_call
+async def send_echo(message: Message,data:dict):
     """
     Обработчик эхо-сообщений.
     Отправляет обратно текстовые сообщения пользователя.
@@ -117,7 +121,7 @@ async def send_echo(message: Message):
     await message.answer(
         text=f'Вы написали: "{message.text}".\n'
              'Если вам нужна помощь, используйте команду /help.',
-        reply_markup = await user_menu(message.from_user.id)
+        reply_markup = await user_menu(message.from_user.id,data['user_status'])
     )
 
 
@@ -125,6 +129,7 @@ async def send_echo(message: Message):
 
 # Хэндлер для кнопки 'Главное меню' в основном состоянии
 @router.callback_query(F.data == 'main_menu', StateFilter(default_state))
+@log_handler_call
 async def process_main_menu_button(callback: CallbackQuery, data: dict):
     """
     Обработчик кнопки "Главное меню".
@@ -132,7 +137,7 @@ async def process_main_menu_button(callback: CallbackQuery, data: dict):
     logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-    markup = await user_menu(callback.from_user.id)
+    markup = await user_menu(callback.from_user.id,data['user_status'])
 
     # Добавляем данные для SafeEditMiddleware
     data['response_text'] = 'Главное меню для администраторов:'
@@ -146,6 +151,7 @@ async def process_main_menu_button(callback: CallbackQuery, data: dict):
 
 # Хэндлер для кнопки 'Главное меню' внутри машины состояний.
 @router.callback_query(F.data == 'main_menu', ~StateFilter(default_state))
+@log_handler_call
 async def process_main_menu_button_state(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик кнопки "Главное меню".
@@ -153,7 +159,7 @@ async def process_main_menu_button_state(callback: CallbackQuery, state: FSMCont
     logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-    markup = await user_menu(callback.from_user.id)
+    markup = await user_menu(callback.from_user.id,data['user_status'])
 
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()

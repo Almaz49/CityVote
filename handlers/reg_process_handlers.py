@@ -14,6 +14,7 @@ from data_base.telegram_bot_logic import status_member, extract_user_data_tg, ne
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu
 from filters.filters import filter_contact
 from config_data.config import Config, load_config
+from utils import log_handler_call, log_function_call
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +37,7 @@ router = Router()
 #НАЖАТА КНОПКА "ЗАРЕГИСТРИРОВАТЬСЯ"
 # Этот хэндлер будет срабатывать на апдейт типа CallbackQuery с data 'reg_button_pressed'
 @router.callback_query(F.data == 'reg_button_pressed', StateFilter(default_state))
+@log_handler_call
 async def reg_button_press(callback: CallbackQuery, state: FSMContext):
     # Отвечаем на callback, чтобы убрать часики
     await callback.answer()
@@ -133,6 +135,7 @@ async def reg_button_press(callback: CallbackQuery, state: FSMContext):
 
 # Хендлер на обновление данных члена без регистрации
 @router.callback_query(StateFilter(FSMRereg.fill_OK), F.data == 'yes_reg_member')
+@log_handler_call
 async def process_yes_reg_member(callback: CallbackQuery, state: FSMContext):
     try:
         # Удаляем сообщение с кнопками подтверждения
@@ -153,6 +156,7 @@ async def process_yes_reg_member(callback: CallbackQuery, state: FSMContext):
 
 # Хэндлер на отказ от обновления члена (и без регистрации - то есть, выход)
 @router.callback_query(StateFilter(FSMRereg.fill_OK), F.data == 'no_reg_member')
+@log_handler_call
 async def process_no_reg_member(callback: CallbackQuery, state: FSMContext):
     try:
         # Удаляем сообщение с кнопками подтверждения
@@ -168,6 +172,7 @@ async def process_no_reg_member(callback: CallbackQuery, state: FSMContext):
 
 # Хэндлер на обновление данных пользователя с последующей регистрацией
 @router.callback_query(StateFilter(FSMRereg.fill_OK), F.data == 'yes_rereg_user')
+@log_handler_call
 async def process_yes_rereg_user(callback: CallbackQuery, state: FSMContext):
     try:
         # Удаляем сообщение с кнопками подтверждения
@@ -185,6 +190,7 @@ async def process_yes_rereg_user(callback: CallbackQuery, state: FSMContext):
 
 # Хэндлер на необновление данных, но на регистрации пользователя в группе. Делаем сразу к регистрации
 @router.callback_query(StateFilter(FSMRereg.fill_OK), F.data == 'no_rereg_user')
+@log_handler_call
 async def process_no_rereg(callback: CallbackQuery, state: FSMContext):
     try:
         # Удаляем сообщение с кнопками подтверждения
@@ -228,11 +234,12 @@ async def process_no_rereg(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать на команду "/cancel" в любых состояниях,
 # кроме состояния по умолчанию, и отключать машину состояний
 @router.message(Command(commands='cancel'), ~StateFilter(default_state))
-async def process_cancel_command_state(message: Message, state: FSMContext):
+@log_handler_call
+async def process_cancel_command_state(message: Message, state: FSMContext, data:dict):
     try:
         await message.answer(
             text='Вы вышли из машины состояний',
-            reply_markup=await user_menu(message.from_user.id)
+            reply_markup=await user_menu(message.from_user.id,data['user_status'])
         )
         # Сбрасываем состояние и очищаем данные, полученные внутри состояний
         await state.clear()
@@ -245,6 +252,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать, если введено корректное имя
 # и переводить в состояние ожидания ввода фамилии
 @router.message(StateFilter(FSMRegistration.fill_name), F.text.isalpha())
+@log_handler_call
 async def process_name_sent(message: Message, state: FSMContext):
     logging.info(f"Введено имя кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем введенное имя в контексте состояния
@@ -256,6 +264,7 @@ async def process_name_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время ввода имени
 # будет введено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_name))
+@log_handler_call
 async def warning_not_name(message: Message):
     logging.warning(f"Некорректный ввод имени от пользователя {message.from_user.id}")
     await message.answer(
@@ -268,6 +277,7 @@ async def warning_not_name(message: Message):
 # Этот хэндлер будет срабатывать, если введена корректная фамилия
 # и переводить в состояние ожидания ввода возраста
 @router.message(StateFilter(FSMRegistration.fill_last_name), F.text.isalpha())
+@log_handler_call
 async def process_last_name_sent(message: Message, state: FSMContext):
     logging.info(f"Введена фамилия кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем введенную фамилию в контексте состояния
@@ -279,6 +289,7 @@ async def process_last_name_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время ввода фамилии
 # будет введено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_last_name))
+@log_handler_call
 async def warning_last_name(message: Message):
     logging.warning(f"Некорректный ввод фамилии от пользователя {message.from_user.id}")
     await message.answer(
@@ -292,6 +303,7 @@ async def warning_last_name(message: Message):
 # и переводить в состояние выбора пола
 @router.message(StateFilter(FSMRegistration.fill_age),
                lambda x: x.text.isdigit() and 1910 <= int(x.text) <= 2020)
+@log_handler_call
 async def process_age_sent(message: Message, state: FSMContext):
     logging.info(f"Введен год рождения кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем возраст в контексте состояния
@@ -323,6 +335,7 @@ async def process_age_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время ввода возраста
 # будет введено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_age))
+@log_handler_call
 async def warning_age(message: Message):
     logging.warning(f"Некорректный ввод года рождения от пользователя {message.from_user.id}")
     await message.answer(
@@ -336,6 +349,7 @@ async def warning_age(message: Message):
 # выборе пола и переводить в состояние отправки контакта
 @router.callback_query(StateFilter(FSMRegistration.fill_gender),
                       F.data.in_(['male', 'female', 'undefined_gender']))
+@log_handler_call
 async def process_gender_press(callback: CallbackQuery, state: FSMContext):
     try:
         logging.info(f"Выбран пол {callback.data} пользователем {callback.from_user.id}")
@@ -358,6 +372,7 @@ async def process_gender_press(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время выбора пола
 # будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_gender))
+@log_handler_call
 async def warning_not_gender(message: Message):
     logging.warning(f"Некорректный ввод при выборе пола от пользователя {message.from_user.id}")
     await message.answer(
@@ -368,6 +383,7 @@ async def warning_not_gender(message: Message):
 # Этот хэндлер срабатывает на кнопку "Прислать контакт".
 # Данные из контакта записываются в базу данных в строку соответствующего пользователя
 @router.message(F.contact, StateFilter(FSMRegistration.fill_contact))
+@log_handler_call
 async def process_get_contact(message: Message, state: FSMContext):
     try:
         contact: Contact = message.contact
@@ -424,6 +440,7 @@ async def process_get_contact(message: Message, state: FSMContext):
 
 # Этот хэндлер срабатывает на всё, что пришлют вместо контакта в состоянии ожидания контакта
 @router.message(StateFilter(FSMRegistration.fill_contact))
+@log_handler_call
 async def warning_get_contact(message: Message):
     logging.warning(f"Некорректный ввод вместо контакта от пользователя {message.from_user.id}")
     await message.answer(
@@ -432,6 +449,7 @@ async def warning_get_contact(message: Message):
 
 # Этот хэндлер будет срабатывать на подтверждение личных данных
 @router.callback_query(StateFilter(FSMRegistration.fill_confirm1), F.data == 'yes_contact')
+@log_handler_call
 async def process_yes_contact(callback: CallbackQuery, state: FSMContext):
     try:
         logging.info(f"Кнопка 'Да, всё верно' нажата пользователем {callback.from_user.id}")
@@ -493,6 +511,7 @@ async def process_yes_contact(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать на нажатие кнопки "Не верно" при подтверждении личных данных.
 # Стираем кнопки и выходим из машины состояний.
 @router.callback_query(StateFilter(FSMRegistration.fill_confirm1), F.data == 'no_contact')
+@log_handler_call
 async def process_no_contact(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
         logging.info(f"Кнопка 'Не верно' нажата пользователем {callback.from_user.id}")
@@ -531,6 +550,7 @@ async def process_no_contact(callback: CallbackQuery, state: FSMContext, data: d
 
 # Этот хэндлер будет срабатывать, если во время подтверждения личных данных будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_confirm1))
+@log_handler_call
 async def warning_not_contact(message: Message):
     logging.warning(f"Некорректный ввод при подтверждении личных данных от пользователя {message.from_user.id}")
     await message.answer(
@@ -540,6 +560,7 @@ async def warning_not_contact(message: Message):
 # Этот хэндлер будет срабатывать на нажатие кнопки города и переводить в состояние ожидания ввода улицы
 @router.callback_query(StateFilter(FSMRegistration.fill_city),
                       F.data.in_(['Новосибирск', 'Бердск', 'Кольцово', 'Краснообск', 'Искитим', 'Обь']))
+@log_handler_call
 async def process_city_press(callback: CallbackQuery, state: FSMContext):
     try:
         logging.info(f"Выбран город {callback.data} пользователем {callback.from_user.id}")
@@ -559,6 +580,7 @@ async def process_city_press(callback: CallbackQuery, state: FSMContext):
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "Другое" при выборе города
 @router.callback_query(StateFilter(FSMRegistration.fill_city), F.data == 'other')
+@log_handler_call
 async def process_other_city_press(callback: CallbackQuery, state: FSMContext):
     try:
         logging.info(f"Кнопка 'Другое' нажата пользователем {callback.from_user.id}")
@@ -577,6 +599,7 @@ async def process_other_city_press(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время ввода названия города
 # будет введено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_new_city))
+@log_handler_call
 async def warning_not_city(message: Message):
     logging.warning(f"Некорректный ввод названия города от пользователя {message.from_user.id}")
     await message.answer(
@@ -590,6 +613,7 @@ async def warning_not_city(message: Message):
 # Этот хэндлер будет срабатывать, если введено корректное название города
 # и переводить в состояние ожидания ввода улицы
 @router.message(StateFilter(FSMRegistration.fill_new_city), F.text.isalpha())
+@log_handler_call
 async def process_city_sent(message: Message, state: FSMContext):
     # Cохраняем введенное название в хранилище по ключу "city"
     await state.update_data(city=message.text)
@@ -601,6 +625,7 @@ async def process_city_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время ввода названия города
 # будет введено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_new_city))
+@log_handler_call
 async def warning_not_city(message: Message):
     await message.answer(
         text='То, что вы отправили не похоже на название населенного пункта\n\n'
@@ -612,6 +637,7 @@ async def warning_not_city(message: Message):
 # Этот хэндлер будет срабатывать, если введено корректное название улицы
 # и переводить в состояние ожидания выбора типа дома
 @router.message(StateFilter(FSMRegistration.fill_street))
+@log_handler_call
 async def process_street_sent(message: Message, state: FSMContext):
     try:
         logging.info(f"Введена улица {message.text} от пользователя {message.from_user.id}")
@@ -649,6 +675,7 @@ async def process_street_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать на нажатие кнопки "Многоквартирном"
 # при выборе типа дома и переводить в состояние ввода номера дома
 @router.callback_query(StateFilter(FSMRegistration.fill_yes_mkd), F.data == 'mkd')
+@log_handler_call
 async def process_mkd_press(callback: CallbackQuery, state: FSMContext):
     try:
         logging.info(f"Кнопка 'Многоквартирном' нажата пользователем {callback.from_user.id}")
@@ -667,6 +694,7 @@ async def process_mkd_press(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать на нажатие кнопки "Частном"
 # при выборе типа дома и переводить в состояние ожидания выбора диапазона номеров
 @router.callback_query(StateFilter(FSMRegistration.fill_yes_mkd), F.data == 'ijs')
+@log_handler_call
 async def process_ijs_press(callback: CallbackQuery, state: FSMContext):
     try:
         logging.info(f"Кнопка 'Частном' нажата пользователем {callback.from_user.id}")
@@ -700,6 +728,7 @@ async def process_ijs_press(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время выбора типа дома
 # будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_yes_mkd))
+@log_handler_call
 async def warning_not_mkd(message: Message):
     logging.warning(f"Некорректный ввод при выборе типа дома от пользователя {message.from_user.id}")
     await message.answer(
@@ -711,6 +740,7 @@ async def warning_not_mkd(message: Message):
 # Этот хэндлер будет срабатывать на ввод номера многоквартирного дома
 # и переводить в состояние ожидания подтверждения адреса
 @router.message(StateFilter(FSMRegistration.fill_number_mkd), lambda x: x.text.isdigit())
+@log_handler_call
 async def process_house_number_sent(message: Message, state: FSMContext):
     try:
         logging.info(f"Введен номер дома {message.text} от пользователя {message.from_user.id}")
@@ -753,6 +783,7 @@ async def process_house_number_sent(message: Message, state: FSMContext):
 
 # Этот хэндлер будет срабатывать на нажатие кнопки диапазона домов
 @router.callback_query(StateFilter(FSMRegistration.fill_range_num))
+@log_handler_call
 async def process_range_house_press(callback: CallbackQuery, state: FSMContext):
     try:
         logging.info(f"Выбран диапазон домов {callback.data} пользователем {callback.from_user.id}")
@@ -799,6 +830,7 @@ async def process_range_house_press(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время выбора диапазона номеров домов
 # будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_range_num))
+@log_handler_call
 async def warning_not_range(message: Message):
     logging.warning(f"Некорректный ввод при выборе диапазона номеров домов от пользователя {message.from_user.id}")
     await message.answer(
@@ -807,6 +839,7 @@ async def warning_not_range(message: Message):
 
 # Этот хэндлер будет срабатывать на подтверждение адреса, если дальнейшая регистрация не требуется (и на выход)
 @router.callback_query(StateFilter(FSMRegistration.fill_confirm2, FSMRereg.fill_no_reg), F.data == 'yes_address')
+@log_handler_call
 async def process_yes_adress_no_reg(callback: CallbackQuery, state: FSMContext):
     try:
         logging.info(f"Кнопка 'Да, всё верно' нажата пользователем {callback.from_user.id} без дальнейшей регистрации")
@@ -842,6 +875,7 @@ async def process_yes_adress_no_reg(callback: CallbackQuery, state: FSMContext):
 
 # Этот хэндлер будет срабатывать на подтверждение адреса
 @router.callback_query(StateFilter(FSMRegistration.fill_confirm2), F.data == 'yes_address')
+@log_handler_call
 async def process_yes_adress(callback: CallbackQuery, state: FSMContext):
     try:
         logging.info(f"Кнопка 'Да, всё верно' нажата пользователем {callback.from_user.id} с дальнейшей регистрацией")
@@ -878,6 +912,7 @@ async def process_yes_adress(callback: CallbackQuery, state: FSMContext):
 
 # Этот хэндлер будет срабатывать на отказ подтвердить адрес
 @router.callback_query(StateFilter(FSMRegistration.fill_confirm2), F.data == 'no_address')
+@log_handler_call
 async def process_no_address(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
         logging.info(f"Кнопка 'Не верно' нажата пользователем {callback.from_user.id}")
@@ -917,6 +952,7 @@ async def process_no_address(callback: CallbackQuery, state: FSMContext, data: d
 # Этот хэндлер будет срабатывать, если вместо подтверждения адреса
 # будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_confirm2))
+@log_handler_call
 async def warning_not_address(message: Message):
     logging.warning(f"Некорректный ввод при подтверждении адреса от пользователя {message.from_user.id}")
     await message.answer(
@@ -926,6 +962,7 @@ async def warning_not_address(message: Message):
 # Этот хэндлер будет срабатывать на выбор регистратора
 @router.callback_query(StateFilter(FSMRegistration.fill_registrator),
                       lambda x: x.data.isdigit() or x.data == 'stranger')
+@log_handler_call
 async def process_registrator_press(callback: CallbackQuery, state: FSMContext):
     try:
         logging.info(f"Выбран регистратор {callback.data} пользователем {callback.from_user.id}")
@@ -973,6 +1010,7 @@ async def process_registrator_press(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время выбора модератора
 # будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSMRegistration.fill_registrator))
+@log_handler_call
 async def warning_not_registrator(message: Message):
     logging.warning(f"Некорректный ввод при выборе модератора от пользователя {message.from_user.id}")
     await message.answer(
@@ -981,6 +1019,7 @@ async def warning_not_registrator(message: Message):
 
 
 #Функция уведомления регистратора. Возможно, ее надо будет вписать в  хэндлер.
+@log_function_call
 async def notify_registrator(registrator_tg_id, candidate_tg_id, user_dict):
     try:
         # Создаем объекты инлайн-кнопок

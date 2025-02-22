@@ -5,17 +5,17 @@ import logging
 
 class StatusMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
-        logging.info('Middleware StatusMiddleware начала работу\n')
+        logging.info('\nMiddleware StatusMiddleware начала работу\n')
         try:
             user = data['event_from_user']
             user_id = user.id
 
-            logging.info(f'\n\nProcessing event of type: {type(event)}')
-            logging.info(f'User ID: {user_id}\n\n')
+            logging.info(f'Processing event of type: {type(event)}')
+            logging.info(f'User ID: {user_id}')
 
             # Получаем статус пользователя
             status = await status_member(user_id)
-            logging.info(f'Получены статусы юзера: {status}\n')
+            logging.info(f'Получены статусы юзера: {status}')
 
             if status is None:
                 logging.warning(f"Status for user {user_id} is None")
@@ -23,9 +23,9 @@ class StatusMiddleware(BaseMiddleware):
             else:
                 status = [s.lower() for s in status]  # Нормализуем статусы к нижнему регистру
 
-            # Добавляем статус в словарь data
-            data['user_status'] = status
-            logging.info(f'Создан список статусов в словаре data: {status}\n')
+            # Добавляем статус в пользовательский словарь data
+            data['data']['user_status'] = status
+            logging.info(f'Создан список статусов в пользовательском словаре data: {status}')
 
             # Продолжаем обработку события
             return await handler(event, data)

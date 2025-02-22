@@ -2,6 +2,7 @@
 # ФУНКЦИИ БАЗЫ ДАННЫХ ПО РАБОТЕ С УЧАСТНИКАМИ
 import datetime
 from data_base.db_func import *
+from utils import log_function_call
 import logging
 
 # Настройка логирования

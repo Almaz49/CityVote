@@ -37,52 +37,52 @@ class StatusFilter(BaseFilter):
         user_status = data.get("user_status", [])
         return self.required_status in user_status
 
-# Фильтр на статус администратора
-class filter_isAdmin(StatusFilter):
-    def __init__(self):
-        super().__init__(required_status="admin")
+# # Фильтр на статус администратора
+# class filter_isAdmin(StatusFilter):
+#     def __init__(self):
+#         super().__init__(required_status="admin")
 
 
-# Фильтр на статус владельца
-class filter_isOwner(StatusFilter):
-    def __init__(self):
-        super().__init__(required_status="owner")
+# # Фильтр на статус владельца
+# class filter_isOwner(StatusFilter):
+#     def __init__(self):
+#         super().__init__(required_status="owner")
 
 
-# Фильтр на статус регистратора
-class filter_isRegistrator(StatusFilter):
-    def __init__(self):
-        super().__init__(required_status="registrator")
+# # Фильтр на статус регистратора
+# class filter_isRegistrator(StatusFilter):
+#     def __init__(self):
+#         super().__init__(required_status="registrator")
 
 
-# Фильтр на статус участника
-class filter_isMember(StatusFilter):
-    def __init__(self):
-        super().__init__(required_status="member")
+# # Фильтр на статус участника
+# class filter_isMember(StatusFilter):
+#     def __init__(self):
+#         super().__init__(required_status="member")
 
 
-# Фильтр на статус делегата
-class filter_isDelegate(StatusFilter):
-    def __init__(self):
-        super().__init__(required_status="delegate")
+# # Фильтр на статус делегата
+# class filter_isDelegate(StatusFilter):
+#     def __init__(self):
+#         super().__init__(required_status="delegate")
 
 
-# Фильтр на статус представителя
-class filter_isProxy(StatusFilter):
-    def __init__(self):
-        super().__init__(required_status="proxy")
+# # Фильтр на статус представителя
+# class filter_isProxy(StatusFilter):
+#     def __init__(self):
+#         super().__init__(required_status="proxy")
 
 
-# Фильтр на статус кандидата
-class filter_isCandidate(StatusFilter):
-    def __init__(self):
-        super().__init__(required_status="candidate")
+# # Фильтр на статус кандидата
+# class filter_isCandidate(StatusFilter):
+#     def __init__(self):
+#         super().__init__(required_status="candidate")
 
 
-# Фильтр на статус пользователя
-class filter_isUser(StatusFilter):
-    def __init__(self):
-        super().__init__(required_status="user")
+# # Фильтр на статус пользователя
+# class filter_isUser(StatusFilter):
+#     def __init__(self):
+#         super().__init__(required_status="user")
 
 
 # Фильтр на контакт (message.contact.user_id == message.from_user.id)

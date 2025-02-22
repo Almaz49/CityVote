@@ -11,6 +11,7 @@ from keyboards.keyboards import confirm_markup, variant_markup, create_inline_kb
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import new_vote_tg, new_variant_tg, list_of_votes_tg
 import logging
+from utils import log_handler_call
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +33,7 @@ router.message.filter(StatusFilter(required_status = 'delegate'))
 # Этот хэндлер будет срабатывать на команду /new_vote
 # и переводить бота в состояние ожидания ввода названия голосования
 @router.message(Command(commands='new_vote'), StateFilter(default_state))
+@log_handler_call
 async def process_new_voting_start(message: Message, state: FSMContext):
     """
     Обработчик команды /new_vote.
@@ -44,6 +46,7 @@ async def process_new_voting_start(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать на нажатие кнопки "создать голосование"
 # и переводить бота в состояние ожидания ввода названия голосования
 @router.callback_query(StateFilter(default_state), F.data == 'new_vote')
+@log_handler_call
 async def process_new_voting_start(callback: CallbackQuery, state: FSMContext):
     """
     Обработчик команды /new_vote.
@@ -57,6 +60,7 @@ async def process_new_voting_start(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать на ввод названия
 # и переводить бота в состояние ожидания ввода описания голосования
 @router.message(StateFilter(FSMNewVoting.fill_vote_title))
+@log_handler_call
 async def process_new_voting_title_sent(message: Message, state: FSMContext):
     """
     Обработчик ввода названия голосования.
@@ -74,6 +78,7 @@ async def process_new_voting_title_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать после ввода описания
 # и переводить в состояние ожидания подтверждения
 @router.message(StateFilter(FSMNewVoting.fill_vote_description))
+@log_handler_call
 async def process_new_voting_description_sent(message: Message, state: FSMContext):
     """
     Обработчик ввода описания голосования.
@@ -97,6 +102,7 @@ async def process_new_voting_description_sent(message: Message, state: FSMContex
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "ВСЁ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewVoting.fill_OK), F.data == 'ConfirmOK')
+@log_handler_call
 async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик подтверждения создания голосования.
@@ -141,7 +147,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f"Произошла ошибка: {str(e)}"
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
@@ -155,6 +161,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewVoting.fill_OK), F.data == 'ConfirmNotOK')
+@log_handler_call
 async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик отмены создания голосования.
@@ -180,7 +187,8 @@ async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FS
 # Этот хэндлер будет срабатывать на команду /new_variant
 # и переводить бота в состояние ожидания выбора голосования
 @router.message(Command(commands='new_variant'), StateFilter(default_state))
-async def process_new_variant_start(message: Message, state: FSMContext):
+@log_handler_call
+async def process_new_variant_start(message: Message, state: FSMContext, data:dict):
     """
     Обработчик команды /new_variant.
     Запрашивает выбор голосования для добавления варианта.
@@ -202,13 +210,14 @@ async def process_new_variant_start(message: Message, state: FSMContext):
         logging.error(f"Ошибка при получении списка голосований: {e}")
         await message.answer(
             text=f"Произошла ошибка: {str(e)}",
-            reply_markup=user_menu(message.from_user.id)
+            reply_markup=user_menu(message.from_user.id, data['user_status'])
             )
         await state.clear()
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки с названием голосования
 @router.callback_query(StateFilter(FSMNewVariant.fill_vote_choise), F.data)
+@log_handler_call
 async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик выбора голосования.
@@ -234,6 +243,7 @@ async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext,
 # Этот хэндлер будет срабатывать на ввод названия варианта
 # и переводить бота в состояние ожидания ввода описания
 @router.message(StateFilter(FSMNewVariant.fill_variant_title))
+@log_handler_call
 async def process_variant_description_sent(message: Message, state: FSMContext):
     """
     Обработчик ввода названия варианта.
@@ -251,6 +261,7 @@ async def process_variant_description_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать после ввода описания
 # и переводить в состояние ожидания подтверждения
 @router.message(StateFilter(FSMNewVariant.fill_variant_description))
+@log_handler_call
 async def process_new_variant_description_sent(message: Message, state: FSMContext):
     """
     Обработчик ввода описания варианта.
@@ -274,6 +285,7 @@ async def process_new_variant_description_sent(message: Message, state: FSMConte
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "ВСЁ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewVariant.fill_OK), F.data == 'ConfirmOK')
+@log_handler_call
 async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик подтверждения добавления варианта.
@@ -320,7 +332,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f"Произошла ошибка: {str(e)}"
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
@@ -334,6 +346,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "Добавить ещё вариант"
 @router.callback_query(StateFilter(FSMNewVariant.fill_more_variant), F.data == 'NewVariant')
+@log_handler_call
 async def process_more_variant(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик добавления ещё одного варианта.
@@ -357,6 +370,7 @@ async def process_more_variant(callback: CallbackQuery, state: FSMContext, data:
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "Завершить добавление вариантов"
 @router.callback_query(StateFilter(FSMNewVariant.fill_more_variant), F.data == 'Finish_Variant')
+@log_handler_call
 async def process_finish_variant(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик завершения добавления вариантов.
@@ -382,6 +396,7 @@ async def process_finish_variant(callback: CallbackQuery, state: FSMContext, dat
 # и переводить бота в состояние ожидания выбора голосования
 # к которому добавляется вариант
 @router.message(Command(commands='new_variant'), StateFilter(default_state))
+@log_handler_call
 async def process_new_variant_start(message: Message, state: FSMContext):
     list_of_votes = list_of_votes_tg('add_variants')
     if list_of_votes:
@@ -404,6 +419,7 @@ async def process_new_variant_start(message: Message, state: FSMContext):
 
 #Этот хэндлер будет срабатывать на нажатие кнопки с названием голосования
 @router.callback_query(StateFilter(FSMNewVariant.fill_vote_choise), F.data)
+@log_handler_call
 async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext, data: dict):
     # Сохраняем ID голосования по ключу vote_id
     await state.update_data(vote_id=int(callback.data))
@@ -426,6 +442,7 @@ async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext,
 # Этот хэндлер будет срабатывать на ввод названия варианта
 # и переводить бота в состояние ожидания ввода описания голосования
 @router.message(StateFilter(FSMNewVariant.fill_variant_title))
+@log_handler_call
 async def process_variant_description_sent(message: Message, state: FSMContext):
     # Cохраняем название в хранилище по ключу "title"
     await state.update_data(title = message.text)
@@ -438,6 +455,7 @@ async def process_variant_description_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать, после ввода описания
 # и переводить в состояние ожидания подтверждения
 @router.message(StateFilter(FSMNewVariant.fill_variant_description))
+@log_handler_call
 async def process_new_variant_description_sent(message: Message, state: FSMContext):
     # Cохраняем название в хранилище по ключу "description"
     await state.update_data(description = message.text)
@@ -463,6 +481,7 @@ async def process_new_variant_description_sent(message: Message, state: FSMConte
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "ВСЁ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewVariant.fill_OK), F.data == 'ConfirmOK')
+@log_handler_call
 async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: FSMContext, data: dict):
     # Заносим в базу данных голосование
     fsm_data = await state.get_data()
@@ -493,7 +512,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f"Произошла ошибка: {str(e)}"
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
@@ -506,6 +525,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewVoting.fill_OK), F.data == 'ConfirmNotOK')
+@log_handler_call
 async def process_new_variant_no_confirm_press(callback: CallbackQuery, state: FSMContext, data: dict):
     # Добавляем данные для SafeEditMiddleware
     data['response_text'] = 'Вариант не создан! Хотите ли добавить другой вариант?'
@@ -523,6 +543,7 @@ async def process_new_variant_no_confirm_press(callback: CallbackQuery, state: F
 # Этот хэндлер будет срабатывать на нажатие кнопки "Добавить ещё вараинт"
 # Откатываем машину состояния в точку ввода названия варианта
 @router.callback_query(StateFilter(FSMNewVariant.fill_more_variant), F.data == 'NewVariant')
+@log_handler_call
 async def process_more_variant(callback: CallbackQuery, state: FSMContext, data: dict):
     # Добавляем данные для SafeEditMiddleware
     data['response_text'] = 'Пожалуйста, введите название варианта'
@@ -540,6 +561,7 @@ async def process_more_variant(callback: CallbackQuery, state: FSMContext, data:
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "Завершить добавление вариантов"
 @router.callback_query(StateFilter(FSMNewVariant.fill_more_variant), F.data == 'Finish_Variant')
+@log_handler_call
 async def process_finish_variant(callback: CallbackQuery, state: FSMContext, data: dict):
     await state.clear()
 

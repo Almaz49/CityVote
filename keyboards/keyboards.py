@@ -5,6 +5,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeybo
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from LEXICON.LEXICON import *
 from data_base.telegram_bot_logic import extract_status_tg
+from utils import log_function_call
 import logging
 
 # Настройка логирования
@@ -15,6 +16,7 @@ logging.basicConfig(level=logging.DEBUG)
 """
 
 # Функция для формирования инлайн-клавиатуры на лету
+@log_function_call
 def create_inline_kb(width: int, *args: str, **kwargs: str) -> InlineKeyboardMarkup:
     """
     Создает инлайн-клавиатуру из списка или словаря.
@@ -56,6 +58,7 @@ def create_inline_kb(width: int, *args: str, **kwargs: str) -> InlineKeyboardMar
 
 
 # Функция создания инлайн-кнопки
+@log_function_call
 def button(button: str, text: str = None) -> InlineKeyboardButton:
     """
     Создает инлайн-кнопку.
@@ -93,6 +96,7 @@ buttons = {
     }
 }
 
+@log_function_call
 def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton]]:
     # Множество для отслеживания уникальных callback_data
     unique_buttons = set()
@@ -129,9 +133,11 @@ def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton
 
     return keyboard
 
-async def user_menu(tg_id: int) -> InlineKeyboardMarkup | None:
+@log_function_call
+async def user_menu(tg_id: int, status:list[str] = None) -> InlineKeyboardMarkup | None:
     try:
-        status = await extract_status_tg(tg_id)
+        if not status:
+            status = await extract_status_tg(tg_id)
         logging.info(f"Создание меню для пользователя {tg_id} со статусами: {status}")
         if not status or 'member' not in status:
             if 'user' in status:
@@ -155,6 +161,34 @@ async def user_menu(tg_id: int) -> InlineKeyboardMarkup | None:
     except Exception as e:
         logging.error(f"Ошибка при создании меню для пользователя {tg_id}: {e}")
         raise
+
+@log_function_call
+async def status_menu(status: list[str]) -> InlineKeyboardMarkup | None:
+    try:
+        logging.info(f"Создание меню для пользователя со статусами: {status}")
+        if not status or 'member' not in status:
+            if 'user' in status:
+                keyboard = get_keyboard_for_status(['user'])
+            elif 'candidate' in status:
+                keyboard = get_keyboard_for_status(['candidate'])
+            else:
+                unknown_button = {'unknown': 'Я не знаю кто ты'}
+                return create_inline_kb(1, **unknown_button)
+        else:
+            keyboard = get_keyboard_for_status(status)
+
+        # Добавляем кнопку "помощь"
+        help_button = InlineKeyboardButton(text=LEXICON.get('help', 'Помощь'), callback_data='help')
+        keyboard.append([help_button])
+
+        kb_builder = InlineKeyboardBuilder()
+        for row in keyboard:
+            kb_builder.row(*row)
+        return kb_builder.as_markup()
+    except Exception as e:
+        logging.error(f"Ошибка при создании меню для пользователя со статусами {status}: {e}")
+        raise
+
 
 """
 ИНЛАЙН-КЛАВИАТУРЫ

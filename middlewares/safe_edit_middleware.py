@@ -9,6 +9,7 @@ from pprint import pformat
 class SafeEditMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data: dict):
         # logging.info(f"Data in SafeEditMiddleware: \n{pformat(data)}\n")
+        logging.info('\nMiddleware SafeEditMiddleware начала работу\n')
         try:
             # Создаем ключ 'data', если его еще нет
             if 'data' not in data:
@@ -16,10 +17,10 @@ class SafeEditMiddleware(BaseMiddleware):
 
                     # Добавьте другие необходимые данные
                 }
-                logging.info(f'Создан словарь дата в мидлваре исправления едит на ансвер \n\n')
+                logging.info(f'Создан словарь дата в мидлваре исправления едит на ансвер')
 
             result = await handler(event, data)
-            logging.info(f'Данные data после прохождения хэндлера: \n{pformat(data)}\n')
+            logging.info(f'Данные пользовательской data после прохождения хэндлера: {pformat(data['data'])}')
             return result
         except TelegramBadRequest as e:
             if "message is not modified" in str(e) or "message to edit not found" in str(e):

@@ -5,6 +5,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
 from filters.filters import StatusFilter
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup
 from config_data.config import Config, load_config
+from utils import log_handler_call
 
 #инициализируем бота
 # Загружаем конфиг в переменную config

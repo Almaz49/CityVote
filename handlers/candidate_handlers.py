@@ -8,6 +8,7 @@ from config_data.config import Config, load_config
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from data_base.telegram_bot_logic import *
+from utils import log_handler_call
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)

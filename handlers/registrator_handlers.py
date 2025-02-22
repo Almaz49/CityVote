@@ -9,6 +9,7 @@ from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import db_update, extract_user_data_tg, member_id_tg
 import logging
+from utils import log_handler_call
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -47,7 +48,8 @@ router.message.filter(StatusFilter(required_status = 'registrator'))
 
 # Этот хэндлер срабатывает при нажатии регистратором кнопки "Подтверждаю"
 @router.callback_query(F.data.startswith('yes_confirm:'))
-async def process_registrator_yes_press(callback: CallbackQuery):
+@log_handler_call
+async def process_registrator_yes_press(callback: CallbackQuery,data):
     """
     Обработчик подтверждения членства нового участника.
     Изменяет статус пользователя в базе данных.
@@ -70,7 +72,7 @@ async def process_registrator_yes_press(callback: CallbackQuery):
         # Отправляем уведомление о успешном подтверждении
         await callback.message.answer(
             text=f"Спасибо! Пользователь {tg_id} получил статус 'Участник'.",
-            reply_markup=await user_menu(callback.from_user.id)
+            reply_markup=await user_menu(callback.from_user.id,data['user_status'])
         )
     except Exception as e:
         logging.error(f"Ошибка при подтверждении членства пользователя {tg_id}: {e}")
@@ -79,7 +81,8 @@ async def process_registrator_yes_press(callback: CallbackQuery):
 
 # Этот хэндлер срабатывает при нажатии регистратором кнопки "Не подтверждаю"
 @router.callback_query(F.data.startswith('no_confirm:'))
-async def process_registrator_no_press(callback: CallbackQuery):
+@log_handler_call
+async def process_registrator_no_press(callback: CallbackQuery, data):
     """
     Обработчик отказа от подтверждения членства нового участника.
     Изменяет поле "familiar" пользователя в базе данных.
@@ -102,11 +105,11 @@ async def process_registrator_no_press(callback: CallbackQuery):
         # Отправляем уведомление об отказе
         await callback.message.answer(
             text=f"Спасибо! Пользователь {tg_id} не получил статус 'Участник'.",
-            reply_markup=await user_menu(callback.from_user.id)
+            reply_markup=await user_menu(callback.from_user.id,data['user_status'])
         )
     except Exception as e:
         logging.error(f"Ошибка при отклонении членства пользователя {tg_id}: {e}")
         await callback.message.answer(
             text="Произошла ошибка при отклонении членства.",
-            reply_markup=await user_menu(callback.from_user.id)
+            reply_markup=await user_menu(callback.from_user.id,data['user_status'])
             )

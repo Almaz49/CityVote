@@ -8,6 +8,7 @@ import aiosqlite
 import logging  # Добавляем импорт модуля logging
 from config_data.config import Config, load_config
 from functools import wraps
+from utils import log_function_call
 
 
 
@@ -18,13 +19,13 @@ logging.basicConfig(level=logging.INFO)
 config: Config = load_config('.env')
 path_db = config.db.path_db  # путь к базе данных
 
-# Это декоратор, который каждую функцию объявляет в логах
-def log_function_call(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        logging.info(f"Вызвана функция {func.__name__}")
-        return func(*args, **kwargs)
-    return wrapper
+# # Это декоратор, который каждую функцию объявляет в логах
+# def log_function_call(func):
+#     @wraps(func)
+#     def wrapper(*args, **kwargs):
+#         logging.info(f"Вызвана функция {func.__name__}")
+#         return func(*args, **kwargs)
+#     return wrapper
 
 # Создаем контекстный менеджер для работы с базой данных
 class Database:

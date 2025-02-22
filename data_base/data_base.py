@@ -3,6 +3,7 @@ import random
 import time
 from data_base.db_member import *
 from data_base.db_vote import *
+from utils import log_function_call
 import logging
 
 # Настройка логирования

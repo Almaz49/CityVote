@@ -9,6 +9,7 @@ from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import *
 import logging
+from utils import log_handler_call
 
 # Инициализируем бота
 # Загружаем конфиг в переменную config
@@ -21,6 +22,7 @@ router.message.filter(StatusFilter(required_status = 'member'))
 
 # Хэндлер для кнопки 'list_of_votes'
 @router.callback_query(F.data == 'list_of_votes')
+@log_handler_call
 async def process_list_of_votes(callback: CallbackQuery, data: dict):
     try:
         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
@@ -59,7 +61,7 @@ async def process_list_of_votes(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка голосований.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
@@ -72,6 +74,7 @@ async def process_list_of_votes(callback: CallbackQuery, data: dict):
 
 # Хэндлер для кнопки 'future_votes'
 @router.callback_query(F.data == 'future_votes')
+@log_handler_call
 async def process_list_of_future_votes(callback: CallbackQuery, data: dict):
     try:
         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
@@ -110,7 +113,7 @@ async def process_list_of_future_votes(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка будущих голосований.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
@@ -126,6 +129,7 @@ async def process_list_of_future_votes(callback: CallbackQuery, data: dict):
 
 # Хэндлер для выбора конкретного голосования
 @router.callback_query(F.data.regexp(r'^vote_\d+$'))
+@log_handler_call
 async def process_vote_selection(callback: CallbackQuery, data: dict):
     """
     Обработчик выбора конкретного голосования.
@@ -138,8 +142,8 @@ async def process_vote_selection(callback: CallbackQuery, data: dict):
         variants = await list_of_variants(vote_id, 'valid')
 
         if variants:
-            text = ('Выберите вариант за который хотите проголосовать:\n'
-                    'Или нажмите кнопку "Посмотреть варианты", если хотите посмотреть варианты')
+            text = ('Выберите вариант за который хотите проголосовать.\n'
+                    'Или нажмите кнопку "Посмотреть варианты", если хотите посмотреть варианты\n')
 
             dict_variants = {}
             for variant in variants:
@@ -152,7 +156,7 @@ async def process_vote_selection(callback: CallbackQuery, data: dict):
 
             for variant in variants:
                 text += f'- {variant[1]}\n'
-            text += '\nВыберите вариант для голосования:'
+            text = '\nВыберите вариант для голосования:\n' + text
 
         else:
             text = 'В настоящее время нет доступных вариантов для голосования.'
@@ -173,7 +177,7 @@ async def process_vote_selection(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при выборе голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
@@ -186,6 +190,7 @@ async def process_vote_selection(callback: CallbackQuery, data: dict):
 # Хэндлер для просмотра вариантов (обрабатывает кнопку "посмотреть варианты")
 # Присылает по сообщению на каждый вариант, к последнему прикладывает клавиаттуру из вариантов
 @router.callback_query(F.data.regexp(r'^show_variants:\d+$'))
+@log_handler_call
 async def process_show_variants(callback: CallbackQuery, data: dict):
     """
     Обработчик просмотра вариантов.
@@ -238,7 +243,7 @@ async def process_show_variants(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(
@@ -253,6 +258,7 @@ async def process_show_variants(callback: CallbackQuery, data: dict):
 
 # Хэндлер для просмотра будущего голосования
 @router.callback_query(F.data.regexp(r'^future_vote_\d+$'))
+@log_handler_call
 async def process_future_vote_selection(callback: CallbackQuery, data: dict):
     """
     Обработчик просмотра будущего голосования.
@@ -300,7 +306,7 @@ async def process_future_vote_selection(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при просмотре будущего голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(
@@ -315,6 +321,7 @@ async def process_future_vote_selection(callback: CallbackQuery, data: dict):
 
 # Хэндлер для выбора конкретного варианта голосования
 @router.callback_query(F.data.regexp(r'^variant_\d+$'))
+@log_handler_call
 async def process_variant_selection(callback: CallbackQuery, data: dict):
     """
     Обработчик выбора конкретного варианта голосования.
@@ -348,7 +355,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при голосовании.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Отправляем новое сообщение в случае ошибки
         await callback.message.answer(
@@ -361,6 +368,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
 
 # Хэндлер для просмотра будущего голосования
 @router.callback_query(F.data.regexp(r'^future_vote_\d+$'))
+@log_handler_call
 async def process_future_vote_selection(callback: CallbackQuery, data: dict):
     """
     Обработчик выбора конкретного голосования.
@@ -408,7 +416,7 @@ async def process_future_vote_selection(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при просмотре будущего голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(
@@ -424,6 +432,7 @@ async def process_future_vote_selection(callback: CallbackQuery, data: dict):
 
 # Хэндлер для кнопки 'select_proxy'
 @router.callback_query(F.data == 'select_proxy')
+@log_handler_call
 async def process_select_proxy(callback: CallbackQuery, data: dict):
     try:
         logging.info(f"Пользователь {callback.from_user.id} запросил список представителей.")
@@ -434,7 +443,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
         if not members:
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'В данный момент нет доступных представителей.'
-            data['reply_markup'] = await user_menu(callback.from_user.id)
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
             await callback.message.edit_text(
@@ -471,7 +480,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка представителей.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(
@@ -483,6 +492,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
 
 # Хэндлер для доверия голоса
 @router.callback_query(F.data.startswith('trust_'))
+@log_handler_call
 async def process_trust(callback: CallbackQuery, data: dict):
     try:
         proxy_tg_id = int(callback.data.split('_')[1])
@@ -493,7 +503,7 @@ async def process_trust(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = ans_str
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
@@ -506,7 +516,7 @@ async def process_trust(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при доверии голоса.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(
@@ -518,6 +528,7 @@ async def process_trust(callback: CallbackQuery, data: dict):
 
 # Хэндлер для кнопки 'become_proxy'
 @router.callback_query(F.data == 'become_proxy')
+@log_handler_call
 async def process_become_proxy(callback: CallbackQuery, data: dict):
     try:
         logging.info(f"Пользователь {callback.from_user.id} запросил статус 'proxy'.")
@@ -527,7 +538,7 @@ async def process_become_proxy(callback: CallbackQuery, data: dict):
         if not member_id:
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'Вы не являетесь участником группы.'
-            data['reply_markup'] = await user_menu(callback.from_user.id)
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
             await callback.message.edit_text(
@@ -541,7 +552,7 @@ async def process_become_proxy(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Вы стали представителем!'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение
         await callback.message.edit_text(
@@ -554,7 +565,7 @@ async def process_become_proxy(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при присвоении статуса.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(
@@ -566,6 +577,7 @@ async def process_become_proxy(callback: CallbackQuery, data: dict):
 
 # Хэндлер для кнопки ''resign_from_proxy''
 @router.callback_query(F.data == 'resign_from_proxy')
+@log_handler_call
 async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
     try:
         logging.info(f"Пользователь {callback.from_user.id} отказывается от статуса 'proxy'.")
@@ -575,7 +587,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
         if not member_id:
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'Вы не являетесь участником группы.'
-            data['reply_markup'] = await user_menu(callback.from_user.id)
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
             await callback.message.edit_text(
@@ -589,7 +601,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Вы перестали быть представителем!'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение
         await callback.message.edit_text(
@@ -602,7 +614,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при удалении статуса представителя.'
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(

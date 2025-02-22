@@ -4,29 +4,38 @@ from aiogram.types import Update
 import logging
 import traceback
 from pprint import pformat
+from data_base.telegram_bot_logic import member_id_tg
 
 class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Update, data: dict):
         # logging.info(f"Data in LoggingAndErrorHandlingMiddleware: {data}\n")
+        logging.info('\n Middleware logging_middleware started work\n')
         try:
             if isinstance(event, Update):
-                user_id = event.from_user.id if hasattr(event, "from_user") and event.from_user else "Unknown"
+                user = data['event_from_user']
+                user_id = user.id
+                # user_id = event.from_user.id if hasattr(event, "from_user") and event.from_user else "Unknown"
                 event_type = event.__class__.__name__
-                logging.info(f"Получено событие {event_type} от пользователя {user_id}: {event}\n")
+                logging.info(f"Получено событие {event_type} от пользователя {user_id}") #:\n {pformat(event)}\n")
+
+            club_id = data.get('club_id',None)
+            member_id = await member_id_tg(user_id)
 
             # Создаем ключ 'data', если его еще нет
             if 'data' not in data:
                 data['data'] = {
+                    'club_id':club_id,
+                    'member_id':member_id
 
                     # Добавьте другие необходимые данные
                 }
-                logging.info(f'Создан словарь дата в мидлваре логировани \n\n')
+                logging.info(f'Создан словарь дата в мидлваре логирования {pformat(data["data"])}')
 
 
 
             response = await handler(event, data)
 
-            logging.info(f'Данные data после прохождения хэндлера: \n{pformat(data)}\n')
+            # logging.info(f'Данные data после прохождения хэндлера: \n{pformat(data)}\n')
 
 
 
