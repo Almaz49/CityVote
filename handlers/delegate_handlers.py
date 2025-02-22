@@ -9,7 +9,7 @@ from filters.filters import StatusFilter
 from FSMs.FSMs import FSMNewVoting, FSMNewVariant
 from keyboards.keyboards import confirm_markup, variant_markup, create_inline_kb, user_menu
 from config_data.config import Config, load_config
-from data_base.telegram_bot_logic import new_vote_tg, new_variant_tg, list_of_votes_tg
+from data_base.telegram_bot_logic import new_voting_tg, new_variant_tg
 import logging
 from utils import log_handler_call
 
@@ -116,7 +116,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
         tg_id = callback.from_user.id
 
         # Создаем новое голосование
-        flag, comment = await new_vote_tg(creator_tg_id=tg_id, title=title, text=description, vote_status='add_variants')
+        flag, comment = await new_voting_tg(creator_tg_id=tg_id, title=title, text=description, vote_status='add_variants')
 
         if flag:
             await state.clear()
@@ -224,7 +224,7 @@ async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext,
     Запрашивает ввод названия варианта.
     """
     logging.info(f"Пользователь {callback.from_user.id} выбрал голосование ID={callback.data}.")
-    await state.update_data(vote_id=int(callback.data))
+    await state.update_data(voting_id=int(callback.data))
 
     # Добавляем данные для SafeEditMiddleware
     data['response_text'] = 'Пожалуйста, введите название варианта.'
@@ -294,13 +294,13 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
     logging.info(f"Пользователь {callback.from_user.id} подтвердил добавление варианта.")
     try:
         fsm_data = await state.get_data()
-        vote_id = fsm_data['vote_id']
+        voting_id = fsm_data['voting_id']
         title = fsm_data['title']
         description = fsm_data['description']
         tg_id = callback.from_user.id
 
         # Создаем новый вариант
-        result, comment = await new_variant_tg(vote_id=vote_id, creator_tg_id=tg_id, title=title, text=description)
+        result, comment = await new_variant_tg(voting_id=voting_id, creator_tg_id=tg_id, title=title, text=description)
 
         if result:
             # Добавляем данные для SafeEditMiddleware
@@ -421,8 +421,8 @@ async def process_new_variant_start(message: Message, state: FSMContext):
 @router.callback_query(StateFilter(FSMNewVariant.fill_vote_choise), F.data)
 @log_handler_call
 async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext, data: dict):
-    # Сохраняем ID голосования по ключу vote_id
-    await state.update_data(vote_id=int(callback.data))
+    # Сохраняем ID голосования по ключу voting_id
+    await state.update_data(voting_id=int(callback.data))
 
     # Добавляем данные для SafeEditMiddleware
     data['response_text'] = 'Пожалуйста, введите название варианта'
@@ -485,14 +485,14 @@ async def process_new_variant_description_sent(message: Message, state: FSMConte
 async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: FSMContext, data: dict):
     # Заносим в базу данных голосование
     fsm_data = await state.get_data()
-    vote_id = fsm_data['vote_id']
+    voting_id = fsm_data['voting_id']
     title = fsm_data['title']
     description = fsm_data['description']
     tg_id = callback.from_user.id
 
     try:
         # Записываем новый вариант в базу данных
-        new_variant_tg(vote_id=vote_id, creator_tg_id=tg_id, title=title, text=description)
+        new_variant_tg(voting_id=voting_id, creator_tg_id=tg_id, title=title, text=description)
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Спасибо! Вариант создан!\nХотите ли добавить ещё вариант?'

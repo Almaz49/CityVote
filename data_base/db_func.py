@@ -290,17 +290,17 @@ async def all_status():
 # Извлекаются голосования имеющие эти статусы
 # Возвращает список кортежей из ID и названий
 @log_function_call
-async def list_of_votes(club_id, *vote_status):
-    if vote_status:
-        placeholders = ', '.join('?' for _ in vote_status)
+async def list_of_votings(club_id, *voting_status):
+    if voting_status:
+        placeholders = ', '.join('?' for _ in voting_status)
         query = f'''
-            SELECT id, title FROM Votes
-            WHERE club_id = ? AND vote_status IN ({placeholders})
+            SELECT id, title FROM Votings
+            WHERE club_id = ? AND voting_status IN ({placeholders})
             '''
-        params = (club_id,) + vote_status
+        params = (club_id,) + voting_status
     else:
         query = '''
-            SELECT id, title FROM Votes
+            SELECT id, title FROM Votings
             WHERE club_id = ?
             '''
         params = (club_id,)
@@ -323,20 +323,20 @@ async def list_of_votes(club_id, *vote_status):
 # Извлекаются голосования имеющие эти статусы.
 # Возвращает cписок кортежей из ID, названий вариантов и статусов вариантов
 @log_function_call
-async def list_of_variants(vote_id, *variant_status):
+async def list_of_variants(voting_id, *variant_status):
     if variant_status:
         placeholders = ', '.join('?' for _ in variant_status)
         query = f'''
             SELECT id, title, variant_status FROM Variants
-            WHERE vote_id = ? AND variant_status IN ({placeholders})
+            WHERE voting_id = ? AND variant_status IN ({placeholders})
             '''
-        params = (vote_id,) + variant_status
+        params = (voting_id,) + variant_status
     else:
         query = '''
             SELECT id, title, variant_status FROM Variants
-            WHERE vote_id = ?
+            WHERE voting_id = ?
             '''
-        params = (vote_id,)
+        params = (voting_id,)
 
     logging.info(f"Выполняется запрос: {query}")
     logging.info(f"Параметры для запроса: {params}")

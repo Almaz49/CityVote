@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS `Votes` (
+CREATE TABLE IF NOT EXISTS `Votings` (
 	`id` integer primary key NOT NULL UNIQUE,
 	`creator` INTEGER NOT NULL,
 	`vote_type` TEXT NOT NULL DEFAULT usual,
@@ -8,22 +8,22 @@ CREATE TABLE IF NOT EXISTS `Votes` (
 	`result` INTEGER,
 	time_create TEXT,
     time_start    TEXT,
-    time_close    TEXT,
-	vote_status   TEXT,
+    time_completed    TEXT,
+	voting_status   TEXT,
 FOREIGN KEY(`creator`) REFERENCES `Members`(`id`),
 FOREIGN KEY(`club_id`) REFERENCES `Clubs`(`id`),
 FOREIGN KEY(`result`) REFERENCES `Variants`(`id`)
 );
 CREATE TABLE IF NOT EXISTS `Variants` (
 	`id` integer primary key NOT NULL UNIQUE,
-	`vote_id` INTEGER NOT NULL,
+	`voting_id` INTEGER NOT NULL,
 	`author` INTEGER NOT NULL,
 	`title` TEXT NOT NULL,
 	`text` TEXT,
 	`time_create` TEXT,
 	variant_status TEXT,
-UNIQUE (vote_id, title),
-FOREIGN KEY(`vote_id`) REFERENCES `Votes`(`id`),
+UNIQUE (voting_id, title),
+FOREIGN KEY(`voting_id`) REFERENCES `Votings`(`id`),
 FOREIGN KEY(`author`) REFERENCES `Members`(`id`)
 );
 CREATE TABLE IF NOT EXISTS `Links` (

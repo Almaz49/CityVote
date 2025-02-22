@@ -80,10 +80,10 @@ def button(button: str, text: str = None) -> InlineKeyboardButton:
 
 
 buttons = {
-    'votes': {  # Категория: Голосования
-        'member': ['list_of_votes', 'archive_of_votes', 'future_votes'],  # Для статуса 'member'
-        'candidate': ['list_of_votes'],                  # Для статуса 'candidate'
-        'proxy': ['list_of_votes']                       # Для статуса 'proxy'
+    'votings': {  # Категория: Голосования
+        'member': ['ongoing_votings', 'completed_votings', 'future_votings'],  # Для статуса 'member'
+        'candidate': ['ongoing_votings'],                  # Для статуса 'candidate'
+        'proxy': ['ongoing_votings']                       # Для статуса 'proxy'
     },
     'actions': {  # Категория: Действия
         'member': ['select_proxy', 'become_proxy'],      # Для статуса 'member'
@@ -103,7 +103,7 @@ def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton
     keyboard = []
 
     # Список категорий в порядке приоритета
-    categories_order = ['votes', 'actions', 'settings']
+    categories_order = ['votings', 'actions', 'settings']
 
     for category in categories_order:
         if category not in buttons:

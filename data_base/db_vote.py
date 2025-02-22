@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 # Создание нового голосования. Создается название голосования и описание,
 # также может быть введен тип голосования и ссылка. Варианты добавляются позже.
 @log_function_call
-async def new_vote(club_id, creator, title, text=None, vote_type='usual', vote_status='add_variants'):
+async def new_voting(club_id, creator, title, text=None, vote_type='usual', voting_status='add_variants'):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if len(title) > 40:
         flag = False
@@ -26,7 +26,7 @@ async def new_vote(club_id, creator, title, text=None, vote_type='usual', vote_s
             try:
                 await cursor.execute(
                     """
-                    SELECT title FROM Votes WHERE club_id = ? AND vote_status <> 'finished'
+                    SELECT title FROM Votings WHERE club_id = ? AND voting_status <> 'finished'
                     """, (club_id,)
                 )
                 titles = await cursor.fetchall()
@@ -34,9 +34,9 @@ async def new_vote(club_id, creator, title, text=None, vote_type='usual', vote_s
                     logging.info(f"Добавление нового голосования: club_id={club_id}, creator={creator}, title={title}")
                     await cursor.execute(
                         '''
-                        INSERT INTO Votes(club_id, creator, title, text, time_create, vote_type, vote_status)
+                        INSERT INTO Votings(club_id, creator, title, text, time_create, vote_type, voting_status)
                         VALUES (?, ?, ?, ?, ?, ?, ?)
-                        ''', (club_id, creator, title, text, time_create, vote_type, vote_status)
+                        ''', (club_id, creator, title, text, time_create, vote_type, voting_status)
                     )
                     answ_str = 'Голосование добавлено'
                     flag = True
@@ -55,7 +55,7 @@ async def new_vote(club_id, creator, title, text=None, vote_type='usual', vote_s
 # если есть - ссылка.
 # Возвращает комментарий по итогам добавления.
 @log_function_call
-async def new_variant(vote_id, author, title, text=None, variant_status='valid'):
+async def new_variant(voting_id, author, title, text=None, variant_status='valid'):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if len(title) > 40:
         flag, answ_str = False, 'Название не должно быть длиннее 40 символов.'
@@ -64,24 +64,24 @@ async def new_variant(vote_id, author, title, text=None, variant_status='valid')
             try:
                 await cursor.execute(
                     """
-                    SELECT vote_status FROM Votes WHERE id = ?
-                    """, (vote_id,)
+                    SELECT voting_status FROM Votings WHERE id = ?
+                    """, (voting_id,)
                 )
                 status, = await cursor.fetchone()
                 if status == 'add_variants':
-                    logging.info(f"Добавление нового варианта: vote_id={vote_id}, author={author}, title={title}")
+                    logging.info(f"Добавление нового варианта: voting_id={voting_id}, author={author}, title={title}")
                     await cursor.execute(
                         """
-                        SELECT title FROM Variants WHERE vote_id = ?
-                        """, (vote_id,)
+                        SELECT title FROM Variants WHERE voting_id = ?
+                        """, (voting_id,)
                     )
                     titles = await cursor.fetchall()
                     if (title,) not in titles:
                         await cursor.execute(
                             '''
-                            INSERT INTO Variants(vote_id, author, title, variant_status, text, time_create)
+                            INSERT INTO Variants(voting_id, author, title, variant_status, text, time_create)
                             VALUES (?, ?, ?, ?, ?, ?)
-                            ''', (vote_id, author, title, variant_status, text, time_create)
+                            ''', (voting_id, author, title, variant_status, text, time_create)
                         )
                         answ_str = 'Вариант добавлен'
                         flag = True
@@ -100,23 +100,23 @@ async def new_variant(vote_id, author, title, text=None, variant_status='valid')
 # Функция старта голосования. Меняем статус голосования на 'ongoing'.
 # Указываем, кто запустил голосование (если не автоматически).
 @log_function_call
-async def vote_start(vote_id, starter=None):
+async def voting_start(voting_id, starter=None):
     time_start = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
                 '''
-                UPDATE Votes SET vote_status = ?, time_start = ?
+                UPDATE Votings SET voting_status = ?, time_start = ?
                 WHERE id = ?
-                ''', ('ongoing', time_start, vote_id)
+                ''', ('ongoing', time_start, voting_id)
             )
             await cursor.execute(
                 '''
                 INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
                 VALUES (?, ?, ?, ?, ?)
-                ''', ('vote', vote_id, starter, 'ongoing', time_start)
+                ''', ('vote', voting_id, starter, 'ongoing', time_start)
             )
-            logging.info(f"Голосование {vote_id} запущено пользователем {starter}.")
+            logging.info(f"Голосование {voting_id} запущено пользователем {starter}.")
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при старте голосования: {e}")
             raise
@@ -126,19 +126,19 @@ async def vote_start(vote_id, starter=None):
 
 # Функция возвращает ID голосования по ID варианта
 @log_function_call
-async def extract_vote_id(variant_id):
+async def extract_voting_id(variant_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
                 '''
-                SELECT vote_id FROM Variants WHERE id = ?
+                SELECT voting_id FROM Variants WHERE id = ?
                 ''', (variant_id,)
             )
             result = await cursor.fetchone()
             if result:
-                vote_id, = result
-                logging.info(f"ID голосования для variant_id={variant_id}: {vote_id}")
-                return vote_id
+                voting_id, = result
+                logging.info(f"ID голосования для variant_id={variant_id}: {voting_id}")
+                return voting_id
             else:
                 logging.info(f"Для variant_id={variant_id} не найдено голосования.")
                 return None
@@ -148,21 +148,21 @@ async def extract_vote_id(variant_id):
 
 # Функция возвращает ID группы по ID голосования
 @log_function_call
-async def extract_group_id(vote_id):
+async def extract_group_id(voting_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
                 '''
-                SELECT club_id FROM Votes WHERE id = ?
-                ''', (vote_id,)
+                SELECT club_id FROM Votings WHERE id = ?
+                ''', (voting_id,)
             )
             result = await cursor.fetchone()
             if result:
                 club_id, = result
-                logging.info(f"ID группы для vote_id={vote_id}: {club_id}")
+                logging.info(f"ID группы для voting_id={voting_id}: {club_id}")
                 return club_id
             else:
-                logging.info(f"Для vote_id={vote_id} не найдена группа.")
+                logging.info(f"Для voting_id={voting_id} не найдена группа.")
                 return None
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при получении ID группы: {e}")
@@ -171,17 +171,17 @@ async def extract_group_id(vote_id):
 # Функция выясняет, за какие варианты в данном голосовании голосовал (лично) пользователь
 # Возвращает ID вариантов (список кортежей с одним членом) или None
 @log_function_call
-async def past_choise(member_id, vote_id):
+async def past_choise(member_id, voting_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute('''
                 SELECT id FROM Elections
                 WHERE member_id = ? AND variant_id IN
                 (SELECT id FROM Variants
-                WHERE vote_id = ?) AND status = 'valid'
-            ''', (member_id, vote_id))
+                WHERE voting_id = ?) AND status = 'valid'
+            ''', (member_id, voting_id))
             result = await cursor.fetchall()
-            logging.info(f"Результат выборки для member_id={member_id}, vote_id={vote_id}: {result}")
+            logging.info(f"Результат выборки для member_id={member_id}, voting_id={voting_id}: {result}")
             return result
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при проверке прошлых выборов: {e}")
@@ -269,8 +269,8 @@ async def count_proxy_votes(variant_id):
                 AND id NOT IN
                 (SELECT member_id FROM Elections WHERE status = 'valid'
                 AND variant_id IN
-                (SELECT id FROM Variants WHERE vote_id IN
-                (SELECT vote_id FROM Variants WHERE id = ?)))
+                (SELECT id FROM Variants WHERE voting_id IN
+                (SELECT voting_id FROM Variants WHERE id = ?)))
                 AND id IN
                 (SELECT member_id FROM Status WHERE status = 'votist')
             ''', (variant_id, variant_id))
@@ -290,21 +290,21 @@ async def count_proxy_votes(variant_id):
 @log_function_call
 async def election(member_id, variant_id):
     time_election = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    vote_id = await extract_vote_id(variant_id)
-    old_elect = await past_choise(member_id, vote_id)
+    voting_id = await extract_voting_id(variant_id)
+    old_elect = await past_choise(member_id, voting_id)
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute('''
-                SELECT vote_status FROM Votes WHERE id = ?
-            ''', (vote_id,))
+                SELECT voting_status FROM Votings WHERE id = ?
+            ''', (voting_id,))
             result = await cursor.fetchone()
             if result:
-                vote_status, = result
-                if vote_status == 'add_variants':
+                voting_status, = result
+                if voting_status == 'add_variants':
                     answer = (False, 'Голосование ещё не началось')
-                elif vote_status == 'closed':
+                elif voting_status == 'completed':
                     answer = (False, 'Голосование уже закончилось')
-                elif vote_status == 'ongoing':
+                elif voting_status == 'ongoing':
                     await cursor.execute('''
                         SELECT variant_status FROM Variants WHERE id = ?
                     ''', (variant_id,))
@@ -344,10 +344,10 @@ async def election(member_id, variant_id):
 # Оставшиеся варианты должны в сумме набирать 50% голосов от имеющих право голоса.
 # Возвращает кортеж из ID проигравших вариантов.
 @log_function_call
-async def vote_stage(vote_id, stager=None):
+async def voting_stage(voting_id, stager=None):
     time_stage = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    variants = await list_of_variants(vote_id, 'valid')
-    club_id = await extract_group_id(vote_id)
+    variants = await list_of_variants(voting_id, 'valid')
+    club_id = await extract_group_id(voting_id)
     s_votist = await count_votist(club_id)
 
     # Подсчитываем число голосов, отданных за каждый вариант (в виде кортежа): всего, напрямую, не имеющих права голоса
@@ -361,7 +361,7 @@ async def vote_stage(vote_id, stager=None):
         res[item[0]] = (dir_votes + prox_votes, dir_votes, empt_votes)
         sum_vote += dir_votes + prox_votes
 
-    logging.info(f"Результаты голосования для vote_id={vote_id}: {res}")
+    logging.info(f"Результаты голосования для voting_id={voting_id}: {res}")
     logging.info(f"Суммарное количество голосов: {sum_vote}")
 
     if sum_vote * 2 > s_votist:
@@ -389,7 +389,7 @@ async def vote_stage(vote_id, stager=None):
                         '''
                         INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
                         VALUES (?,?,?,?,?)
-                        ''', ('vote', vote_id, stager, 'stage', time_stage)
+                        ''', ('vote', voting_id, stager, 'stage', time_stage)
                     )
                     logging.info(f"Проигравшие варианты: {losers}")
                     return tuple(zip(*losers))[0] if losers else None
@@ -406,12 +406,12 @@ async def vote_stage(vote_id, stager=None):
 # Функция создания финального этапа голосования (где голосуется два варианта или больше, если есть варианты,
 # которые набрали столько же, сколько второй)
 @log_function_call
-async def vote_final(vote_id, finaler=None):
+async def voting_final(voting_id, finaler=None):
     time_final = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    variants = await list_of_variants(vote_id, 'valid')
+    variants = await list_of_variants(voting_id, 'valid')
 
     if not variants:
-        logging.info(f"Для vote_id={vote_id} нет действительных вариантов.")
+        logging.info(f"Для voting_id={voting_id} нет действительных вариантов.")
         return None
 
     res = {}
@@ -437,7 +437,7 @@ async def vote_final(vote_id, finaler=None):
                     '''
                     INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
                     VALUES (?,?,?,?,?)
-                    ''', ('vote', vote_id, finaler, 'final', time_final)
+                    ''', ('vote', voting_id, finaler, 'final', time_final)
                 )
                 logging.info(f"Проигравшие варианты: {losers}")
                 return tuple(zip(*losers))[0] if losers else None
@@ -451,12 +451,12 @@ async def vote_final(vote_id, finaler=None):
 # Функция завершения голосования. Определяет вариант - победитель.
 # При прочих равных (что вряд ли) побеждает тот вариант, который создан раньше.
 @log_function_call
-async def vote_finish(vote_id, finisher=None):
+async def voting_complete(voting_id, finisher=None):
     time_finish = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    variants = await list_of_variants(vote_id, 'valid')
+    variants = await list_of_variants(voting_id, 'valid')
 
     if not variants:
-        logging.info(f"Для vote_id={vote_id} нет действительных вариантов.")
+        logging.info(f"Для voting_id={voting_id} нет действительных вариантов.")
         return None, [], []
 
     res = {}
@@ -500,20 +500,20 @@ async def vote_finish(vote_id, finisher=None):
                 )
                 await cursor.execute(
                     """
-                    UPDATE Votes SET result = ?, time_close = ? WHERE id = ?
-                    """, (winner_id, time_finish, vote_id)
+                    UPDATE Votings SET result = ?, time_completed = ? WHERE id = ?
+                    """, (winner_id, time_finish, voting_id)
                 )
 
             await cursor.execute(
                 '''
-                UPDATE Votes SET vote_status = 'finished', time_close = ? WHERE id = ?
-                ''', (time_finish, vote_id)
+                UPDATE Votings SET voting_status = 'finished', time_completed = ? WHERE id = ?
+                ''', (time_finish, voting_id)
             )
             await cursor.execute(
                 '''
                 INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
                 VALUES (?,?,?,?,?)
-                ''', ('vote', vote_id, finisher, 'finish', time_finish)
+                ''', ('vote', voting_id, finisher, 'finish', time_finish)
             )
 
             logging.info(f"Победивший вариант: {winner_id}, Проигравшие варианты: {losers}")

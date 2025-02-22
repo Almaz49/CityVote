@@ -36,6 +36,8 @@ if admin_ids:
             cursor.execute('SELECT id FROM Members WHERE user_id = ? AND club_id = ?', (ad, club_id)) # извлекаем memder_id админа
             m_id, =  cursor.fetchone()
             cursor.execute('INSERT OR IGNORE INTO Status(member_id, status) VALUES(?,?)', (m_id,'owner')) #присваем статус владельца в соотвествующей группе
+            cursor.execute('INSERT OR IGNORE INTO Status(member_id, status) VALUES(?,?)', (m_id,'member')) #присваем статус участника в соотвествующей группе
+
 
 """
 Надо сделать обраотку если запрос выдал None

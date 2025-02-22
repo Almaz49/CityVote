@@ -69,10 +69,10 @@ async def extract_user_data_tg(tg_id, *c):
 
 # Функция создания нового голосования
 @log_function_call
-async def new_vote_tg(creator_tg_id, title, text=None, vote_type='usual', vote_status='add_variants'):
+async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voting_status='add_variants'):
     creator = await member_id_tg(creator_tg_id)
     if creator:
-        result = await new_vote(club_id, creator, title, text, vote_type, vote_status)
+        result = await new_voting(club_id, creator, title, text, vote_type, voting_status)
         logging.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
         return result
     else:
@@ -168,7 +168,7 @@ async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
 
 # Создание нового голосования
 @log_function_call
-async def new_vote_tg(creator_tg_id, title, text=None, vote_type='usual', vote_status='add_variants'):
+async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voting_status='add_variants'):
     creator_user_id = await extract_user_id(creator_tg_id)
     if not creator_user_id:
         logging.warning(f"Не найден пользователь с tg_id={creator_tg_id}")
@@ -179,14 +179,14 @@ async def new_vote_tg(creator_tg_id, title, text=None, vote_type='usual', vote_s
         logging.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы")
         return False, 'Вы не являетесь участником группы'
 
-    result = await new_vote(club_id, creator, title, text=text, vote_type=vote_type, vote_status=vote_status)
+    result = await new_voting(club_id, creator, title, text=text, vote_type=vote_type, voting_status=voting_status)
     logging.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
     return result
 
 # Создание варианта для голосования. Добавляется в голосования со статусом ожидания вариантов.
 # В БД вносится автор, заголовок варианта, текст варианта, если есть и мб - ссылка
 @log_function_call
-async def new_variant_tg(vote_id, creator_tg_id, title, text=None):
+async def new_variant_tg(voting_id, creator_tg_id, title, text=None):
     user_id = await extract_user_id(creator_tg_id)
     if not user_id:
         logging.warning(f"Не найден пользователь с tg_id={creator_tg_id}")
@@ -197,8 +197,8 @@ async def new_variant_tg(vote_id, creator_tg_id, title, text=None):
         logging.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы")
         return False, 'Вы не являетесь участником группы'
 
-    result = await new_variant(vote_id, author, title, text=text)
-    logging.info(f"Добавлен новый вариант для голосования vote_id={vote_id} от tg_id={creator_tg_id}: {result}")
+    result = await new_variant(voting_id, author, title, text=text)
+    logging.info(f"Добавлен новый вариант для голосования voting_id={voting_id} от tg_id={creator_tg_id}: {result}")
     return result
 
 # Извлечение статусов участника группы (отдает список статусов)
@@ -220,11 +220,11 @@ async def extract_status_tg(tg_id):
 
 # Функция извлечения списка идущих голосований
 @log_function_call
-async def list_of_votes_tg(*vote_status):
+async def list_of_votings_tg(*voting_status):
     try:
-        votes = await list_of_votes(club_id, *vote_status)
-        logging.info(f"Извлечены голосования для club_id={club_id}: {votes}")
-        return votes
+        votings = await list_of_votings(club_id, *voting_status)
+        logging.info(f"Извлечены голосования для club_id={club_id}: {votings}")
+        return votings
     except Exception as e:
         logging.error(f"Ошибка при извлечении голосований: {e}")
         raise
@@ -274,14 +274,14 @@ async def election_tg(tg_id, variant_id):
 # Функция старта голосования. Меняем статус голосования на 'ongoing'.
 # Указываем, кто запустил голосование (если не автоматически).
 @log_function_call
-async def vote_start_tg(vote_id, starter_tg_id=None):
+async def voting_start_tg(voting_id, starter_tg_id=None):
     try:
         if starter_tg_id:
             starter = await extract_member_id(club_id, await extract_user_id(starter_tg_id))
-            await vote_start(vote_id, starter)
+            await voting_start(voting_id, starter)
         else:
-            await vote_start(vote_id)
-        logging.info(f"Голосование vote_id={vote_id} успешно запущено.")
+            await voting_start(voting_id)
+        logging.info(f"Голосование voting_id={voting_id} успешно запущено.")
     except Exception as e:
         logging.error(f"Ошибка при старте голосования: {e}")
         raise
@@ -290,15 +290,15 @@ async def vote_start_tg(vote_id, starter_tg_id=None):
 # Оставшиеся варианты должны в сумме набирать 50% голосов от имеющих право голоса.
 # Возвращает кортеж из ID проигравших вариантов.
 @log_function_call
-async def vote_stage_tg(vote_id, stager_tg_id=None):
+async def voting_stage_tg(voting_id, stager_tg_id=None):
     try:
         if stager_tg_id:
             stager = await extract_member_id(club_id, await extract_user_id(stager_tg_id))
-            result = await vote_stage(vote_id, stager)
+            result = await voting_stage(voting_id, stager)
         else:
-            result = await vote_stage(vote_id)
+            result = await voting_stage(voting_id)
 
-        logging.info(f"Промежуточный этап голосования vote_id={vote_id} завершен: {result}")
+        logging.info(f"Промежуточный этап голосования voting_id={voting_id} завершен: {result}")
         return result
     except Exception as e:
         logging.error(f"Ошибка при завершении промежуточного этапа голосования: {e}")
@@ -308,18 +308,18 @@ async def vote_stage_tg(vote_id, stager_tg_id=None):
 # Функция создания финального этапа голосования (где голосуется два варианта или больше, если есть варианты,
 # которые набрали столько же, сколько второй)
 @log_function_call
-async def vote_final_tg(vote_id, finaler_tg_id=None):
+async def voting_final_tg(voting_id, finaler_tg_id=None):
     try:
         if finaler_tg_id:
             finaler = await extract_member_id(club_id, await extract_user_id(finaler_tg_id))
             if not finaler:
                 logging.warning(f"Пользователь с tg_id={finaler_tg_id} не является участником группы")
                 return False, 'Вы не являетесь участником группы'
-            result = await vote_final(vote_id, finaler)
+            result = await voting_final(voting_id, finaler)
         else:
-            result = await vote_final(vote_id)
+            result = await voting_final(voting_id)
 
-        logging.info(f"Создан финальный этап голосования vote_id={vote_id}: {result}")
+        logging.info(f"Создан финальный этап голосования voting_id={voting_id}: {result}")
         return result
     except Exception as e:
         logging.error(f"Ошибка при создании финального этапа голосования: {e}")
@@ -327,18 +327,18 @@ async def vote_final_tg(vote_id, finaler_tg_id=None):
 
 # Функция завершения голосования. Определяет вариант - победитель.
 @log_function_call
-async def vote_finish_tg(vote_id, finisher_tg_id=None):
+async def voting_complete_tg(voting_id, finisher_tg_id=None):
     try:
         if finisher_tg_id:
             finisher = await extract_member_id(club_id, await extract_user_id(finisher_tg_id))
             if not finisher:
                 logging.warning(f"Пользователь с tg_id={finisher_tg_id} не является участником группы")
                 return False, 'Вы не являетесь участником группы'
-            result = await vote_finish(vote_id, finisher)
+            result = await voting_complete(voting_id, finisher)
         else:
-            result = await vote_finish(vote_id)
+            result = await voting_complete(voting_id)
 
-        logging.info(f"Голосование vote_id={vote_id} успешно завершено: {result}")
+        logging.info(f"Голосование voting_id={voting_id} успешно завершено: {result}")
         return result
     except Exception as e:
         logging.error(f"Ошибка при завершении голосования: {e}")
