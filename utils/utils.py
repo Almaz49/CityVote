@@ -20,9 +20,20 @@ def log_function_call(func):
     return wrapper
 
 # Это декоратор, который каждый хэндлер объявляет в логах. Вызов происходит @log_function_call
+# def log_handler_call(func):
+#     @wraps(func)
+#     def wrapper(*args, **kwargs):
+#         logging.info(f"Вызван хэндлер {func.__name__} из модуля {func.__module__} \n")
+#         return func(*args, **kwargs)
+#     return wrapper
+
 def log_handler_call(func):
     @wraps(func)
-    def wrapper(*args, **kwargs):
-        logging.info(f"Вызван хэндлер {func.__name__} из модуля {func.__module__} \n")
-        return func(*args, **kwargs)
+    async def wrapper(*args, **kwargs):
+        logging.info(f"Вызван хэндлер {func.__name__} из модуля {func.__module__}\n")
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            logging.error(f"Ошибка в хэндлере {func.__name__}: {e}")
+            raise
     return wrapper

@@ -8,7 +8,7 @@ from data_base.telegram_bot_logic import member_id_tg
 
 class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Update, data: dict):
-        # logging.info(f"Data in LoggingAndErrorHandlingMiddleware: {data}\n")
+        # logging.info(f"Data in LoggingAndErrorHandlingMiddleware: {pformat(data)}\n")
         logging.info('\n Middleware logging_middleware started work\n')
         try:
             if isinstance(event, Update):
@@ -20,6 +20,9 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
 
             club_id = data.get('club_id',None)
             member_id = await member_id_tg(user_id)
+
+            if 'state' in data:
+                 logging.info(f"Middleware detected FSM state before handler: {await data['state'].get_state()}\n")
 
             # Создаем ключ 'data', если его еще нет
             if 'data' not in data:
@@ -36,6 +39,9 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
             response = await handler(event, data)
 
             # logging.info(f'Данные data после прохождения хэндлера: \n{pformat(data)}\n')
+            if 'state' in data:
+                 logging.info(f"\nMiddleware detected FSM state after handler: {await data['state'].get_state()}")
+                 logging.info(f"Middleware detected FSM data after handler: {await data['state'].get_data()}\n")
 
 
 

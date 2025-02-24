@@ -5,7 +5,7 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from keyboards.keyboards import user_menu, remove_markup, create_inline_kb, status_menu
+from keyboards.keyboards import user_menu, remove_markup, create_inline_kb
 from config_data.config import Config, load_config
 import logging
 from utils import log_handler_call
@@ -32,7 +32,7 @@ async def process_start_command(message: Message,data):
     Отправляет приветственное сообщение и главное меню.
     """
     try:
-        markup = await status_menu(data['user_status'])
+        markup = await user_menu(message.from_user.id, status=data['user_status'])
         await message.answer(
             text='Привет!\nЭто бот для проведения голосований',
             reply_markup=markup
@@ -95,7 +95,7 @@ async def process_cancel_command(message: Message, data:dict):
 # Хэндлер для команды /cancel в любом состоянии, кроме состояния по умолчанию
 @router.message(Command(commands='cancel'), ~StateFilter(default_state))
 @log_handler_call
-async def process_cancel_command_state(message: Message, state: FSMContext):
+async def process_cancel_command_state(message: Message, state: FSMContext, data: dict[str]):
     """
     Обработчик команды /cancel.
     Завершает текущую машину состояний.

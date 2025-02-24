@@ -75,12 +75,12 @@ async def process_list_of_votes(callback: CallbackQuery, data: dict):
 # Хэндлер для кнопки 'completed voting'
 @router.callback_query(F.data == 'completed_votings')
 @log_handler_call
-async def process_list_of_completed_votes(callback: CallbackQuery, data: dict):
+async def process_list_of_completed_votings(callback: CallbackQuery, data: dict):
     try:
         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        votings = await list_of_votes_tg('completed')
+        votings = await list_of_votings_tg('completed')
 
         if votings:
             text = 'Список голосований:\n'
@@ -132,7 +132,7 @@ async def process_list_of_future_votes(callback: CallbackQuery, data: dict):
         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        votings = await list_of_votes_tg('add_variants')
+        votings = await list_of_votings_tg('add_variants')
 
         if votings:
             text = 'Список голосований:\n'

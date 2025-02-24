@@ -19,12 +19,12 @@ logging.basicConfig(level=logging.INFO)
 # Универсальный фильтр для проверки статуса пользователя
 
 class StatusFilter(BaseFilter):
-    def __init__(self, required_status: str):
+    def __init__(self, required_status: list[str]):
         """
         Инициализация фильтра с требуемым статусом.
         :param required_status: Требуемый статус (например, "admin", "member").
         """
-        self.required_status = required_status.lower()
+        self.required_status = required_status
 
     async def __call__(self, event: Message, data: dict) -> bool:
         """
@@ -35,7 +35,12 @@ class StatusFilter(BaseFilter):
         """
         # Извлекаем user_status из словаря data
         user_status = data.get("user_status", [])
-        return self.required_status in user_status
+        logging.info(f"Проверка статуса в фильтре: требуется {self.required_status}, текущий статус {user_status}")
+        flag = False
+        for status in self.required_status:
+            if status in user_status:
+                flag = True
+        return flag
 
 # # Фильтр на статус администратора
 # class filter_isAdmin(StatusFilter):

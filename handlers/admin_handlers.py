@@ -1,3 +1,4 @@
+# Модуль admin_handlers , сожержит хэндлеры для админов и владельца группы
 import logging
 from aiogram import Bot, Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
@@ -23,7 +24,7 @@ club_id = config.tg_bot.club_id  # id группы в БД (не телегра�
 
 # Инициализируем роутер уровня модуля
 router = Router()
-router.message.filter(StatusFilter(required_status = 'admin') or StatusFilter(required_status = 'owner'))
+router.message.filter(StatusFilter(required_status = ['admin','owner']))
 
 # # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии по умолчанию
 # # и сообщать, что эта команда работает внутри машины состояний
@@ -241,12 +242,14 @@ async def process_new_status_cb(callback: CallbackQuery, state: FSMContext, data
 
     # Устанавливаем состояние ожидания ввода ID
     await state.set_state(FSMNewStatus.fill_ID_User)
+    logging.info(f"Установлено состояние: {await state.get_state()}")
+
 
 # Этот хэндлер будет срабатывать, если введен корректный ID (число)
 # и переводить в состояние подтверждения
 @router.message(StateFilter(FSMNewStatus.fill_ID_User), (lambda x: x.text.isdigit()))
 @log_handler_call
-async def process_user_id_sent(message: Message, state: FSMContext, contact: Contact = None):
+async def process_user_id_sent(message: Message, state: FSMContext):
     logging.info(f"Введенный ID пользователя: {message.text} от пользователя {message.from_user.id}")
     user_tg_id = int(message.text)
     await state.update_data(ID=user_tg_id)
@@ -254,7 +257,7 @@ async def process_user_id_sent(message: Message, state: FSMContext, contact: Con
         user_data = await extract_user_data_tg(user_tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')  # извлекаем данные о пользователе
         if user_data:
             await message.answer(
-                text=f'''Данные нового модератора\nИмя: {user_data[1]},
+                text=f'''Данные участника которому вы меняете статус:\nИмя: {user_data[1]},
 Фамилия: {user_data[2]}, \n Телефон: {user_data[3]}\nВсё верно?''',
                 reply_markup=confirm_markup  # клавиатура подтверждения из модуля клавиатур
             )
@@ -270,17 +273,13 @@ async def process_user_id_sent(message: Message, state: FSMContext, contact: Con
         await state.clear()
 
 
-# Этот хэндлер будет срабатывать, если введен корректный ID (число)
-# или отправлен контакт с ID
+# Этот хэндлер будет срабатывать, если  отправлен контакт с ID
 # и переводить в состояние подтверждения
-@router.message(StateFilter(FSMNewStatus.fill_ID_User), (lambda x: x.text.isdigit()) or F.contact)
+@router.message(StateFilter(FSMNewStatus.fill_ID_User), F.contact)
 @log_handler_call
-async def process_user_id_sent(message: Message, state: FSMContext, contact: Contact = None):
-    logging.info(f"Введенный ID пользователя: {message.text} от пользователя {message.from_user.id}")
-    if contact:
-        user_tg_id = contact.user_id
-    else:
-        user_tg_id = int(message.text)
+async def process_user_contact_sent(message: Message, state: FSMContext, contact: Contact = None):
+    logging.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
+    user_tg_id = contact.user_id
     await state.update_data(ID=user_tg_id)
     try:
         user_data = await extract_user_data_tg(user_tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')  # извлекаем данные о пользователе
@@ -309,6 +308,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     fsm_data = await state.get_data()
+    logging.info(f'FSM data: \n{fsm_data}\n')
     member_tg_id = fsm_data['ID']
 
     try:
@@ -323,11 +323,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
         for item in status:
             keyboards.append('not_' + item)
 
-        main_menu_button = InlineKeyboardButton(
-            text='Главное меню',
-            callback_data='main_menu'
-        )
-        keyboards.append(main_menu_button)
+        keyboards.append('main_menu')
         markup = create_inline_kb(1, *keyboards)
 
         # Добавляем данные для SafeEditMiddleware

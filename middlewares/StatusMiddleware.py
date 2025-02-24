@@ -1,3 +1,4 @@
+# модуль StatusMiddleware
 from aiogram import BaseMiddleware
 from aiogram.types import Message, CallbackQuery
 from data_base.telegram_bot_logic import status_member

@@ -81,12 +81,16 @@ def button(button: str, text: str = None) -> InlineKeyboardButton:
 
 buttons = {
     'votings': {  # Категория: Голосования
+        'user': ['ongoing_votings', 'completed_votings'],                  # Для статуса 'user'
         'member': ['ongoing_votings', 'completed_votings', 'future_votings'],  # Для статуса 'member'
-        'candidate': ['ongoing_votings'],                  # Для статуса 'candidate'
-        'proxy': ['ongoing_votings']                       # Для статуса 'proxy'
+        'candidate': ['ongoing_votings', 'completed_votings'],                  # Для статуса 'candidate'
+        'admin': ['ongoing_votings', 'completed_votings', 'future_votings'],  # Для статуса 'admin'
+        'owner': ['ongoing_votings', 'completed_votings', 'future_votings']  # Для статуса 'owner'
     },
     'actions': {  # Категория: Действия
-        'member': ['select_proxy', 'become_proxy'],      # Для статуса 'member'
+        'user':['registration'],                                      #Для статуса 'user'
+        'candidate':['leave_the_group'],                             #Для статуса 'candidate'
+        'member': ['select_proxy', 'become_proxy','leave_the_group'],      # Для статуса 'member'
         'proxy': ['resign_from_proxy'],                  # Для статуса 'proxy'
         'delegate': ['new_vote', 'new_variant']          # Для статуса 'delegate'
     },
@@ -144,6 +148,10 @@ async def user_menu(tg_id: int, status:list[str] = None) -> InlineKeyboardMarkup
                 keyboard = get_keyboard_for_status(['user'])
             elif 'candidate' in status:
                 keyboard = get_keyboard_for_status(['candidate'])
+            elif 'owner' in status:
+                keyboard = get_keyboard_for_status(['user','owner'])
+            elif 'admin' in status:
+                keyboard = get_keyboard_for_status(['user','admin'])
             else:
                 unknown_button = {'unknown': 'Я не знаю кто ты'}
                 return create_inline_kb(1, **unknown_button)
