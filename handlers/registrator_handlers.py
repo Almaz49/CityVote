@@ -7,7 +7,7 @@ from aiogram.types import CallbackQuery, Message
 from filters.filters import StatusFilter
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu
 from config_data.config import Config, load_config
-from data_base.telegram_bot_logic import db_update, extract_user_data_tg, member_id_tg
+from data_base.telegram_bot_logic import db_update, extract_user_data_tg, member_id_tg, new_status
 import logging
 from utils import log_handler_call
 
@@ -49,7 +49,7 @@ router.message.filter(StatusFilter(required_status = 'registrator'))
 # Этот хэндлер срабатывает при нажатии регистратором кнопки "Подтверждаю"
 @router.callback_query(F.data.startswith('yes_confirm:'))
 @log_handler_call
-async def process_registrator_yes_press(callback: CallbackQuery,data):
+async def process_registrator_yes_press(callback: CallbackQuery,data:dict):
     """
     Обработчик подтверждения членства нового участника.
     Изменяет статус пользователя в базе данных.
@@ -66,7 +66,7 @@ async def process_registrator_yes_press(callback: CallbackQuery,data):
             return
 
         # Обновляем статус пользователя в базе данных
-        await db_update('Members', 'id', member_id, status='member')
+        await new_status(registrator=data['member_id'], member_id=member_id, status='member')
         await callback.message.delete_reply_markup()  # Удаляем кнопки
 
         # Отправляем уведомление о успешном подтверждении

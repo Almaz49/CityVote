@@ -9,6 +9,7 @@ from keyboards.keyboards import user_menu, remove_markup, create_inline_kb
 from config_data.config import Config, load_config
 import logging
 from utils import log_handler_call
+from LEXICON.LEXICON import LEXICON
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -26,21 +27,26 @@ router = Router()
 # Хэндлер для команды /start
 @router.message(Command(commands=["start"]))
 @log_handler_call
-async def process_start_command(message: Message,data):
+async def process_start_command(message: Message, data: dict):
     """
     Обработчик команды /start.
     Отправляет приветственное сообщение и главное меню.
     """
     try:
         markup = await user_menu(message.from_user.id, status=data['user_status'])
+        text = ('Привет!\nЭто бот для проведения голосований.\n'
+                  'Ваш статус в группе:')
+        for status in data['user_status']:
+            text += f'\n   -{LEXICON.get(status, status)}'
         await message.answer(
-            text='Привет!\nЭто бот для проведения голосований',
+            text=text,
             reply_markup=markup
         )
         logging.info(f"Пользователь {message.from_user.id} начал работу с ботом.")
     except Exception as e:
         logging.error(f"Ошибка при обработке команды /start: {e}")
-        await message.answer(text="Произошла ошибка при загрузке главного меню.")
+        await message.answer(text="Произошла ошибка при загрузке главного меню.",
+                             reply_markup=await user_menu(status=data['user_status']))
 
 # Хэндлер для команды /help
 @router.message(Command(commands=['help']))
@@ -69,7 +75,7 @@ async def process_help_callback(callback: CallbackQuery, data: dict):
 
     # Добавляем данные для SafeEditMiddleware
     data['response_text'] = 'Здесь будет описание функционала бота и инструкции по использованию.'
-    data['reply_markup'] = create_inline_kb(1, 'back', 'main_menu')
+    data['reply_markup'] = await user_menu(callback.from_user.id, status = data['user_status'])
 
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
@@ -95,7 +101,7 @@ async def process_cancel_command(message: Message, data:dict):
 # Хэндлер для команды /cancel в любом состоянии, кроме состояния по умолчанию
 @router.message(Command(commands='cancel'), ~StateFilter(default_state))
 @log_handler_call
-async def process_cancel_command_state(message: Message, state: FSMContext, data: dict[str]):
+async def process_cancel_command_state(message: Message, state: FSMContext, data: dict):
     """
     Обработчик команды /cancel.
     Завершает текущую машину состояний.
@@ -140,7 +146,7 @@ async def process_main_menu_button(callback: CallbackQuery, data: dict):
     markup = await user_menu(callback.from_user.id,data['user_status'])
 
     # Добавляем данные для SafeEditMiddleware
-    data['response_text'] = 'Главное меню для администраторов:'
+    data['response_text'] = 'Главное меню:'
     data['reply_markup'] = markup
 
     # Пытаемся отредактировать сообщение
@@ -165,7 +171,7 @@ async def process_main_menu_button_state(callback: CallbackQuery, state: FSMCont
     await state.clear()
 
     # Добавляем данные для SafeEditMiddleware
-    data['response_text'] = 'Главное меню для администраторов:'
+    data['response_text'] = 'Вы вышли из процесса.\nГлавное меню:'
     data['reply_markup'] = markup
 
     # Пытаемся отредактировать сообщение

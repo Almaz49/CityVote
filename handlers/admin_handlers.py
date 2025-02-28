@@ -86,27 +86,8 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, conta
 
     flag, ans_str = await extract_new_registrator_data(member_tg_id)  # извлекаем данные о новом регистраторе
 
-    # Создаем объекты инлайн-кнопок
-    ok_mod_button = InlineKeyboardButton(
-        text='ВСЁ ВЕРНО',
-        callback_data='NewRegistratorOK'
-    )
-    no_mod_button = InlineKeyboardButton(
-        text='НЕВЕРНО',
-        callback_data='NewRegistratorNotOK'
-    )
-    main_menu_button = InlineKeyboardButton(
-        text='Главное меню',
-        callback_data='main_menu'
-    )
-
-    # Добавляем кнопки в клавиатуру
-    keyboard: list[list[InlineKeyboardButton]] = [
-        [ok_mod_button, no_mod_button, main_menu_button],
-    ]
-
     # Создаем объект инлайн-клавиатуры
-    markup = InlineKeyboardMarkup(one_time_keyboard=True, inline_keyboard=keyboard)
+    markup = confirm_markup
 
     if flag:
         # Добавляем данные для SafeEditMiddleware
@@ -314,7 +295,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
     try:
         status = await extract_status_tg(member_tg_id)
         all_st = await all_status()
-        vacansy = list(set(all_st) - set(status) - {'owner', 'user', 'candidate'})
+        vacansy = list(set(all_st) - set(status) - {'owner', 'user', 'candidate','votist','proxy'})
         status = list(set(status) - {'owner', 'member', 'user', 'candidate'})
 
         keyboards = []
@@ -539,54 +520,4 @@ async def warning_new_status(message: Message):
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
              'Если вы хотите прервать изменение статуса - '
              'отправьте команду /cancel'
-    )
-
-
-
-
-# Хэндлер для кнопки 'Главное меню' в основном состоянии
-@router.callback_query(F.data == 'main_menu', StateFilter(default_state))
-@log_handler_call
-async def process_main_menu_button(callback: CallbackQuery, data: dict):
-    """
-    Обработчик кнопки "Главное меню".
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-    markup = await user_menu(callback.from_user.id, data['user_status'])
-
-    # Добавляем данные для SafeEditMiddleware
-    data['response_text'] = 'Главное меню для администраторов:'
-    data['reply_markup'] = markup
-
-    # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
-        text=data['response_text'],
-        reply_markup=data['reply_markup']
-    )
-
-# Хэндлер для кнопки 'Главное меню' внутри машины состояний.
-@router.callback_query(F.data == 'main_menu', ~StateFilter(default_state))
-@log_handler_call
-async def process_main_menu_button_state(callback: CallbackQuery, state: FSMContext, data: dict):
-    """
-    Обработчик кнопки "Главное меню".
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-    markup = await user_menu(callback.from_user.id, data['user_status'])
-
-    # Сбрасываем состояние и очищаем данные, полученные внутри состояний
-    await state.clear()
-
-    # Добавляем данные для SafeEditMiddleware
-    data['response_text'] = 'Главное меню для администраторов:'
-    data['reply_markup'] = markup
-
-    # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
-        text=data['response_text'],
-        reply_markup=data['reply_markup']
     )

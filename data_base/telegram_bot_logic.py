@@ -142,7 +142,7 @@ async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
     registrator = await extract_member_id(club_id, registrator_user_id)
     if not registrator:
         ans_str += 'Нет такого регистратора.'
-        logging.warning(f"Не найден участник с user_id={registrator_user_id} в группе {club_id}: {ans_str}")
+        logging.warning(f"Не найден участник с member_id={registrator_user_id} в группе {club_id}: {ans_str}")
         return ans_str
 
     user_id = await extract_user_id(member_tg_id)

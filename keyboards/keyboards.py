@@ -92,7 +92,7 @@ buttons = {
         'candidate':['leave_the_group'],                             #Для статуса 'candidate'
         'member': ['select_proxy', 'become_proxy','leave_the_group'],      # Для статуса 'member'
         'proxy': ['resign_from_proxy'],                  # Для статуса 'proxy'
-        'delegate': ['new_vote', 'new_variant']          # Для статуса 'delegate'
+        'delegate': ['new_voting', 'new_variant']          # Для статуса 'delegate'
     },
     'settings': {  # Категория: Настройки
         'admin': ['new_status'],                         # Для статуса 'admin'
@@ -138,7 +138,7 @@ def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton
     return keyboard
 
 @log_function_call
-async def user_menu(tg_id: int, status:list[str] = None) -> InlineKeyboardMarkup | None:
+async def user_menu(tg_id: int = None, status:list[str] = None) -> InlineKeyboardMarkup | None:
     try:
         if not status:
             status = await extract_status_tg(tg_id)
@@ -170,32 +170,6 @@ async def user_menu(tg_id: int, status:list[str] = None) -> InlineKeyboardMarkup
         logging.error(f"Ошибка при создании меню для пользователя {tg_id}: {e}")
         raise
 
-@log_function_call
-async def status_menu(status: list[str]) -> InlineKeyboardMarkup | None:
-    try:
-        logging.info(f"Создание меню для пользователя со статусами: {status}")
-        if not status or 'member' not in status:
-            if 'user' in status:
-                keyboard = get_keyboard_for_status(['user'])
-            elif 'candidate' in status:
-                keyboard = get_keyboard_for_status(['candidate'])
-            else:
-                unknown_button = {'unknown': 'Я не знаю кто ты'}
-                return create_inline_kb(1, **unknown_button)
-        else:
-            keyboard = get_keyboard_for_status(status)
-
-        # Добавляем кнопку "помощь"
-        help_button = InlineKeyboardButton(text=LEXICON.get('help', 'Помощь'), callback_data='help')
-        keyboard.append([help_button])
-
-        kb_builder = InlineKeyboardBuilder()
-        for row in keyboard:
-            kb_builder.row(*row)
-        return kb_builder.as_markup()
-    except Exception as e:
-        logging.error(f"Ошибка при создании меню для пользователя со статусами {status}: {e}")
-        raise
 
 
 """
@@ -218,10 +192,20 @@ no_mod_button = InlineKeyboardButton(
     text='НЕВЕРНО',
     callback_data='ConfirmNotOK'
 )
+back_to_menu_button = InlineKeyboardButton(
+    text = LEXICON.get('return_to_main_menu','Назад в главное меню'),
+    callback_data='main_menu'
+    )
+
 confirm_markup = InlineKeyboardMarkup(
-    inline_keyboard=[[ok_mod_button, no_mod_button]],
+    inline_keyboard=[[ok_mod_button, no_mod_button],[back_to_menu_button]],
     one_time_keyboard=True
 )
+
+# Клавиатура для возврата в главное меню (для прерывания какого-то процесса)
+
+return_to_main_menu_keyboards = {'main_menu' : LEXICON.get('return_to_main_menu','Назад в главное меню')}
+return_to_main_menu_markup = create_inline_kb(1, **return_to_main_menu_keyboards)
 
 # Клавиатура для добавления вариантов голосования
 ok_var_button = InlineKeyboardButton(
@@ -230,7 +214,7 @@ ok_var_button = InlineKeyboardButton(
 )
 finish_var_button = InlineKeyboardButton(
     text='Завершить добавление вариантов',
-    callback_data='Finish_Variant'
+    callback_data='main_menu'
 )
 variant_markup = InlineKeyboardMarkup(
     inline_keyboard=[[ok_var_button, finish_var_button]],

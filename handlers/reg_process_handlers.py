@@ -15,6 +15,7 @@ from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_
 from filters.filters import filter_contact
 from config_data.config import Config, load_config
 from utils import log_handler_call, log_function_call
+from LEXICON.LEXICON import LEXICON
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +39,7 @@ router = Router()
 # Этот хэндлер будет срабатывать на апдейт типа CallbackQuery с data 'reg_button_pressed'
 @router.callback_query(F.data == 'reg_button_pressed', StateFilter(default_state))
 @log_handler_call
-async def reg_button_press(callback: CallbackQuery, state: FSMContext):
+async def reg_button_press(callback: CallbackQuery, state: FSMContext,data:dict):
     # Отвечаем на callback, чтобы убрать часики
     await callback.answer()
     tg_id = callback.from_user.id
@@ -48,7 +49,8 @@ async def reg_button_press(callback: CallbackQuery, state: FSMContext):
 
         if not any(user_data[2:]):  # если профиль пользователя пуст, кроме телеграм ID
             member_status = await status_member(tg_id)
-            logging.info(f"Статус пользователя с tg_id={tg_id}: {member_status}")
+            logging.info(f"Статус пользователя с tg_id={tg_id}: {member_status}"
+                         f'Статус в пользовательском словаре: {data['user_status']}')
 
             if member_status == ['user']:  # если пользователь не зарегистрирован в группе
                 logging.info(f"Пользователь с tg_id={tg_id} начинает регистрацию.")

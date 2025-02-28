@@ -114,7 +114,7 @@ async def voting_start(voting_id, starter=None):
                 '''
                 INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
                 VALUES (?, ?, ?, ?, ?)
-                ''', ('vote', voting_id, starter, 'ongoing', time_start)
+                ''', ('voting', voting_id, starter, 'ongoing', time_start)
             )
             logging.info(f"Голосование {voting_id} запущено пользователем {starter}.")
         except aiosqlite.Error as e:
@@ -389,7 +389,7 @@ async def voting_stage(voting_id, stager=None):
                         '''
                         INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
                         VALUES (?,?,?,?,?)
-                        ''', ('vote', voting_id, stager, 'stage', time_stage)
+                        ''', ('voting', voting_id, stager, 'stage', time_stage)
                     )
                     logging.info(f"Проигравшие варианты: {losers}")
                     return tuple(zip(*losers))[0] if losers else None
@@ -437,7 +437,7 @@ async def voting_final(voting_id, finaler=None):
                     '''
                     INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
                     VALUES (?,?,?,?,?)
-                    ''', ('vote', voting_id, finaler, 'final', time_final)
+                    ''', ('voting', voting_id, finaler, 'final', time_final)
                 )
                 logging.info(f"Проигравшие варианты: {losers}")
                 return tuple(zip(*losers))[0] if losers else None
@@ -513,7 +513,7 @@ async def voting_complete(voting_id, finisher=None):
                 '''
                 INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
                 VALUES (?,?,?,?,?)
-                ''', ('vote', voting_id, finisher, 'finish', time_finish)
+                ''', ('voting', voting_id, finisher, 'finish', time_finish)
             )
 
             logging.info(f"Победивший вариант: {winner_id}, Проигравшие варианты: {losers}")
