@@ -70,7 +70,7 @@ async def extract_user_data_tg(tg_id, *c):
 # Функция создания нового голосования
 @log_function_call
 async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voting_status='add_variants'):
-    creator = await member_id_tg(creator_tg_id)
+    creator = await extract_user_member_id(creator_tg_id)[1]
     if creator:
         result = await new_voting(club_id, creator, title, text, vote_type, voting_status)
         logging.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
@@ -79,15 +79,15 @@ async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voti
         logging.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы.")
         return False, 'Вы не являетесь участником группы'
 
-# Функция извлечения member_id по tg_id
+# Функция извлечения user_id и member_id по tg_id
 @log_function_call
-async def member_id_tg(tg_id):  # Добавляем club_id как параметр
+async def extract_user_member_id(tg_id):  # Добавляем club_id как параметр
     try:
         user_id = await extract_user_id(tg_id)
         if user_id:
             member_id = await extract_member_id(club_id, user_id)
             logging.info(f"Извлечен member_id={member_id} для tg_id={tg_id}")
-            return member_id
+            return user_id, member_id
         else:
             logging.info(f"Пользователь с tg_id={tg_id} не найден.")
             return None
@@ -246,8 +246,8 @@ async def list_of_members_tg(status):
 async def trust_tg(tg_id, proxy_tg_id):
     try:
         logging.info(f"Вызвана функция trust_tg")
-        member_id = await member_id_tg(tg_id)
-        proxy_member_id = await member_id_tg(proxy_tg_id)
+        member_id = await extract_user_member_id(tg_id)[1]
+        proxy_member_id = await extract_user_member_id(proxy_tg_id)[1]
         result =  await trust(member_id,proxy_member_id)
         logging.info(f"Пользователь  с tg_id {tg_id} выбрал представителем учатника с member_id {member_id}")
         return True, result

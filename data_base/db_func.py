@@ -199,7 +199,7 @@ async def extract_member_id(club_id, user_id):
 async def list_of_members(club_id, status):
     # Получаем список имен участников из БД
     query = '''
-    SELECT first_name, last_name, tg_id, tg_first_name, tg_last_name FROM Users
+    SELECT first_name, last_name, tg_id, tg_first_name, tg_last_name, username FROM Users
     WHERE id IN (SELECT user_id FROM Members
     WHERE club_id = ?)
     '''
@@ -243,8 +243,8 @@ async def list_of_members(club_id, status):
 # Функция извлечения данных о пользователе. *c - список столбцов, данные из которых
 # извлекаются.
 @log_function_call
-async def extract_user_data(user_id, *c):
-    cols = ', '.join(c) if c else '*'  # формирую часть строки запроса из имен столбцов или '*'
+async def extract_user_data(user_id, *columns):
+    cols = ', '.join(columns) if columns else '*'  # формирую часть строки запроса из имен столбцов или '*'
 
     ins_str = f"SELECT {cols} FROM Users WHERE id = ?"
 
@@ -427,6 +427,16 @@ async def extract_status(member_id):
         else:
             logging.info("Статусы не найдены, возвращается ['user']")
             return ['user']
+
+# Функция проверяет уникальность присланного username. Возвращает True если он уникален
+@log_function_call
+async def is_username_uniq(username:str):
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute(
+            'SELECT username FROM Users'
+        )
+        result = await cursor.fetchall()
+        return (username,) not in result
 
 
 """

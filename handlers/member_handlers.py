@@ -3,9 +3,14 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import default_state, State, StatesGroup
 from filters.filters import StatusFilter
 from LEXICON.LEXICON import LEXICON
-from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, create_inline_kb
+from FSMs.FSMs import FSM_become_proxy
+from services.services import not_votist_because_proxy_quit
+from keyboards.keyboards import (reg_markup, contact_markup, remove_markup, user_menu,
+            create_inline_kb, confirm_markup, return_to_main_menu_markup)
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import *
 import logging
@@ -447,14 +452,28 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
             )
             return
 
-        #    !!!!!!!!!!!!!!!!!!!!!!!!!!!
-        #       Разобраться с тёзками!
-        #    !!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-        # Создаем кнопки для каждого представителя, текст - Имя Фамилия, data - телеграм ID
+        # Создаем кнопки для каждого представителя, текст - его username в группе (не телеграм) или Имя Фамилия, callback-data - телеграм ID
         proxy_buttons = {}
         for member in members:
-            proxy_buttons[f'trust_{member[2]}'] = f"{member[0]} {member[1]}"
+            proxy_buttons[f'trust_{member[2]}'] = f'{member[5]}' if member[5] else  f"{member[0]} {member[1]}"
+
+        # # Смотрим, нет ли дубликатов (полных тезок среди представителей)
+        # # Создаем словарь для подсчёта частоты встречаемости значений
+        # value_counts = {}
+
+        # # Подсчитываем частоту каждого значения
+        # for value in proxy_buttons.values():
+        #     if value in value_counts:
+        #         value_counts[value] += 1
+        #     else:
+        #         value_counts[value] = 1
+
+        # # Находим значения, которые встречаются более одного раза
+        # duplicates = [key for key, count in value_counts.items() if count > 1]
+
+
+
 
 
         # Создаем инлайн-клавиатуру с кнопками
@@ -522,9 +541,9 @@ async def process_trust(callback: CallbackQuery, data: dict):
         raise  # Передаем исключение middleware для обработки
 
 # Хэндлер для кнопки 'become_proxy'
-@router.callback_query(F.data == 'become_proxy')
+@router.callback_query(F.data == 'become_proxy', StateFilter(default_state))
 @log_handler_call
-async def process_become_proxy(callback: CallbackQuery, data: dict):
+async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
         logging.info(f"Пользователь {callback.from_user.id} запросил статус 'proxy'.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -554,8 +573,104 @@ async def process_become_proxy(callback: CallbackQuery, data: dict):
             )
             return
 
+        columns = ('username',)
+        username, = extract_user_data(data['user_id'], *columns)
+        if username:
+            # Присваиваем статус 'proxy'
+            await new_status(member_id, member_id, 'proxy')
+            # Присваиваем статус 'votist' (если его не было)
+            await new_status(member_id,member_id,'votist')
+
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы стали представителем!'
+            data['reply_markup'] = await user_menu(callback.from_user.id)
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+        else:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = (
+                'Введите уникальное имя или псевдоним.'
+                'Это может быть ваше собственное имя (фамилия).'
+                'Важно, чтобы оно было уникальным для этой группы, чтобы пользователи различали представителей.'
+                'И желательно не длиннее 40 символов'
+            )
+            data['reply_markup'] = None
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+
+            await state.set_state(FSM_become_proxy.fill_username)
+
+    except Exception as e:
+        logging.error(f"Ошибка при обработке кнопки 'become_proxy': {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при присвоении статуса представителя.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+
+
+# Хэндлер будет обрабатывать ввод username представителя
+# и переводить в состояние ожидания подтверждения
+@router.message(StateFilter(FSM_become_proxy.fill_username))
+@log_handler_call
+async def process_username_sent(message: Message, state: FSMContext):
+    """
+    Обработчик ввода имени/псевдонима.
+    Запрашивает подтверждение.
+    """
+    logging.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
+    flag = await is_username_uniq(message.text)
+    if flag:
+        await state.update_data(username = message.text)
+        # Отправляем сообщение с подтверждением
+        await message.answer(
+            text=f'''Пожалуйста, подтвердите, правильно ли введено ваше имя/псевдоним?
+    {message.text}''',
+            reply_markup=confirm_markup
+        )
+        await state.set_state(FSM_become_proxy.fill_OK)
+    else:
+        await message.answer(
+            text='Такое имя/псевдоним уже есть. Попрбуйте придумать другой псевдоним или добавьте что-нибудь, что выделяло бы вас'
+        )
+
+
+# Этот хендлер будет срабатывать на нажатие кнопки "всё верно" при подтверждении username
+
+@router.callback_query(StateFilter(FSM_become_proxy.fill_OK), F.data == 'ConfirmOK')
+@log_handler_call
+async def process_username_entry(callback: CallbackQuery, state: FSMContext, data: dict):
+    logging.info(f"Кнопка 'ВСЁ ВЕРНО' при подтверждении username нажата пользователем {callback.from_user.id}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    fsm_data = await state.get_data()
+    username = fsm_data['username']
+    user_id = data['user_id']
+    member_id = data['member_id']
+
+    try:
+        # Записываем username в базу данных
+        await db_update('Users', 'id', user_id, username=username)
         # Присваиваем статус 'proxy'
-        await new_status_tg(callback.from_user.id, callback.from_user.id, 'proxy')
+        await new_status(member_id, member_id, 'proxy')
+        # Присваиваем статус 'votist' (если его не было)
+        await new_status(member_id,member_id,'votist')
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Вы стали представителем!'
@@ -567,20 +682,60 @@ async def process_become_proxy(callback: CallbackQuery, data: dict):
             reply_markup=data['reply_markup']
         )
 
+
+        # Завершаем машину состояний
+        await state.clear()
+
     except Exception as e:
-        logging.error(f"Ошибка при обработке кнопки 'become_proxy': {e}")
+        logging.error(f"Ошибка при записи username: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при присвоении статуса.'
+        data['response_text'] = f'Произошла ошибка: {str(e)}'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
-        # Редактируем сообщение в случае ошибки
+        # Пытаемся отредактировать сообщение
         await callback.message.edit_text(
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
 
+        await state.clear()
         raise  # Передаем исключение middleware для обработки
+
+# Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
+@router.callback_query(StateFilter(FSM_become_proxy.fill_OK), F.data == 'ConfirmNotOK')
+@log_handler_call
+async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMContext, data: dict):
+    logging.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Спасибо! Псевдоним не доавлен\nПопробуйте еще раз, или нажмите кнопку для прерывания процедуры'
+    data['reply_markup'] = return_to_main_menu_markup
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+    await state.set_state(FSM_become_proxy.fill_username)
+
+
+# Этот хэндлер будет срабатывать, если во время подтверждения
+# статуса будет введено/отправлено что-то некорректное
+@router.message(StateFilter(FSM_become_proxy.fill_OK))
+@log_handler_call
+async def warning_new_status(message: Message):
+    logging.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
+    await message.answer(
+        text='Пожалуйста, воспользуйтесь кнопками!\n\n'
+             'Если вы хотите прервать изменение статуса - '
+             'отправьте команду /cancel'
+    )
+
+
 
 # Хэндлер для кнопки ''resign_from_proxy''
 @router.callback_query(F.data == 'resign_from_proxy')
@@ -604,10 +759,17 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
             return
 
         # Убираем статус 'proxy'
-        await new_status_tg(callback.from_user.id, callback.from_user.id, 'not_proxy')
+        await new_status(member_id, member_id, 'not_proxy')
+        await not_votist_because_proxy_quit(member_id)
+        flag = await is_votist(member_id)
+        text = 'Вы перестали быть представителем!'
+        if not flag:
+            text = '\nВам требуется выбрать себе представителя, чтобы иметь право голосовать'
+
+
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Вы перестали быть представителем!'
+        data['response_text'] = text
         data['reply_markup'] = await user_menu(callback.from_user.id)
 
         # Редактируем сообщение

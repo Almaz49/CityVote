@@ -4,7 +4,7 @@ from aiogram.types import Update
 import logging
 import traceback
 from pprint import pformat
-from data_base.telegram_bot_logic import member_id_tg
+from data_base.telegram_bot_logic import extract_user_member_id
 
 class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Update, data: dict):
@@ -13,13 +13,13 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
         try:
             if isinstance(event, Update):
                 user = data['event_from_user']
-                user_id = user.id
-                # user_id = event.from_user.id if hasattr(event, "from_user") and event.from_user else "Unknown"
+                tg_id = user.id
+                # tg_id = event.from_user.id if hasattr(event, "from_user") and event.from_user else "Unknown"
                 event_type = event.__class__.__name__
-                logging.info(f"Получено событие {event_type} от пользователя {user_id}") #:\n {pformat(event)}\n")
+                logging.info(f"Получено событие {event_type} от пользователя {tg_id}") #:\n {pformat(event)}\n")
 
             club_id = data.get('club_id',None)
-            member_id = await member_id_tg(user_id)
+            user_id, member_id = await extract_user_member_id(tg_id)
 
             if 'state' in data:
                  logging.info(f"Middleware detected FSM state before handler: {await data['state'].get_state()}\n")
@@ -28,6 +28,7 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
             if 'data' not in data:
                 data['data'] = {
                     'club_id':club_id,
+                    'user_id':user_id,
                     'member_id':member_id
 
                     # Добавьте другие необходимые данные

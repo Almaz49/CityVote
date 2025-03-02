@@ -16,6 +16,7 @@ from filters.filters import filter_contact
 from config_data.config import Config, load_config
 from utils import log_handler_call, log_function_call
 from LEXICON.LEXICON import LEXICON
+from services.services import notify_registrator
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -1018,53 +1019,3 @@ async def warning_not_registrator(message: Message):
     await message.answer(
         text='Пожалуйста, пользуйтесь кнопками при выборе модератора.\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel'
     )
-
-
-#Функция уведомления регистратора. Возможно, ее надо будет вписать в  хэндлер.
-@log_function_call
-async def notify_registrator(registrator_tg_id, candidate_tg_id, user_dict):
-    try:
-        # Создаем объекты инлайн-кнопок
-        confirm_button = InlineKeyboardButton(
-            text='Подтверждаю',
-            callback_data=f"yes_confirm:{candidate_tg_id}"
-        )
-        not_confirm_button = InlineKeyboardButton(
-            text='Не подтверждаю',
-            callback_data=f"no_confirm:{candidate_tg_id}"
-        )
-        # Добавляем кнопки в клавиатуру в один ряд
-        keyboard: list[list[InlineKeyboardButton]] = [
-            [confirm_button, not_confirm_button]
-        ]
-        # Создаем объект инлайн-клавиатуры
-        markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-        # Формируем сообщение для регистратора
-        message_text = (
-            f"Пользователь с данными:\n"
-            f'Имя: {user_dict["first_name"]}\n'
-            f'Фамилия: {user_dict["last_name"]}\n'
-            f'Возраст: {user_dict["birth_year"]}\n'
-            f'Пол: {user_dict["gender"]}\n'
-            f'Город: {user_dict["city"]}\n'
-            f'Улица: {user_dict["street"]}\n'
-            f'Дом: {user_dict["house"]}\n'
-            f'Истинность контакта: {user_dict["tg_true"]}\n'
-            f'Номер телефона: {user_dict["tg_phone_number"]}\n'
-            f"Просит вас подтвердить его право\n"
-            f"стать членом клуба.\n"
-            f"Подтверждаете?"
-        )
-
-        # Отправляем сообщение регистратору
-        await bot.send_message(
-            registrator_tg_id,
-            text=message_text,
-            reply_markup=markup  # клавиатура подтверждения
-        )
-
-        return True, "Уведомление отправлено."
-    except Exception as e:
-        logging.error(f"Ошибка при отправке уведомления регистратору: {e}")
-        return False, str(e)

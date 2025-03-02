@@ -117,3 +117,42 @@ async def trust(member_id, proxy):
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при работе с доверием: {e}")
             raise
+
+# Функция проверяет, имеет ли пользователь право голоса и дает ему или отбирает статус 'votist' в зависимости от результата
+@log_function_call
+async def is_votist(member_id):
+    async with Database(path_db) as cursor:
+        try:
+            await cursor.execute(
+                'SELECT status FROM Status WHERE member_id = ?',
+                (member_id,)
+            )
+            status = cursor.fetchall()
+            votist = 'votist' in status #выявляем текущий статус
+            if ('member',) in status:
+                if ('proxy',) in status:
+                    flag = True
+                else:
+                    await cursor.execute(
+                        '''SELECT status FROM Status WHERE member_id in (
+                        SELECT proxy FROM Members WHERE id = ?
+                        )''',
+                        (member_id,)
+                    )
+                    result = cursor.fetchall()
+                    if ('proxy',) in result:
+                        flag = True
+                    else:
+                        flag = False
+            else:
+                flag =  False
+            if votist != flag: # Если статус надо поменять
+                response = 'votist' if flag else 'not_votist'
+                await new_status(registrator=None, member_id=member_id, status=response)
+
+            logging.info(f"Участник с member_id {member_id} имеет ли право голоса: {flag}")
+            return flag
+
+        except aiosqlite.Error as e:
+            logging.error(f"Ошибка при определении права голоса: {e}")
+            raise

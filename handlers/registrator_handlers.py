@@ -7,7 +7,7 @@ from aiogram.types import CallbackQuery, Message
 from filters.filters import StatusFilter
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu
 from config_data.config import Config, load_config
-from data_base.telegram_bot_logic import db_update, extract_user_data_tg, member_id_tg, new_status
+from data_base.telegram_bot_logic import db_update, extract_user_data_tg, extract_user_member_id, new_status
 import logging
 from utils import log_handler_call
 
@@ -47,7 +47,7 @@ router.message.filter(StatusFilter(required_status = 'registrator'))
 """
 
 # Этот хэндлер срабатывает при нажатии регистратором кнопки "Подтверждаю"
-@router.callback_query(F.data.startswith('yes_confirm:'))
+@router.callback_query(F.data.startswith('yes_registration:'))
 @log_handler_call
 async def process_registrator_yes_press(callback: CallbackQuery,data:dict):
     """
@@ -60,7 +60,7 @@ async def process_registrator_yes_press(callback: CallbackQuery,data:dict):
         logging.info(f"Регистратор {callback.from_user.id} подтверждает членство пользователя {tg_id}.")
 
         # Получаем member_id пользователя
-        member_id = await member_id_tg(tg_id)
+        member_id = await extract_user_member_id(tg_id)[1]
         if not member_id:
             await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.")
             return
@@ -80,7 +80,7 @@ async def process_registrator_yes_press(callback: CallbackQuery,data:dict):
 
 
 # Этот хэндлер срабатывает при нажатии регистратором кнопки "Не подтверждаю"
-@router.callback_query(F.data.startswith('no_confirm:'))
+@router.callback_query(F.data.startswith('no_registration:'))
 @log_handler_call
 async def process_registrator_no_press(callback: CallbackQuery, data):
     """
@@ -93,7 +93,7 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
         logging.info(f"Регистратор {callback.from_user.id} отклоняет членство пользователя {tg_id}.")
 
         # Получаем member_id пользователя
-        member_id = await member_id_tg(tg_id)
+        member_id = await extract_user_member_id(tg_id)[1]
         if not member_id:
             await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.")
             return

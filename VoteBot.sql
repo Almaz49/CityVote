@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS `Users` (
 	`birth_year` INTEGER,
 	`photo` TEXT,
 	`email` TEXT,
+    `tg_username`     TEXT,
+    `username`        TEXT    UNIQUE,
 FOREIGN KEY(`id`) REFERENCES `Users`(`id`)
 );
 CREATE TABLE IF NOT EXISTS `Clubs` (
