@@ -70,7 +70,7 @@ async def extract_user_data_tg(tg_id, *c):
 # Функция создания нового голосования
 @log_function_call
 async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voting_status='add_variants'):
-    creator = await extract_user_member_id(creator_tg_id)[1]
+    creatot_user_id, creator = await extract_user_member_id(creator_tg_id)
     if creator:
         result = await new_voting(club_id, creator, title, text, vote_type, voting_status)
         logging.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
@@ -246,8 +246,8 @@ async def list_of_members_tg(status):
 async def trust_tg(tg_id, proxy_tg_id):
     try:
         logging.info(f"Вызвана функция trust_tg")
-        member_id = await extract_user_member_id(tg_id)[1]
-        proxy_member_id = await extract_user_member_id(proxy_tg_id)[1]
+        user_id, member_id = await extract_user_member_id(tg_id)
+        proxy_user_id, proxy_member_id = await extract_user_member_id(proxy_tg_id)
         result =  await trust(member_id,proxy_member_id)
         logging.info(f"Пользователь  с tg_id {tg_id} выбрал представителем учатника с member_id {member_id}")
         return True, result

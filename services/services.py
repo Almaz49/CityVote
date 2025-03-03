@@ -11,7 +11,7 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration, FSMRereg
-from data_base.telegram_bot_logic import Database, is_votist
+from data_base.telegram_bot_logic import AsyncDatabase, is_votist
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
 from filters.filters import filter_contact
 from config_data.config import Config, load_config
@@ -77,10 +77,10 @@ async def notify_registrator(registrator_tg_id, candidate_tg_id, user_dict):
         return False, str(e)
 
 # Функция уведомления и лишения статуса 'votist' тех пользователей, чей представитель утратил этот статус
-@log_handler_call
+@log_function_call
 async def not_votist_because_proxy_quit(proxy:int):
     logging.info(f"Лишаем статуса гоосующих тех, чей представитель {proxy} сложил полномочия")
-    async with Database(path_db) as cursor:
+    async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
                 'SELECT id FROM Members WHERE proxy = ?',
@@ -95,7 +95,7 @@ async def not_votist_because_proxy_quit(proxy:int):
         member_id, = item
         flag = await is_votist(member_id)
         if not flag:
-            async with Database(path_db) as cursor:
+            async with AsyncDatabase(path_db) as cursor:
                 try:
                     await cursor.execute(
                 '''SELECT tg_id FROM Users WHERE id in
@@ -108,7 +108,7 @@ async def not_votist_because_proxy_quit(proxy:int):
 Выберите другого или сами станьте представителем, чтобы иметь право решающего голоса.
 Для начала работы наберите или нажмите команду /start
 '''
-                    # Отправляем сообщение регистратору
+                    # Отправляем сообщение участннику, чей представитель ушел в отставку
                     await bot.send_message(
                         tg_id,
                         text=message_text

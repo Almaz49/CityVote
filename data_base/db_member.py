@@ -121,14 +121,14 @@ async def trust(member_id, proxy):
 # Функция проверяет, имеет ли пользователь право голоса и дает ему или отбирает статус 'votist' в зависимости от результата
 @log_function_call
 async def is_votist(member_id):
-    async with Database(path_db) as cursor:
+    async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
                 'SELECT status FROM Status WHERE member_id = ?',
                 (member_id,)
             )
-            status = cursor.fetchall()
-            votist = 'votist' in status #выявляем текущий статус
+            status = await cursor.fetchall()
+            votist = ('votist',) in status #выявляем текущий статус
             if ('member',) in status:
                 if ('proxy',) in status:
                     flag = True
@@ -139,7 +139,7 @@ async def is_votist(member_id):
                         )''',
                         (member_id,)
                     )
-                    result = cursor.fetchall()
+                    result = await cursor.fetchall()
                     if ('proxy',) in result:
                         flag = True
                     else:

@@ -40,6 +40,7 @@ class StatusFilter(BaseFilter):
         for status in self.required_status:
             if status in user_status:
                 flag = True
+        logging.info(f'Результат фильтра:{flag}')
         return flag
 
 # # Фильтр на статус администратора

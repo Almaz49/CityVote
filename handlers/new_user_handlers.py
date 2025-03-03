@@ -14,7 +14,7 @@ bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
-router.message.filter(StatusFilter(required_status = 'user'))
+router.message.filter(StatusFilter(required_status = ['user']))
 
 # #Хэндлер на кманду "старт"
 # @router.message(Command(commands=["start"]))

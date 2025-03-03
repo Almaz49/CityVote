@@ -21,7 +21,7 @@ club_id = config.tg_bot.club_id  # id группы в БД (не телегра�
 
 # Инициализируем роутер уровня модуля
 router = Router()
-router.message.filter(StatusFilter(required_status = 'candidate'))
+router.message.filter(StatusFilter(required_status = ['candidate']))
 
 """
 # Определяем состояния FSM для регистрации кандидата

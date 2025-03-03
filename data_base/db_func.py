@@ -27,38 +27,38 @@ path_db = config.db.path_db  # путь к базе данных
 #         return func(*args, **kwargs)
 #     return wrapper
 
-# Создаем контекстный менеджер для работы с базой данных
-class Database:
-    def __init__(self, db_name):
-        self.db_name = db_name
+# # Создаем контекстный менеджер для работы с базой данных
+# class Database:
+#     def __init__(self, db_name):
+#         self.db_name = db_name
 
-    def __enter__(self):
-        try:
-            self.conn = sqlite3.connect(self.db_name)
-            self.cursor = self.conn.cursor()
-            logging.info(f"Соединение с базой данных {self.db_name} установлено.")
-            return self.cursor
-        except sqlite3.Error as e:
-            logging.error(f"Ошибка при установке соединения с базой данных: {e}")
-            raise
+#     def __enter__(self):
+#         try:
+#             self.conn = sqlite3.connect(self.db_name)
+#             self.cursor = self.conn.cursor()
+#             logging.info(f"Соединение с базой данных {self.db_name} установлено.")
+#             return self.cursor
+#         except sqlite3.Error as e:
+#             logging.error(f"Ошибка при установке соединения с базой данных: {e}")
+#             raise
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None:
-            try:
-                self.conn.commit()  # Если ошибок нет, подтвержаем изменения
-                logging.info("Изменения подтверждены.")
-            except sqlite3.Error as e:
-                logging.error(f"Ошибка при подтверждении изменений: {e}")
-                self.conn.rollback()
-        else:
-            self.conn.rollback()  # В случае ошибки откатываем изменения
-            logging.error(f"Произошла ошибка: {exc_val}")
+#     def __exit__(self, exc_type, exc_val, exc_tb):
+#         if exc_type is None:
+#             try:
+#                 self.conn.commit()  # Если ошибок нет, подтвержаем изменения
+#                 logging.info("Изменения подтверждены.")
+#             except sqlite3.Error as e:
+#                 logging.error(f"Ошибка при подтверждении изменений: {e}")
+#                 self.conn.rollback()
+#         else:
+#             self.conn.rollback()  # В случае ошибки откатываем изменения
+#             logging.error(f"Произошла ошибка: {exc_val}")
 
-        try:
-            self.conn.close()  # Закрываем соединение
-            logging.info("Соединение с базой данных закрыто.")
-        except sqlite3.Error as e:
-            logging.error(f"Ошибка при закрытии соединения: {e}")
+#         try:
+#             self.conn.close()  # Закрываем соединение
+#             logging.info("Соединение с базой данных закрыто.")
+#         except sqlite3.Error as e:
+#             logging.error(f"Ошибка при закрытии соединения: {e}")
 
 # Асинхронный контекстный менеджер для работы с базой данных
 class AsyncDatabase:

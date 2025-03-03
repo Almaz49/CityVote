@@ -1,13 +1,13 @@
 from aiogram import Bot, Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message, PhotoSize)
+                           InlineKeyboardMarkup, Message, PhotoSize, Contact)
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from filters.filters import StatusFilter
 from LEXICON.LEXICON import LEXICON
-from FSMs.FSMs import FSM_become_proxy
+from FSMs.FSMs import FSM_become_proxy, FSM_appoint_deputy
 from services.services import not_votist_because_proxy_quit
 from keyboards.keyboards import (reg_markup, contact_markup, remove_markup, user_menu,
             create_inline_kb, confirm_markup, return_to_main_menu_markup)
@@ -23,7 +23,7 @@ bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
-router.message.filter(StatusFilter(required_status = 'member'))
+router.message.filter(StatusFilter(required_status = ['member']))
 
 # Хэндлер для кнопки 'ongoing_voting'
 @router.callback_query(F.data == 'ongoing_votings')
@@ -430,8 +430,8 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
 
 
 
-# Хэндлер для кнопки 'select_proxy'
-@router.callback_query(F.data == 'select_proxy')
+# Хэндлер для кнопки 'select_proxy' обычным участником
+@router.callback_query(F.data == 'select_proxy', not StatusFilter(required_status = ['proxy']))
 @log_handler_call
 async def process_select_proxy(callback: CallbackQuery, data: dict):
     try:
@@ -504,8 +504,45 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
 
         raise  # Передаем исключение middleware для обработки
 
+# Хэндлер для кнопки 'select_proxy' представителем (выбор заместителя)
+@router.callback_query(F.data == 'select_proxy', StatusFilter(required_status = ['proxy']), StateFilter(default_state))
+@log_handler_call
+async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMContext):
+    try:
+        logging.info(f"Представитеь {callback.from_user.id} хочет выбрать заместителя.")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = '''Пожалуйста, введите телеграм-ID участника,
+    которого вы хотите псделать своим заместителем или отправьте контакт с ID'''
+        data['reply_markup'] = None  # Если клавиатура не нужна, устанавливаем None
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        # Устанавливаем состояние ожидания ввода ID
+        await state.set_state(FSM_appoint_deputy.fill_id)
+        logging.info(f"Установлено состояние: {await state.get_state()}")
+
+    except Exception as e:
+        logging.error(f"Ошибка при обработке кнопки 'select_proxy': {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при загрузке списка представителей.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
 # Хэндлер для доверия голоса
-@router.callback_query(F.data.startswith('trust_'))
+@router.callback_query(F.data.startswith('trust_'), not StatusFilter(required_status = ['proxy']))
 @log_handler_call
 async def process_trust(callback: CallbackQuery, data: dict):
     try:
@@ -539,6 +576,41 @@ async def process_trust(callback: CallbackQuery, data: dict):
         )
 
         raise  # Передаем исключение middleware для обработки
+
+# Хэндлер для выбора заместителя представителем
+@router.message(StatusFilter(required_status = ['proxy']),
+            StateFilter(FSM_appoint_deputy.fill_id),(lambda x: x.text.isdigit()) | F.contact)
+@log_handler_call
+async def process_appoint_deputy(message: Message, data: dict, state: FSMContext, contact: Contact = None):
+    try:
+        deputy_tg_id = contact.user_id if contact else int(message.text)
+        logging.info(f"Представитель {message.from_user.id} выбрал своим заместителем пользователя с tg_id {deputy_tg_id}.")
+
+        flag, ans_str = await trust_tg(message.from_user.id, deputy_tg_id)
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = ans_str
+        data['reply_markup'] = await user_menu(message.from_user.id, data['user_status'])
+
+        # Отвечаем
+        await message.answer(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при выборе  заместителя: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при выборе заместителя.'
+        data['reply_markup'] = await user_menu(message.from_user.id, data['user_status'])
+
+        # Отправляем сообщение в случае ошибки
+        await message.answer(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
 
 # Хэндлер для кнопки 'become_proxy'
 @router.callback_query(F.data == 'become_proxy', StateFilter(default_state))
@@ -574,7 +646,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             return
 
         columns = ('username',)
-        username, = extract_user_data(data['user_id'], *columns)
+        username, = await extract_user_data(data['user_id'], *columns)
         if username:
             # Присваиваем статус 'proxy'
             await new_status(member_id, member_id, 'proxy')
@@ -623,7 +695,9 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
 
         raise  # Передаем исключение middleware для обработки
 
-
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#      Почему то не ловится хэндлер (ниже)
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # Хэндлер будет обрабатывать ввод username представителя
 # и переводить в состояние ожидания подтверждения

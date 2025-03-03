@@ -24,7 +24,7 @@ bot = Bot(token=config.tg_bot.token)
 router = Router()
 
 # Навешиваем на роутер фильтр, проверяющий, является ли пользователь Делегатом
-router.message.filter(StatusFilter(required_status = 'delegate'))
+router.message.filter(StatusFilter(required_status = ['delegate']))
 
 """
 СОЗДАНИЕ ГОЛОСОВАНИЯ

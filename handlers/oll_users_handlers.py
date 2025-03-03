@@ -10,6 +10,7 @@ from config_data.config import Config, load_config
 import logging
 from utils import log_handler_call
 from LEXICON.LEXICON import LEXICON
+from FSMs.FSMs import FSM_become_proxy
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -179,3 +180,14 @@ async def process_main_menu_button_state(callback: CallbackQuery, state: FSMCont
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
+
+# Хэндлер будет обрабатывать ввод username представителя
+# и переводить в состояние ожидания подтверждения
+@router.message(StateFilter(FSM_become_proxy.fill_username))
+@log_handler_call
+async def process_username_sent(message: Message, state: FSMContext):
+    """
+    Обработчик ввода имени/псевдонима.
+    Запрашивает подтверждение.
+    """
+    logging.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")

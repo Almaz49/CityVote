@@ -60,7 +60,7 @@ async def process_registrator_yes_press(callback: CallbackQuery,data:dict):
         logging.info(f"Регистратор {callback.from_user.id} подтверждает членство пользователя {tg_id}.")
 
         # Получаем member_id пользователя
-        member_id = await extract_user_member_id(tg_id)[1]
+        user_id, member_id = await extract_user_member_id(tg_id)
         if not member_id:
             await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.")
             return
@@ -93,7 +93,7 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
         logging.info(f"Регистратор {callback.from_user.id} отклоняет членство пользователя {tg_id}.")
 
         # Получаем member_id пользователя
-        member_id = await extract_user_member_id(tg_id)[1]
+        user_id, member_id = await extract_user_member_id(tg_id)
         if not member_id:
             await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.")
             return
