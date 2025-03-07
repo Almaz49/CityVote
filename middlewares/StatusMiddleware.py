@@ -11,12 +11,12 @@ class StatusMiddleware(BaseMiddleware):
             user = data['event_from_user']
             user_id = user.id
 
-            logging.info(f'Processing event of type: {type(event)}')
+            logging.debug(f'Processing event of type: {type(event)}')
             logging.info(f'User ID: {user_id}')
 
             # Получаем статус пользователя
             status = await status_member(user_id)
-            logging.info(f'Получены статусы юзера: {status}')
+            logging.debug(f'Получены статусы юзера: {status}')
 
             if status is None:
                 logging.warning(f"Status for user {user_id} is None")

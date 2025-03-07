@@ -12,12 +12,26 @@ logging.basicConfig(level=logging.INFO)
 
 
 # Это декоратор, который каждую функцию объявляет в логах. Вызов происходит @log_function_call
+# def log_function_call(func):
+#     @wraps(func)
+#     def wrapper(*args, **kwargs):
+#         logging.debug(f"Вызвана функция {func.__name__} из модуля {func.__module__} ")
+#         return func(*args, **kwargs)
+#     return wrapper
+
 def log_function_call(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        logging.info(f"Вызвана функция {func.__name__} из модуля {func.__module__} ")
+        args_str = ', '.join([repr(a) for a in args])
+        kwargs_str = ', '.join([f"{k}={repr(v)}" for k, v in kwargs.items()])
+
+        logging.debug(
+            f"Вызвана функция {func.__name__} из модуля {func.__module__}\n"
+            f"Аргументы: ({args_str}) {{{kwargs_str}}}"
+        )
         return func(*args, **kwargs)
     return wrapper
+
 
 # Это декоратор, который каждый хэндлер объявляет в логах. Вызов происходит @log_function_call
 # def log_handler_call(func):

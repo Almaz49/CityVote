@@ -116,23 +116,6 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
     # Сбрасываем состояние и очищаем данные
     await state.clear()
 
-# Хэндлер для текстовых сообщений, не являющихся командами
-@router.message()
-@log_handler_call
-async def send_echo(message: Message,data:dict):
-    """
-    Обработчик эхо-сообщений.
-    Отправляет обратно текстовые сообщения пользователя.
-    """
-    logging.info(f"Пользователь {message.from_user.id} отправил сообщение: {message.text}.")
-    await message.answer(
-        text=f'Вы написали: "{message.text}".\n'
-             'Если вам нужна помощь, используйте команду /help.',
-        reply_markup = await user_menu(message.from_user.id,data['user_status'])
-    )
-
-
-
 
 # Хэндлер для кнопки 'Главное меню' в основном состоянии
 @router.callback_query(F.data == 'main_menu', StateFilter(default_state))
@@ -191,3 +174,35 @@ async def process_username_sent(message: Message, state: FSMContext):
     Запрашивает подтверждение.
     """
     logging.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
+
+
+# Хэндлер для текстовых сообщений, не являющихся командами
+@router.message()
+@log_handler_call
+async def send_echo(message: Message,data:dict):
+    """
+    Обработчик эхо-сообщений.
+    Отправляет обратно текстовые сообщения пользователя.
+    """
+    logging.info(f"Пользователь {message.from_user.id} отправил сообщение: {message.text}.")
+    await message.answer(
+        text=f'Вы написали: "{message.text}".\n'
+             'Если вам нужна помощь, используйте команду /help.',
+        reply_markup = await user_menu(message.from_user.id,data['user_status'])
+    )
+
+# Хэндлер для нажатия на кнопку не пойманную другими хэндлерами
+@router.callback_query()
+@log_handler_call
+async def send_echo_cb(callback: CallbackQuery,data:dict):
+    """
+    Обработчик эхо-сообщений.
+    Отправляет обратно текстовые сообщения пользователя.
+    """
+    logging.info(f"Пользователь {callback.from_user.id} нажал кнопку: {callback.data}.")
+    await callback.message.answer(
+        text=f'Вы нажали кнопку: "{callback.data}".\n'
+        'Она не была обработана'
+             'Если вам нужна помощь, используйте команду /help.',
+        reply_markup = await user_menu(callback.from_user.id,data['user_status'])
+    )

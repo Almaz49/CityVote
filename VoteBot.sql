@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `Votings` (
 	`id` integer primary key NOT NULL UNIQUE,
 	`creator` INTEGER NOT NULL,
-	`vote_type` TEXT NOT NULL DEFAULT usual,
+	`voting_type` TEXT NOT NULL DEFAULT usual,
 	`title` TEXT NOT NULL,
 	`text` TEXT DEFAULT 'null',
 	`club_id` INTEGER NOT NULL,

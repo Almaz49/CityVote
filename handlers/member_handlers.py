@@ -8,7 +8,7 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from filters.filters import StatusFilter
 from LEXICON.LEXICON import LEXICON
 from FSMs.FSMs import FSM_become_proxy, FSM_appoint_deputy
-from services.services import not_votist_because_proxy_quit
+from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned
 from keyboards.keyboards import (reg_markup, contact_markup, remove_markup, user_menu,
             create_inline_kb, confirm_markup, return_to_main_menu_markup)
 from config_data.config import Config, load_config
@@ -24,6 +24,7 @@ bot = Bot(token=config.tg_bot.token)
 # Инициализируем роутер уровня модуля
 router = Router()
 router.message.filter(StatusFilter(required_status = ['member']))
+router.callback_query.filter(StatusFilter(required_status = ['member']))
 
 # Хэндлер для кнопки 'ongoing_voting'
 @router.callback_query(F.data == 'ongoing_votings')
@@ -431,7 +432,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
 
 
 # Хэндлер для кнопки 'select_proxy' обычным участником
-@router.callback_query(F.data == 'select_proxy', not StatusFilter(required_status = ['proxy']))
+@router.callback_query(F.data == 'select_proxy', ~StatusFilter(required_status = ['proxy']))
 @log_handler_call
 async def process_select_proxy(callback: CallbackQuery, data: dict):
     try:
@@ -542,7 +543,7 @@ async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMC
         raise  # Передаем исключение middleware для обработки
 
 # Хэндлер для доверия голоса
-@router.callback_query(F.data.startswith('trust_'), not StatusFilter(required_status = ['proxy']))
+@router.callback_query(F.data.startswith('trust_'), ~StatusFilter(required_status = ['proxy']))
 @log_handler_call
 async def process_trust(callback: CallbackQuery, data: dict):
     try:
@@ -578,8 +579,11 @@ async def process_trust(callback: CallbackQuery, data: dict):
         raise  # Передаем исключение middleware для обработки
 
 # Хэндлер для выбора заместителя представителем
-@router.message(StatusFilter(required_status = ['proxy']),
-            StateFilter(FSM_appoint_deputy.fill_id),(lambda x: x.text.isdigit()) | F.contact)
+@router.message(
+    StatusFilter(required_status=['proxy']),
+    StateFilter(FSM_appoint_deputy.fill_id),
+    F.text.isdigit() | F.contact
+)
 @log_handler_call
 async def process_appoint_deputy(message: Message, data: dict, state: FSMContext, contact: Contact = None):
     try:
@@ -587,6 +591,8 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
         logging.info(f"Представитель {message.from_user.id} выбрал своим заместителем пользователя с tg_id {deputy_tg_id}.")
 
         flag, ans_str = await trust_tg(message.from_user.id, deputy_tg_id)
+        if not ans_str:
+            ans_str = "Неизвестная ошибка при назначении заместителя."
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = ans_str
@@ -597,6 +603,7 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
+        await state.clear()
 
     except Exception as e:
         logging.error(f"Ошибка при выборе  заместителя: {e}")
@@ -610,6 +617,9 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
+        await state.clear()
+
+        raise
 
 
 # Хэндлер для кнопки 'become_proxy'
@@ -652,6 +662,8 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             await new_status(member_id, member_id, 'proxy')
             # Присваиваем статус 'votist' (если его не было)
             await new_status(member_id,member_id,'votist')
+            # Присваем статус 'votist' тем, кто каким-то образом уже доверил ему голос
+            await votist_because_proxy_returned(member_id)
 
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'Вы стали представителем!'
@@ -662,6 +674,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
+            await state.clear()
         else:
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = (
@@ -692,12 +705,10 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
+        await state.clear()
 
         raise  # Передаем исключение middleware для обработки
 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#      Почему то не ловится хэндлер (ниже)
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # Хэндлер будет обрабатывать ввод username представителя
 # и переводить в состояние ожидания подтверждения
@@ -745,6 +756,8 @@ async def process_username_entry(callback: CallbackQuery, state: FSMContext, dat
         await new_status(member_id, member_id, 'proxy')
         # Присваиваем статус 'votist' (если его не было)
         await new_status(member_id,member_id,'votist')
+        # Присваем статус 'votist' тем, кто каким-то образом уже доверил ему голос
+        await votist_because_proxy_returned(member_id)
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Вы стали представителем!'

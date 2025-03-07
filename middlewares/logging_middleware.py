@@ -1,10 +1,11 @@
 # logging_middleware.py  # Middleware для логгирования и обработки исключений
 from aiogram import BaseMiddleware
-from aiogram.types import Update
+from aiogram.types import Update, Message, CallbackQuery
 import logging
 import traceback
 from pprint import pformat
 from data_base.telegram_bot_logic import extract_user_member_id
+from keyboards.keyboards import user_menu
 
 class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Update, data: dict):
@@ -35,6 +36,13 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
                 }
                 logging.info(f'Создан словарь дата в мидлваре логирования {pformat(data["data"])}')
 
+            # Логируем callback_data или текст сообщения
+            if hasattr(event, "message") and event.message:
+                logging.info(f"\n\nПолучено текстовое сообщение: {event.message.text}")
+            elif hasattr(event, "callback_query") and event.callback_query:
+                logging.info(f"\n\nПолучен callback_query с данными: {event.callback_query.data}")
+            else:
+                logging.info(f"\n\nПолучено событие другого типа: {type(event)}")
 
 
             response = await handler(event, data)
@@ -51,12 +59,20 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
 
         except Exception as e:
             logging.error(f"Необработанное исключение в хэндлере: {e}\n{traceback.format_exc()}")
+            try:
+                user = data['event_from_user']
+                tg_id = user.id
+                marcup = await user_menu(tg_id)
+            except:
+                marcup = None
 
             if hasattr(event, "message") and event.message:
                 await event.message.answer(
-                    text="Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже."
+                    text="Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.",
+                    reply_markup=marcup
                 )
             elif hasattr(event, "callback_query") and event.callback_query:
                 await event.callback_query.message.answer(
-                    text="Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже."
+                    text="Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.",
+                    reply_markup=marcup
                 )

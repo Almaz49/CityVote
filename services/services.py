@@ -1,5 +1,7 @@
 # Модуль servics
 # Содержит фукнции, наприимер, рассылки сообщений пользователям бота
+# Вообще-то нарушает логику разделения скрипта на скрипт телеграм-бота и скрипт базы данных.
+# Может пределаю позже.
 
 import logging
 import aiosqlite
@@ -82,6 +84,10 @@ async def not_votist_because_proxy_quit(proxy:int):
     logging.info(f"Лишаем статуса гоосующих тех, чей представитель {proxy} сложил полномочия")
     async with AsyncDatabase(path_db) as cursor:
         try:
+            await cursor.execute('''SELECT username FROM Users WHERE id IN
+                                 (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
+            proxy_name, = await cursor.fetchone()
+
             await cursor.execute(
                 'SELECT id FROM Members WHERE proxy = ?',
                 (proxy,)
@@ -103,9 +109,55 @@ async def not_votist_because_proxy_quit(proxy:int):
                 (member_id,)
                     )
                     tg_id, = await cursor.fetchone()
-                    message_text = '''
-Ваш представитель утратил статус представителя.
+                    message_text = f'''
+Ваш представитель {proxy_name} утратил статус представителя.
 Выберите другого или сами станьте представителем, чтобы иметь право решающего голоса.
+Для начала работы наберите или нажмите команду /start
+'''
+                    # Отправляем сообщение участннику, чей представитель ушел в отставку
+                    await bot.send_message(
+                        tg_id,
+                        text=message_text
+                    )
+
+                except aiosqlite.Error as e:
+                    logging.error(f"Ошибка при лишении статуса голосующего: {e}")
+                    raise
+
+# Функция уведомления и присвоения статуса 'votist' тем пользователям, чей представитель возобновил этот статус
+@log_function_call
+async def votist_because_proxy_returned(proxy:int):
+    logging.info(f"Возвращаем статус гоосующих тем, чей представитель {proxy} вернул полномочия")
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute('''SELECT username FROM Users WHERE id IN
+                                 (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
+            proxy_name, = await cursor.fetchone()
+
+            await cursor.execute(
+                'SELECT id FROM Members WHERE proxy = ?',
+                (proxy,)
+            )
+            result = await cursor.fetchall()
+        except aiosqlite.Error as e:
+            logging.error(f"Ошибка при возвращении статуса 'голосующих' доверителям вернувшегося представителя: {e}")
+            raise
+
+    for item in result:
+        member_id, = item
+        flag = await is_votist(member_id)
+        if flag:
+            async with AsyncDatabase(path_db) as cursor:
+                try:
+                    await cursor.execute(
+                '''SELECT tg_id FROM Users WHERE id in
+                (SELECT user_id FROM Members WHERE id = ?)''',
+                (member_id,)
+                    )
+                    tg_id, = await cursor.fetchone()
+                    message_text = f'''
+Ваш представитель {proxy_name} вернул статус представителя.
+Теперь ваш голос будет учитываться при голосованиях.
 Для начала работы наберите или нажмите команду /start
 '''
                     # Отправляем сообщение участннику, чей представитель ушел в отставку

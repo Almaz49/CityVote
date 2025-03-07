@@ -26,6 +26,7 @@ club_id = config.tg_bot.club_id  # id группы в БД (не телегра�
 # Инициализируем роутер уровня модуля
 router = Router()
 router.message.filter(StatusFilter(required_status = ['admin','owner']))
+router.callback_query.filter(StatusFilter(required_status = ['admin','owner']))
 
 # # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии по умолчанию
 # # и сообщать, что эта команда работает внутри машины состояний

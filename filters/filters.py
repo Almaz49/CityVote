@@ -5,6 +5,7 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import CallbackQuery, Message, PhotoSize
 from aiogram.filters import BaseFilter
+from typing import Union, Optional
 from data_base.telegram_bot_logic import status_member
 
 # Настройка логирования
@@ -18,30 +19,63 @@ logging.basicConfig(level=logging.INFO)
 
 # Универсальный фильтр для проверки статуса пользователя
 
+# class StatusFilter(BaseFilter):
+#     def __init__(self, required_status: list[str]):
+#         """
+#         Инициализация фильтра с требуемым статусом.
+#         :param required_status: Требуемый статус (например, "admin", "member").
+#         """
+#         self.required_status = required_status
+
+#     async def __call__(self, event: Message, data: dict) -> bool:
+#         """
+#         Проверяет, содержит ли список статусов пользователя требуемый статус.
+#         :param event: Объект события (например, Message).
+#         :param data: Словарь данных, содержащий user_status.
+#         :return: True, если статус найден, иначе False.
+#         """
+#         # Извлекаем user_status из словаря data
+#         user_status = data.get("user_status", [])
+#         logging.info(f"Проверка статуса в фильтре: требуется {self.required_status}, текущий статус {user_status}")
+#         flag = False
+#         for status in self.required_status:
+#             if status in user_status:
+#                 flag = True
+#         logging.info(f'Результат фильтра:{flag}')
+#         return flag
+
+
+
+
 class StatusFilter(BaseFilter):
-    def __init__(self, required_status: list[str]):
-        """
-        Инициализация фильтра с требуемым статусом.
-        :param required_status: Требуемый статус (например, "admin", "member").
-        """
+    def __init__(self, required_status: list):
         self.required_status = required_status
 
-    async def __call__(self, event: Message, data: dict) -> bool:
-        """
-        Проверяет, содержит ли список статусов пользователя требуемый статус.
-        :param event: Объект события (например, Message).
-        :param data: Словарь данных, содержащий user_status.
-        :return: True, если статус найден, иначе False.
-        """
+    async def __call__(
+        self,
+        event: Union[Message, CallbackQuery],
+        data:dict
+    ) -> bool:
+        # Логируем тип события
+        if isinstance(event, Message):
+            logging.debug("Фильтр вызван для Message")
+        elif isinstance(event, CallbackQuery):
+            logging.debug("Фильтр вызван для CallbackQuery")
+        else: logging.info(f"Не определилось событие {event} при вызове фильтра")
+
         # Извлекаем user_status из словаря data
         user_status = data.get("user_status", [])
-        logging.info(f"Проверка статуса в фильтре: требуется {self.required_status}, текущий статус {user_status}")
-        flag = False
-        for status in self.required_status:
-            if status in user_status:
-                flag = True
-        logging.info(f'Результат фильтра:{flag}')
-        return flag
+
+        logging.debug(f'Фильтр получил статус пользователя {user_status}')
+
+        # Проверяем статус пользователя
+        if not user_status:
+            logging.warning("user_status не найден в данных middleware!")
+            return False
+
+        result = any(status in user_status for status in self.required_status)
+        logging.info(f"Проверка статуса: требуется {self.required_status}, текущий статус {user_status} → {result}")
+        return result
 
 # # Фильтр на статус администратора
 # class filter_isAdmin(StatusFilter):

@@ -179,7 +179,7 @@ async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voti
         logging.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы")
         return False, 'Вы не являетесь участником группы'
 
-    result = await new_voting(club_id, creator, title, text=text, vote_type=vote_type, voting_status=voting_status)
+    result = await new_voting(club_id, creator, title, text=text, voting_type=vote_type, voting_status=voting_status)
     logging.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
     return result
 
@@ -249,7 +249,7 @@ async def trust_tg(tg_id, proxy_tg_id):
         user_id, member_id = await extract_user_member_id(tg_id)
         proxy_user_id, proxy_member_id = await extract_user_member_id(proxy_tg_id)
         result =  await trust(member_id,proxy_member_id)
-        logging.info(f"Пользователь  с tg_id {tg_id} выбрал представителем учатника с member_id {member_id}")
+        logging.info(f"Пользователь  с tg_id {tg_id} выбрал представителем учатника с tg_id {proxy_tg_id}")
         return True, result
     except Exception as e:
         logging.error(f"Произошла ошибка при выборе представителя пользователем {tg_id}: {e}")

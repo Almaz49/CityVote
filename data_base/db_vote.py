@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 # Создание нового голосования. Создается название голосования и описание,
 # также может быть введен тип голосования и ссылка. Варианты добавляются позже.
 @log_function_call
-async def new_voting(club_id, creator, title, text=None, vote_type='usual', voting_status='add_variants'):
+async def new_voting(club_id, creator, title, text=None, voting_type='usual', voting_status='add_variants'):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if len(title) > 40:
         flag = False
@@ -34,9 +34,9 @@ async def new_voting(club_id, creator, title, text=None, vote_type='usual', voti
                     logging.info(f"Добавление нового голосования: club_id={club_id}, creator={creator}, title={title}")
                     await cursor.execute(
                         '''
-                        INSERT INTO Votings(club_id, creator, title, text, time_create, vote_type, voting_status)
+                        INSERT INTO Votings(club_id, creator, title, text, time_create, voting_type, voting_status)
                         VALUES (?, ?, ?, ?, ?, ?, ?)
-                        ''', (club_id, creator, title, text, time_create, vote_type, voting_status)
+                        ''', (club_id, creator, title, text, time_create, voting_type, voting_status)
                     )
                     answ_str = 'Голосование добавлено'
                     flag = True

@@ -114,6 +114,7 @@ async def trust(member_id, proxy):
                 ''', (member_id, proxy, time_trust)
             )
             logging.info(f"Добавлена запись в журнал доверенностей для member_id: {member_id}")
+            return "Представитель успешно назначен!"
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при работе с доверием: {e}")
             raise
