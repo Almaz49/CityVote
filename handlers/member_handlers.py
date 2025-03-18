@@ -29,7 +29,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 # Хэндлер для кнопки 'ongoing_voting'
 @router.callback_query(F.data == 'ongoing_votings')
 @log_handler_call
-async def process_ongoing_votings(callback: CallbackQuery, data: dict):
+async def process_list_of_ongoing_votings(callback: CallbackQuery, data: dict):
     try:
         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -44,7 +44,7 @@ async def process_ongoing_votings(callback: CallbackQuery, data: dict):
 
             dict_votings = {}
             for voting in votings:
-                dict_votings[f'voting_{voting[0]}'] = voting[1]
+                dict_votings[f'ongoing_voting:{voting[0]}'] = voting[1]
             dict_votings['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
             markup = create_inline_kb(1, **dict_votings)
 
@@ -96,7 +96,7 @@ async def process_list_of_completed_votings(callback: CallbackQuery, data: dict)
 
             dict_votings = {}
             for voting in votings:
-                dict_votings[f'completed_voting_{voting[0]}'] = voting[1]
+                dict_votings[f'completed_voting:{voting[0]}'] = voting[1]
             dict_votings['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
             markup = create_inline_kb(1, **dict_votings)
 
@@ -133,7 +133,7 @@ async def process_list_of_completed_votings(callback: CallbackQuery, data: dict)
 # Хэндлер для кнопки 'future_votes'
 @router.callback_query(F.data == 'future_votings')
 @log_handler_call
-async def process_list_of_future_votes(callback: CallbackQuery, data: dict):
+async def process_list_of_future_votings(callback: CallbackQuery, data: dict):
     try:
         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -148,7 +148,7 @@ async def process_list_of_future_votes(callback: CallbackQuery, data: dict):
 
             dict_votings = {}
             for voting in votings:
-                dict_votings[f'future_voting_{voting[0]}'] = voting[1]
+                dict_votings[f'future_voting:{voting[0]}'] = voting[1]
             dict_votings['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
             markup = create_inline_kb(1, **dict_votings)
 
@@ -186,9 +186,9 @@ async def process_list_of_future_votes(callback: CallbackQuery, data: dict):
 
 
 # Хэндлер для выбора конкретного идущего голосования
-@router.callback_query(F.data.regexp(r'^voting_\d+$'))
+@router.callback_query(F.data.regexp(r'^ongoing_voting:\d+$'))
 @log_handler_call
-async def process_voting_selection(callback: CallbackQuery, data: dict):
+async def process_ongoing_voting_selection(callback: CallbackQuery, data: dict):
     """
     Обработчик выбора конкретного голосования.
     """
@@ -196,7 +196,7 @@ async def process_voting_selection(callback: CallbackQuery, data: dict):
         logging.info(f"Пользователь {callback.from_user.id} выбрал голосование: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        voting_id = int(callback.data.split('_')[1])
+        voting_id = int(callback.data.split(':')[1])
         variants = await list_of_variants(voting_id, 'valid')
 
         if variants:
@@ -205,8 +205,13 @@ async def process_voting_selection(callback: CallbackQuery, data: dict):
 
             dict_variants = {}
             for variant in variants:
-                dict_variants[f'variant_{variant[0]}'] = variant[1]
+                dict_variants[f'variant:{variant[0]}'] = variant[1]
             dict_variants[f'show_variants:{voting_id}'] = LEXICON.get('show_variants', 'show variants')
+            if 'admin' in data['user_status']:
+                # Добавляем кнопку для админа - администрировать голосование
+                dict_variants[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'Администрировать голосование')
+
+
             dict_variants['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
 
             logging.info(f'словарь для клавиатуры вариантов: {dict_variants}')
@@ -245,7 +250,7 @@ async def process_voting_selection(callback: CallbackQuery, data: dict):
 
         raise  # Передаем исключение middleware для обработки
 
-# Хэндлер для просмотра вариантов (обрабатывает кнопку "посмотреть варианты")
+# Хэндлер для просмотра вариантов идущего голосвания (обрабатывает кнопку "посмотреть варианты")
 # Присылает по сообщению на каждый вариант, к последнему прикладывает клавиаттуру из вариантов
 @router.callback_query(F.data.regexp(r'^show_variants:\d+$'))
 @log_handler_call
@@ -271,7 +276,7 @@ async def process_show_variants(callback: CallbackQuery, data: dict):
 
             dict_variants = {}
             for variant in variants:
-                dict_variants[f'variant_{variant[0]}'] = variant[1]
+                dict_variants[f'variant:{variant[0]}'] = variant[1]
             dict_variants['ongoing_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
             dict_variants['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
 
@@ -312,12 +317,81 @@ async def process_show_variants(callback: CallbackQuery, data: dict):
         raise  # Передаем исключение middleware для обработки
 
 
+# Хэндлер для просмотра всех вариантов (обрабатывает кнопку "посмотреть все варианты")
+# Присылает по сообщению на каждый вариант, к последнему прикладывает клавиатуру из меню.
+# Применяется для будущих и завершенных голосований
+@router.callback_query(F.data.regexp(r'^show_oll_variants:\d+$'))
+@log_handler_call
+async def process_show_oll_variants(callback: CallbackQuery, data: dict):
+    """
+    Обработчик просмотра вариантов.
+    """
+    try:
+        logging.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
+        voting_id = int(callback.data.split(':')[1])
+        variants = await list_of_variants(voting_id)
+        voting_status = extract_voting_status(voting_id)
+
+
+        if variants:
+            for variant in variants:
+                title, text_var, variant_status = await extract_variant_data(variant[0])
+                await callback.message.answer(
+                    text=(title + '\n' + 'Статус варианта: ' + LEXICON.get(variant_status, variant_status) + '\n\n' + text_var),
+                )
+
+        else:
+            text = 'В настоящее время нет доступных вариантов.'
+
+        dict_menu = {}
+        if voting_status == 'add_variants':
+            dict_menu['future_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
+            # Если пользователь - делегат, добавляем кнопку "Добавить голосование"
+            if 'delegete' in data["user_status"]:
+                dict_menu[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
+        elif voting_status == 'comleted':
+            dict_menu['completed_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
+            # Если пользователь - админ, добавляем кнопку "Возобновить голосование"
+            if 'admin' in data["user_status"]:
+                dict_menu[f'reopen:{voting_id}'] = LEXICON.get('reopen', 'reopen')
+
+
+        dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
+
+        logging.info(f'словарь меню при показе вариантов: {dict_menu}')
+        markup = create_inline_kb(1, **dict_menu)
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        # Отправляем или редактируем сообщение
+        await callback.message.answer(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при просмотре вариантов голосования: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
 
 # Хэндлер для просмотра будущего голосования
 @router.callback_query(F.data.regexp(r'^future_voting_\d+$'))
 @log_handler_call
-async def process_future_vote_selection(callback: CallbackQuery, data: dict):
+async def process_future_voting_selection(callback: CallbackQuery, data: dict):
     """
     Обработчик просмотра будущего голосования.
     """
@@ -332,10 +406,13 @@ async def process_future_vote_selection(callback: CallbackQuery, data: dict):
             text = 'Выберите вариант, который хотите посмотреть'
             dict_variants = {}
             for variant in variants:
-                dict_variants[f'show_variant_{variant[0]}'] = variant[1]
+                dict_variants[f'show_variant:{variant[0]}'] = variant[1]
             # Если пользователь - делегат, добавляем кнопку "добавить вариант"
             if 'delegate' in data['user_status']:
-                dict_variants[f'create_variant_vote:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
+                dict_variants[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
+            if 'admin' in data['user_status']:
+                # Добавляем кнопку для админа - администрировать голосование
+                dict_variants[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'Администрировать голосование')
 
             dict_variants['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
 
@@ -378,7 +455,7 @@ async def process_future_vote_selection(callback: CallbackQuery, data: dict):
 
 
 # Хэндлер для выбора конкретного варианта при голосовании
-@router.callback_query(F.data.regexp(r'^variant_\d+$'))
+@router.callback_query(F.data.regexp(r'^variant:\d+$'))
 @log_handler_call
 async def process_variant_selection(callback: CallbackQuery, data: dict):
     """

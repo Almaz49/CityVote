@@ -294,9 +294,9 @@ async def voting_stage_tg(voting_id, stager_tg_id=None):
     try:
         if stager_tg_id:
             stager = await extract_member_id(club_id, await extract_user_id(stager_tg_id))
-            result = await voting_stage(voting_id, stager)
+            result = await voting_stage(voting_id, club_id, stager)
         else:
-            result = await voting_stage(voting_id)
+            result = await voting_stage(voting_id,club_id)
 
         logging.info(f"Промежуточный этап голосования voting_id={voting_id} завершен: {result}")
         return result

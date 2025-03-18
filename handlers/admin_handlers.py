@@ -523,3 +523,350 @@ async def warning_new_status(message: Message):
              'Если вы хотите прервать изменение статуса - '
              'отправьте команду /cancel'
     )
+
+
+
+
+# Хэндлер для администрирования конкретного голосования
+@router.callback_query(F.data.regexp(r'^admin_voting:\d+$'))
+@log_handler_call
+async def process_admin_voting(callback: CallbackQuery, data: dict):
+    """
+    Обработчик вызова меню администрирования конкретного голосования.
+    """
+    try:
+        logging.info(f"Пользователь {callback.from_user.id} выбрал голосование для администрирования: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        voting_id = int(callback.data.split(':')[1])
+        variants = await list_of_variants(voting_id, 'valid')
+        voting_status = await extract_voting_status(voting_id)
+        dict_keyboard = {f'back_to_votings:{voting_status}':LEXICON.get('back_to_votings','back_to_votings')}
+
+# Добавляю кнопки в зависимости от статуса голосования и числа вариантов
+        if voting_status == 'add_variants':
+            if len(variants) < 2:
+                text = 'Это голосование в стадии добавления вариантов. У него пока менее двух вариантов. Вы можете добавить еще варианты либо завершить его'
+                if 'delegate' in data['user_status']:
+                    dict_keyboard[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
+                    dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+            else:
+                text = 'Это голосование в стадии добавления вариантов. Вы можете добавить вариант или запустить его'
+                dict_keyboard[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
+                dict_keyboard[f'voting_start:{voting_id}'] = LEXICON.get('voting_start','voting_start')
+                dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+        elif voting_status == 'ongoing':
+            if len(variants) > 2:
+                text = 'Это идущее голосование. Можете перевести его в финал, оставив два варианта'
+                dict_keyboard[f'voting_final:{voting_id}'] = LEXICON.get('voting_final','voting_final')
+                if len(variants) > 3:
+                    text = 'Это идущее голосование. Можете подвести промежуточный итог, либо сразу запустить финальный этап, оставив два варианта'
+                    dict_keyboard[f'voting_stage:{voting_id}'] = LEXICON.get('voting_stage','voting_stage')
+                dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+            else:
+                text = 'это голосование в финальной стадии. Можете завершить его'
+                dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+
+
+        elif voting_status == 'confirmation':
+            text = 'Это голосование в стадии утверждения результата. Вы можете завершить его'
+            dict_keyboard[f'confirmation_of_voting_results_stop:{voting_id}'] = LEXICON.get('confirmation_of_voting_results_stop',
+                                                                                      'confirmation of voting results stop')
+
+        elif voting_status == 'completed':
+            text = 'Это завершенное голосование. Вы можете возобновить голосование за него. Отданные ранее голоса сохранятся'
+            dict_keyboard[f'continue_voting{voting_id}'] = LEXICON.get('continue_voting','continue_voting')
+
+        logging.info(f'словарь для клавиатуры вариантов: {dict_keyboard}')
+        markup = create_inline_kb(1, **dict_keyboard)
+
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при создании меню администрирования голосования: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при администрировании голосования.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#   Теперь нужны хэндлеры на кнопки меню администрирования голосования !!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+# Хэндлер для запуска голосования после нажатия соотвествующей кнопки в меню администратора
+@router.callback_query(F.data.regexp(r'^voting_start:\d+$'))
+@log_handler_call
+async def process_voting_start_cb(callback: CallbackQuery, data: dict):
+    """
+    Обработчик выбора конкретного голосования.
+    """
+    try:
+        logging.info(f"Пользователь {callback.from_user.id} запускает голосование: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        voting_id = int(callback.data.split(':')[1])
+        member_id = data['member_id']
+
+        result = await voting_start(voting_id,starter=member_id)
+
+
+
+        if result:
+            flag, text = result
+            logging.info(text)
+        else:
+            text = 'Что-то пошло не так при запуске голосования'
+            logging.info(text+f':{voting_id}')
+
+        markup = await user_menu(status=data['user_status'])
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при запуске голосования: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при запуске голосования.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+
+# Хэндлер для промежуточного итога голосования после нажатия соотвествующей кнопки в меню администратора
+@router.callback_query(F.data.regexp(r'^voting_stage:\d+$'))
+@log_handler_call
+async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
+    """
+    Обработчик выбора конкретного голосования.
+    """
+    try:
+        logging.info(f"Пользователь {callback.from_user.id} запускает промежуточный этап голосования: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        voting_id = int(callback.data.split(':')[1])
+        member_id = data['member_id']
+        club_id = data['club_id']
+
+        result = await voting_stage(voting_id, club_id, stager=member_id)
+
+
+
+        if result:
+            flag, text,winners,losers = result
+            logging.info(text)
+        else:
+            text = 'Что-то пошло не так при подведении промежуточного итога голосования'
+            logging.info(text+f':{voting_id}')
+
+        markup = await user_menu(status=data['user_status'])
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при запуске голосования: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при запуске голосования.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+# Хэндлер для перехода в финал голосования после нажатия соотвествующей кнопки в меню администратора
+@router.callback_query(F.data.regexp(r'^voting_final:\d+$'))
+@log_handler_call
+async def process_voting_final_cb(callback: CallbackQuery, data: dict):
+    """
+    Обработчик перехода в финал конкретного голосования.
+    """
+    try:
+        logging.info(f"Пользователь {callback.from_user.id} запускает финальный этап голосования: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        voting_id = int(callback.data.split(':')[1])
+        member_id = data['member_id']
+        club_id = data['club_id']
+
+        result = await voting_final(voting_id, finaler=member_id)
+
+
+
+        if result:
+            flag, text,winners,losers = result
+            logging.info(text)
+        else:
+            text = 'Что-то пошло не так при подведении промежуточного итога голосования'
+            logging.info(text+f':{voting_id}')
+
+        markup = await user_menu(status=data['user_status'])
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при запуске голосования: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при запуске голосования.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+# Хэндлер для завершения голосования после нажатия соотвествующей кнопки в меню администратора
+@router.callback_query(F.data.regexp(r'^voting_complete:\d+$'))
+@log_handler_call
+async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
+    """
+    Обработчик выбора конкретного голосования.
+    """
+    try:
+        logging.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        voting_id = int(callback.data.split(':')[1])
+        member_id = data['member_id']
+        club_id = data['club_id']
+
+        result = await voting_complete(voting_id, finisher=member_id)
+        if result:
+            text = result[0]
+            logging.info(text)
+        else:
+            text = 'Что-то пошло не так при завершении голосования'
+            logging.info(text+f':{voting_id}')
+
+        markup = await user_menu(status=data['user_status'])
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при запуске голосования: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при запуске голосования.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+
+# Хэндлер для завершения утверждения голосования после нажатия соотвествующей кнопки в меню администратора
+@router.callback_query(F.data.regexp(r'^confirmation_of_voting_results_stop:\d+$'))
+@log_handler_call
+async def confirmation_of_voting_results_stop_cb(callback: CallbackQuery, data: dict):
+    """
+    Обработчик выбора конкретного голосования.
+    """
+    try:
+        logging.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        voting_id = int(callback.data.split(':')[1])
+        member_id = data['member_id']
+        club_id = data['club_id']
+
+        result = await confirmation_of_voting_results_stop (voting_id, finisher=member_id)
+        if result:
+            text = result[0]
+            logging.info(text)
+        else:
+            text = 'Что-то пошло не так при завершении утверждения голосования'
+            logging.info(text+f':{voting_id}')
+
+        markup = await user_menu(status=data['user_status'])
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при запуске голосования: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при запуске голосования.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки

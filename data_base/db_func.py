@@ -344,9 +344,9 @@ async def list_of_variants(voting_id, *variant_status):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(query, params)
-            ans = await cursor.fetchall()
+            result = await cursor.fetchall()
             logging.info("Запрос успешно выполнен.")
-            return ans
+            return result
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при выполнении запроса: {e}")
             raise
