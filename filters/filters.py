@@ -125,16 +125,28 @@ class StatusFilter(BaseFilter):
 #         super().__init__(required_status="user")
 
 
-# Фильтр на контакт (message.contact.user_id == message.from_user.id)
-class filter_contact(BaseFilter):
+# # Фильтр на контакт (message.contact.user_id == message.from_user.id)
+# class filter_contact(BaseFilter):
+#     async def __call__(self, message: Message) -> bool:
+#         """
+#         Проверяет, соответствует ли контакт отправителю сообщения.
+#         :param message: Объект сообщения.
+#         :return: True, если контакт совпадает с отправителем, иначе False.
+#         """
+#         try:
+#             return message.contact and message.contact.user_id == message.from_user.id
+#         except Exception as e:
+#             logging.error(f"An error occurred in ContactFilter: {e}")
+#             return False
+
+class ContactFilter(BaseFilter):
     async def __call__(self, message: Message) -> bool:
-        """
-        Проверяет, соответствует ли контакт отправителю сообщения.
-        :param message: Объект сообщения.
-        :return: True, если контакт совпадает с отправителем, иначе False.
-        """
         try:
-            return message.contact and message.contact.user_id == message.from_user.id
+            # Проверка наличия контакта и совпадения user_id
+            return (
+                message.contact is not None and
+                message.contact.user_id == message.from_user.id
+            )
         except Exception as e:
-            logging.error(f"An error occurred in ContactFilter: {e}")
+            logging.error(f"Ошибка в фильтре ContactFilter: {e}")
             return False

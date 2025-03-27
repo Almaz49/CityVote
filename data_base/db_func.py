@@ -327,13 +327,13 @@ async def list_of_variants(voting_id, *variant_status):
     if variant_status:
         placeholders = ', '.join('?' for _ in variant_status)
         query = f'''
-            SELECT id, title, variant_status FROM Variants
+            SELECT id, title, variant_status, text FROM Variants
             WHERE voting_id = ? AND variant_status IN ({placeholders})
             '''
         params = (voting_id,) + variant_status
     else:
         query = '''
-            SELECT id, title, variant_status FROM Variants
+            SELECT id, title, variant_status, text FROM Variants
             WHERE voting_id = ?
             '''
         params = (voting_id,)
@@ -356,7 +356,7 @@ async def list_of_variants(voting_id, *variant_status):
 async def extract_variant_data(variant_id):
     async with AsyncDatabase(path_db) as cursor:
         ins_str = '''
-            SELECT title, text FROM Variants
+            SELECT title, text, variant_status FROM Variants
             WHERE id = ?
         '''
         try:

@@ -157,3 +157,35 @@ async def is_votist(member_id):
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при определении права голоса: {e}")
             raise
+
+
+# Функция выхода из группы. Передается id участника.
+# Производится стирание всех статусов (что анаогично статусу user).
+@log_function_call
+async def member_leave_club (member_id,status):
+    time_leave = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logging.info(f"Запись выхода из группы member_id={member_id}")
+    # Если уходит владелец, оставляем за ним статус владельца
+    if 'owner' in status:
+        status.remove('owner')
+
+    # По очереди удаляем каждый статус
+    for st in status:
+        request = 'not_'+st
+        await new_status(member_id,member_id,request)
+
+
+
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+             # Делаем запись в таблице регистраций
+            await cursor.execute(
+                '''INSERT INTO Registrations(registrator, object_type, object_id, status, time_reg)
+                VALUES (?, ?, ?, ?, ?)''',
+                (member_id, 'member', member_id, 'leave', time_leave)
+            )
+            logging.info(f"Добавлена запись в журнал регистраций о выходе для member_id: {member_id}")
+            return "Участник выбыл"
+        except aiosqlite.Error as e:
+            logging.error(f"Ошибка при работе с доверием: {e}")
+            raise

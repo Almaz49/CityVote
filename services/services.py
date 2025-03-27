@@ -14,8 +14,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration, FSMRereg
 from data_base.telegram_bot_logic import AsyncDatabase, is_votist
+from data_base.data_base import *
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
-from filters.filters import filter_contact
 from config_data.config import Config, load_config
 from utils import log_handler_call, log_function_call
 from LEXICON.LEXICON import LEXICON
@@ -27,9 +27,103 @@ logging.basicConfig(level=logging.INFO)
 config: Config = load_config('.env')
 bot = Bot(token=config.tg_bot.token)
 path_db = config.db.path_db  # путь к базе данных
+club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
 
 
-#Функция уведомления регистратора. Возможно, ее надо будет вписать в  хэндлер.
+#Функция уведомления регистратора при краткой регистрации.
+@log_function_call
+async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict):
+    try:
+        # Создаем объекты инлайн-кнопок
+        confirm_button = InlineKeyboardButton(
+            text='Подтверждаю',
+            callback_data=f"yes_registration:{candidate_tg_id}"
+        )
+        not_confirm_button = InlineKeyboardButton(
+            text='Не подтверждаю',
+            callback_data=f"no_registration:{candidate_tg_id}"
+        )
+        # Добавляем кнопки в клавиатуру в один ряд
+        keyboard: list[list[InlineKeyboardButton]] = [
+            [confirm_button, not_confirm_button]
+        ]
+        # Создаем объект инлайн-клавиатуры
+        markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+        # Формируем сообщение для регистратора
+        message_text = (
+            f"Пользователь с данными:\n"
+            f'Контакт: {user_dict["contact"]}\n'
+            f'Истинность контакта: {user_dict["tg_true"]}\n'
+            f'Резюме: {user_dict["resume"]}\n'
+            f"Просит подтвердить его право стать членом клуба.\n"
+            f"Кого либо из регистраторов он не знает\n"
+            f"Подтверждаете?"
+        )
+
+        # Отправляем сообщение регистратору
+        await bot.send_message(
+            registrator_tg_id,
+            text=message_text,
+            reply_markup=markup  # клавиатура подтверждения
+        )
+
+        return True, "Уведомление отправлено."
+    except Exception as e:
+        logging.error(f"Ошибка при отправке уведомления регистратору: {e}")
+        return False, str(e)
+
+#Функция уведомления суперрегистратора при краткой регистрации.
+@log_function_call
+async def notify_super_registrator_short(candidate_tg_id, user_dict):
+    try:
+        # Создаем объекты инлайн-кнопок
+        confirm_button = InlineKeyboardButton(
+            text='Подтверждаю',
+            callback_data=f"yes_registration:{candidate_tg_id}"
+        )
+        not_confirm_button = InlineKeyboardButton(
+            text='Не подтверждаю',
+            callback_data=f"no_registration:{candidate_tg_id}"
+        )
+        # Добавляем кнопки в клавиатуру в один ряд
+        keyboard: list[list[InlineKeyboardButton]] = [
+            [confirm_button, not_confirm_button]
+        ]
+        # Создаем объект инлайн-клавиатуры
+        markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+        # Формируем сообщение для регистратора
+        message_text = (
+            f"Пользователь с данными:\n"
+            f'Контакт: {user_dict["contact"]}\n'
+            f'Истинность контакта: {user_dict["tg_true"]}\n'
+            f'Резюме: {user_dict["resume"]}\n'
+            f"Просит вас подтвердить его право\n"
+            f"стать членом клуба.\n"
+            f"Подтверждаете?"
+        )
+
+        super_registrators = await list_of_members(club_id,'superregistrator')
+        if not super_registrators:
+            super_registrators = await list_of_members(club_id,'registrator')
+
+
+        # Отправляем сообщение суперрегистраторам (а если их нет - регистраторам)
+        for registrator in super_registrators:
+            registrator_tg_id = registrator[2]
+            await bot.send_message(
+                registrator_tg_id,
+                text=message_text,
+                reply_markup=markup  # клавиатура подтверждения
+        )
+
+        return True, "Уведомление отправлено."
+    except Exception as e:
+        logging.error(f"Ошибка при отправке уведомления регистратору: {e}")
+        return False, str(e)
+
+#Функция уведомления регистратора при подробной регистрации. Возможно, ее надо будет вписать в  хэндлер.
 @log_function_call
 async def notify_registrator(registrator_tg_id, candidate_tg_id, user_dict):
     try:
@@ -169,3 +263,13 @@ async def votist_because_proxy_returned(proxy:int):
                 except aiosqlite.Error as e:
                     logging.error(f"Ошибка при лишении статуса голосующего: {e}")
                     raise
+
+# Функция выхода из группы. Передается id участника.
+# Производится вызыв функии member_leave_club
+# Если участник был представителем вызывается функция not_votist_because_proxy_quit
+@log_function_call
+async def leave_club (member_id, status):
+    logging.info(f"Выход из группы member_id={member_id}")
+    await member_leave_club(member_id,status)
+    if 'proxy' in status:
+        await not_votist_because_proxy_quit(member_id)

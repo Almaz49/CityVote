@@ -16,16 +16,15 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
-from data_base.telegram_bot_logic import *
-from keyboards.keyboards import *
+# from data_base.telegram_bot_logic import *
+# from keyboards.keyboards import *
 
 
-from filters.filters import filter_isAdmin
-from FSMs.FSMs import FSMNewRegistrator, FSMNewVoting, FSMNewStatus
-from data_base.telegram_bot_logic import (extract_new_registrator_data,
-new_status_tg, all_status)
-from keyboards.keyboards import *
-from config_data.config import Config, load_config
+
+# from data_base.telegram_bot_logic import (extract_new_registrator_data,
+# new_status_tg, all_status)
+# from keyboards.keyboards import *
+# from config_data.config import Config, load_config
 
 #from aiogram import types
 
@@ -54,19 +53,37 @@ logger = logging.getLogger(__name__)
 Буду изучать разные апдейты
 """
 
-#Функция выяснения статуса участника. Если участник с таким телеграм id не обнаружен,
-# заносит его в БД ,без статуса (что равнозначно статусю юзер). Возвращает список кортежей типа
-#[(admin,),(registrator,)]
-# В каждом кортеже только один элемент. Кортежей столько, сколько статусов у участника.
+# Хэндлер для команды /start
+@dp.message(Command(commands=["start"]))
+async def process_start_command(message: Message, data: dict):
+    """
+    Обработчик команды /start.
+    Отправляет приветственное сообщение и главное меню.
+    """
+    try:
+        text = ('Привет!\nЭто бот для проведения голосований.\n')
+        # Клавиатура для отправки контакта
+        contact_btn = KeyboardButton(
+            text='Отправить телефон',
+            request_contact=True
+        )
+        markup = ReplyKeyboardMarkup(
+            resize_keyboard=True,
+            one_time_keyboard=True,
+            keyboard=[[contact_btn]]
+        )
+
+        await message.answer(
+            text=text,
+            reply_markup=markup
+        )
+        logging.info(f"Пользователь {message.from_user.id} начал работу с ботом.")
+    except Exception as e:
+        logging.error(f"Ошибка при обработке команды /start: {e}")
+        await message.answer(text="Произошла ошибка при загрузке главного меню.")
 
 
 
-@dp.message(Command(commands=["start"]),filter_isAdmin)
-async def process_start_command1(message: Message):
-    await bot.send_message(message.from_user.id,
-        text='Привет, Админ!\nМеня зовут Эхо-бот!\nНапиши мне что-нибудь',
-                           reply_markup=confirm_markup)
-        
 
 
 

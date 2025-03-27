@@ -133,38 +133,42 @@ async def extract_new_registrator_data(tg_id):
 @log_function_call
 async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
     ans_str = ''
-    registrator_user_id = await extract_user_id(registrator_tg_id)
-    if not registrator_user_id:
-        ans_str += 'Нет такого регистратора.'
-        logging.warning(f"Не найден регистратор с tg_id={registrator_tg_id}: {ans_str}")
-        return ans_str
+    if registrator_tg_id:
+        registrator_user_id = await extract_user_id(registrator_tg_id)
+        if not registrator_user_id:
+            ans_str += 'Нет такого регистратора.'
+            logging.warning(f"Не найден регистратор с tg_id={registrator_tg_id}: {ans_str}")
+            return False, ans_str
 
-    registrator = await extract_member_id(club_id, registrator_user_id)
-    if not registrator:
-        ans_str += 'Нет такого регистратора.'
-        logging.warning(f"Не найден участник с member_id={registrator_user_id} в группе {club_id}: {ans_str}")
-        return ans_str
+        registrator = await extract_member_id(club_id, registrator_user_id)
+        if not registrator:
+            ans_str += 'Нет такого регистратора.'
+            logging.warning(f"Не найден участник с member_id={registrator_user_id} в группе {club_id}: {ans_str}")
+            return False, ans_str
+    else:
+        registrator = None
 
     user_id = await extract_user_id(member_tg_id)
     if not user_id:
         ans_str += 'Нет такого участника.'
         logging.warning(f"Не найден пользователь с tg_id={member_tg_id}: {ans_str}")
-        return ans_str
+        return False, ans_str
 
     member_id = await extract_member_id(club_id, user_id)
     if not member_id:
         ans_str += 'Нет такого участника.'
         logging.warning(f"Не найден участник с user_id={user_id} в группе {club_id}: {ans_str}")
-        return ans_str
+        return False, ans_str
 
     try:
         await new_status(registrator, member_id, status, token_id)
         logging.info(f"Присвоен новый статус '{status}' участнику с tg_id={member_tg_id} от регистратора с tg_id={registrator_tg_id}")
+        ans_str += f"Присвоен новый статус '{status}' участнику с tg_id={member_tg_id} от регистратора с tg_id={registrator_tg_id}"
+        return True, ans_str
     except Exception as e:
         logging.error(f"Ошибка при присвоении статуса: {e}")
         ans_str += f"Ошибка при присвоении статуса: {str(e)}"
-
-    return ans_str
+        return False, ans_str
 
 # Создание нового голосования
 @log_function_call
@@ -212,7 +216,7 @@ async def extract_status_tg(tg_id):
     member_id = await extract_member_id(club_id, user_id)
     if not member_id:
         logging.warning(f"Пользователь с tg_id={tg_id} не является участником группы")
-        return None
+        return []
 
     status = await extract_status(member_id)
     logging.info(f"Статусы участника с tg_id={tg_id}: {status}")

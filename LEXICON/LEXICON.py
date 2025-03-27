@@ -46,6 +46,7 @@ LEXICON_RU = {
 'new_voting':'Создать голосование',
 'new_variant':'Добавить вариант',
 'new_status':'Изменить статус участника',
+'new_registrator':'Добавить регистратора',
 'new_member':'Принять в группу новичка',
 'select_proxy':'Выбрать представителя',
 'become_proxy':'Стать представителем',
@@ -61,6 +62,7 @@ LEXICON_RU = {
 'confirmation_of_voting_results':'Запустить утверждение итога голосования', # через : добавляется voting_id
 'confirmation_of_voting_results_stop':'Завершить утверждение итога голосования', # через : добавляется voting_id
 'voting_complete':'Завершить голосование', # через : добавляется voting_id
+'show_oll_variants':'Роказать все варианты',
 'continue_voting':'Продолжить голосование', # через : добавляется voting_id
 'show_variants':'Посмотреть варианты',
 'back_to_votings':'Назад к списку голосований', #Через : статус голосований, к списку которых вернуться
