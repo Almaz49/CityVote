@@ -429,41 +429,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         raise  # Передаем исключение middleware для обработки
 
 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#       В самом конце !
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-# Хэндлер для текстовых сообщений, не являющихся командами
-@router.message()
-@log_handler_call
-async def send_echo(message: Message,data:dict):
-    """
-    Обработчик эхо-сообщений.
-    Отправляет обратно текстовые сообщения пользователя.
-    """
-    logging.info(f"Пользователь {message.from_user.id} отправил сообщение: {message.text}.")
-    await message.answer(
-        text=f'Вы написали: "{message.text}".\n'
-             'Если вам нужна помощь, используйте команду /help.',
-        reply_markup = await user_menu(message.from_user.id,data['user_status'])
-    )
-
-# Хэндлер для нажатия на кнопку не пойманную другими хэндлерами
-@router.callback_query()
-@log_handler_call
-async def send_echo_cb(callback: CallbackQuery,data:dict):
-    """
-    Обработчик эхо-сообщений.
-    Отправляет обратно текстовые сообщения пользователя.
-    """
-    logging.info(f"Пользователь {callback.from_user.id} нажал кнопку: {callback.data}.")
-    await callback.message.answer(
-        text=f'Вы нажали кнопку: "{callback.data}".\n'
-        'Она не была обработана'
-             'Если вам нужна помощь, используйте команду /help.',
-        reply_markup = await user_menu(callback.from_user.id,data['user_status'])
-    )
 
 
 # Хэндлер для кнопки 'leave_the_group'

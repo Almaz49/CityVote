@@ -9,8 +9,9 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config_data.config import Config, load_config
 from middlewares import LoggingAndErrorHandlingMiddleware, SafeEditMiddleware, StatusMiddleware
 from handlers import (
-    admin_handlers, candidate_handlers, member_handlers, delegate_handlers,
-    new_user_handlers, registrator_handlers, oll_users_handlers, reg_process_handlers
+    admin_handlers, candidate_handlers, member_handlers, delegate_handlers, owner_handlers,
+    new_user_handlers, registrator_handlers, oll_users_handlers, reg_process_handlers,
+    last_handlers
 )
 from data_base import data_base
 from filters import filters
@@ -57,9 +58,11 @@ routers = [
     delegate_handlers.router,
     registrator_handlers.router,
     admin_handlers.router,
+    owner_handlers.router,
     candidate_handlers.router,
     reg_process_handlers.router,
-    oll_users_handlers.router
+    oll_users_handlers.router,
+    last_handlers.router
 ]
 
 
