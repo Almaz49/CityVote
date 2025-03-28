@@ -123,7 +123,9 @@ async def process_get_contact_short(message: Message, state: FSMContext):
         registrators = await list_of_members_tg('registrator')
         buttons: list[list[InlineKeyboardButton]] = []
         for item in registrators:
-            name, last_name, tg_id = item
+            name = item[0] if item[0] else item[3] if item[3] else item[5]
+            last_name = item[1] if item [1] else item[4] if item[4] else ''
+            tg_id = item[2]
             buttons.append([InlineKeyboardButton(
                 text=f'{name} {last_name}',
                 callback_data=str(tg_id)

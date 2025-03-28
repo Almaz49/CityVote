@@ -34,6 +34,7 @@ club_id = config.tg_bot.club_id  # id группы в БД (не телегра�
 @log_function_call
 async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict):
     try:
+        print(user_dict)
         # Создаем объекты инлайн-кнопок
         confirm_button = InlineKeyboardButton(
             text='Подтверждаю',
@@ -54,7 +55,7 @@ async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict
         message_text = (
             f"Пользователь с данными:\n"
             f'Контакт: {user_dict["contact"]}\n'
-            f'Истинность контакта: {user_dict["tg_true"]}\n'
+            f'Истинность контакта: {user_dict["contact_true"]}\n'
             f'Резюме: {user_dict["resume"]}\n'
             f"Просит подтвердить его право стать членом клуба.\n"
             f"Кого либо из регистраторов он не знает\n"
