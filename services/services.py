@@ -8,12 +8,13 @@ import aiosqlite
 from aiogram import Bot, Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Contact
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration, FSMRereg
-from data_base.telegram_bot_logic import AsyncDatabase, is_votist
+# from data_base.telegram_bot_logic import AsyncDatabase, is_votist
 from data_base.data_base import *
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
 from config_data.config import Config, load_config
@@ -28,6 +29,35 @@ config: Config = load_config('.env')
 bot = Bot(token=config.tg_bot.token)
 path_db = config.db.path_db  # путь к базе данных
 club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
+
+# Функция уведомления пользователей
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
+
+async def send_notification_to_user(tg_id: int, message_text: str):
+    try:
+        # Попытка отправить сообщение
+        await bot.send_message(
+            tg_id,
+            text=message_text
+        )
+    except TelegramForbiddenError:
+        # Пользователь заблокировал бота
+        logging.warning(f"Пользователь {tg_id} заблокировал бота.")
+        await mark_user_as_unavailable(tg_id, reason="bot blocked")
+    except TelegramBadRequest as e:
+        if "chat not found" in str(e).lower():
+            # Чат не найден (пользователь удалил аккаунт)
+            logging.warning(f"Пользователь {tg_id} удалил аккаунт или чат не существует.")
+            await mark_user_as_unavailable(tg_id, reason="user lost")
+        else:
+            # Другая ошибка BadRequest
+            logging.error(f"Ошибка при отправке сообщения пользователю {tg_id}: {e}")
+    except TelegramAPIError as e:
+        # Любая другая ошибка Telegram API
+        logging.error(f"Telegram API Error для пользователя {tg_id}: {e}")
+    except Exception as e:
+        # Все остальные исключения
+        logging.error(f"Неизвестная ошибка при отправке сообщения пользователю {tg_id}: {e}")
 
 
 #Функция уведомления регистратора при краткой регистрации.

@@ -90,6 +90,10 @@ async def process_resume_sent(message: Message, state: FSMContext):
     # Удаляем сообщение с кнопками, потому что следующий этап - отправка контакта
     # чтобы у пользователя не было желания тыкать кнопки
     await message.answer(
+        "Спасибо за контакт!",
+        reply_markup=remove_markup  # Удаляем клавиатуру с кнопкой "Отправить контакт"
+    )
+    await message.answer(
         text=('Отправьте ваш контакт(телефон)\n'
               'Нажимая кнопку "Отправить телефон", вы даете оператору данного чат-бота на сбор и обработку персональных данных.'
         'Если согласны - нажмите кнопку в самом низу экрана'
@@ -608,6 +612,10 @@ async def process_get_contact(message: Message, state: FSMContext):
         ]
         # Создаем объект инлайн-клавиатуры
         markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        await message.answer(
+        "Спасибо за контакт!",
+        reply_markup=remove_markup  # Удаляем клавиатуру с кнопкой "Отправить контакт"
+    )
 
         await message.delete()
         await message.answer(

@@ -1,7 +1,7 @@
 # модуль StatusMiddleware
 from aiogram import BaseMiddleware
 from aiogram.types import Message, CallbackQuery
-from data_base.telegram_bot_logic import status_member
+from data_base.telegram_bot_logic import status_member, mark_user_as_available, is_user_available
 import logging
 
 class StatusMiddleware(BaseMiddleware):
@@ -13,6 +13,15 @@ class StatusMiddleware(BaseMiddleware):
 
             logging.debug(f'Processing event of type: {type(event)}')
             logging.info(f'User ID: {user_id}')
+
+            # Проверяем, доступен ли пользователь
+            is_available = await is_user_available(user_id)
+            logging.debug(f"Пользователь {user_id} доступен: {is_available}")
+
+            # Если пользователь был недоступен, но теперь взаимодействует с ботом, помечаем его как доступного
+            if not is_available:
+                logging.info(f"Пользователь {user_id} ранее был недоступен, но теперь взаимодействует с ботом. Меняем статус на доступен.")
+                await mark_user_as_available(user_id)
 
             # Получаем статус пользователя
             status = await status_member(user_id)

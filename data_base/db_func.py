@@ -409,6 +409,8 @@ async def extract_status(member_id):
         if result:
             # Преобразуем результат в список уникальных статусов
             statuses = list(set(status[0] for status in result))
+            if 'member' not in statuses and 'candidate' not in statuses:
+                statuses.append('user')
 
             # Упорядочиваю статусы для будущего меню
             st_sort = ['member', 'delegate', 'admin', 'owner', 'proxy']

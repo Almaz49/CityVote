@@ -189,3 +189,68 @@ async def member_leave_club (member_id,status):
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при работе с доверием: {e}")
             raise
+
+
+async def mark_user_as_unavailable(tg_id: int, reason: str):
+    """
+    Помечает пользователя как недоступного.
+    :param tg_id: ID пользователя в Telegram
+    :param reason: Причина недоступности (например, "Бот заблокирован")
+    """
+    async with AsyncDatabase("your_database.db") as cursor:
+        try:
+            query = """
+            UPDATE Users
+            SET available = ?
+            WHERE tg_id = ?;
+            """
+            await cursor.execute(query, (reason, tg_id))
+            logging.info(f"Пользователь {tg_id} помечен как недоступный. Причина: {reason}")
+        except Exception as e:
+            logging.error(f"Ошибка при обновлении статуса пользователя {tg_id}: {e}")
+
+
+async def mark_user_as_available(tg_id: int):
+    """
+    Помечает пользователя как доступного.
+    :param tg_id: ID пользователя в Telegram
+    """
+    async with AsyncDatabase("your_database.db") as cursor:
+        try:
+            query = """
+            UPDATE Users
+            SET available = NULL
+            WHERE tg_id = ?;
+            """
+            await cursor.execute(query, (tg_id,))
+            logging.info(f"Пользователь {tg_id} помечен как доступный.")
+        except Exception as e:
+            logging.error(f"Ошибка при обновлении статуса пользователя {tg_id}: {e}")
+
+async def is_user_available(tg_id: int) -> bool:
+    """
+    Проверяет, доступен ли пользователь.
+    :param tg_id: ID пользователя в Telegram
+    :return: True, если пользователь доступен; False, если недоступен.
+    """
+    async with AsyncDatabase("your_database.db") as cursor:
+        try:
+            query = """
+            SELECT available
+            FROM Users
+            WHERE tg_id = ?;
+            """
+            await cursor.execute(query, (tg_id,))
+            result = await cursor.fetchone()
+
+            if result and result[0] is None:
+                # Если available == NULL, пользователь доступен
+                logging.info(f"Пользователь {tg_id} доступен.")
+                return True
+            else:
+                # Если available содержит значение, пользователь недоступен
+                logging.info(f"Пользователь {tg_id} недоступен.")
+                return False
+        except Exception as e:
+            logging.error(f"Ошибка при проверке доступности пользователя {tg_id}: {e}")
+            return False

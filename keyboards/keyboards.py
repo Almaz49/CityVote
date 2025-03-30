@@ -107,6 +107,7 @@ def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton
     unique_buttons = set()
     keyboard = []
 
+
     # Список категорий в порядке приоритета
     categories_order = ['votings', 'actions', 'settings']
 
@@ -144,20 +145,21 @@ async def user_menu(tg_id: int = None, status:list[str] = None) -> InlineKeyboar
         if not status:
             status = await extract_status_tg(tg_id)
         logging.info(f"Создание меню для пользователя {tg_id} со статусами: {status}")
-        if not status or 'member' not in status:
-            if 'user' in status:
-                keyboard = get_keyboard_for_status(['user'])
-            elif 'candidate' in status:
-                keyboard = get_keyboard_for_status(['candidate'])
-            elif 'owner' in status:
-                keyboard = get_keyboard_for_status(['user','owner'])
-            elif 'admin' in status:
-                keyboard = get_keyboard_for_status(['user','admin'])
-            else:
-                unknown_button = {'unknown': 'Я не знаю кто ты'}
-                return create_inline_kb(1, **unknown_button)
-        else:
-            keyboard = get_keyboard_for_status(status)
+        # if not status or 'member' not in status:
+        #     if 'user' in status:
+        #         keyboard = get_keyboard_for_status(['user'])
+        #     elif 'candidate' in status:
+        #         keyboard = get_keyboard_for_status(['candidate'])
+        #     elif 'owner' in status:
+        #         keyboard = get_keyboard_for_status(['user','owner'])
+        #     elif 'admin' in status:
+        #         keyboard = get_keyboard_for_status(['user','admin'])
+        #     else:
+        #         unknown_button = {'unknown': 'Я не знаю кто ты'}
+        #         return create_inline_kb(1, **unknown_button)
+        # else:
+        #     keyboard = get_keyboard_for_status(status)
+        keyboard = get_keyboard_for_status(status)
 
         # Добавляем кнопку "помощь"
         help_button = InlineKeyboardButton(text=LEXICON.get('help', 'Помощь'), callback_data='help')

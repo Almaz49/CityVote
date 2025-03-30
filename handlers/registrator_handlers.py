@@ -21,9 +21,9 @@ config: Config = load_config('.env')
 router = Router()
 
 # Навешиваем фильтр, проверяющий, является ли пользователь Регистратором
-router.message.filter(StatusFilter(required_status = 'registrator'))
+router.message.filter(StatusFilter(required_status = ['registrator']))
 
-router.callback_query.filter(StatusFilter(required_status = 'registrator'))
+router.callback_query.filter(StatusFilter(required_status = ['registrator']))
 
 """
 ХЭНДЛЕРЫ

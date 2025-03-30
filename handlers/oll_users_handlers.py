@@ -5,7 +5,9 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from data_base.data_base import list_of_votings, list_of_variants, extract_voting_status
+from aiogram.types import ChatMemberUpdated
+from aiogram.filters import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
+from data_base.data_base import *
 from keyboards.keyboards import user_menu, remove_markup, create_inline_kb, confirm_markup
 from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned, leave_club
 from config_data.config import Config, load_config
@@ -549,3 +551,33 @@ async def warning_leave_club(message: Message):
              'Если вы хотите прервать изменение статуса - '
              'отправьте команду /cancel'
     )
+
+
+
+# Хэндлер для события изменения статуса члена чата
+@router.my_chat_member(
+    ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION)
+)
+async def handle_user_unblock(event: ChatMemberUpdated):
+    """
+    Срабатывает, когда пользователь разблокирует бота.
+    """
+    tg_id = event.from_user.id  # ID пользователя
+    logging.info(f"Пользователь {tg_id} разблокировал бота.")
+
+    # Обновляем статус пользователя в базе данных
+    await mark_user_as_available(tg_id)
+
+# Хэндлер для события блокировки бота
+@router.my_chat_member(
+    ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION)
+)
+async def handle_user_block(event: ChatMemberUpdated):
+    """
+    Срабатывает, когда пользователь блокирует бота.
+    """
+    tg_id = event.from_user.id  # ID пользователя
+    logging.warning(f"Пользователь {tg_id} заблокировал бота.")
+
+    # Обновляем статус пользователя в базе данных
+    await mark_user_as_unavailable(tg_id, reason="Бот заблокирован")
