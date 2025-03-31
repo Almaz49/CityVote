@@ -12,11 +12,11 @@ from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramFor
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
-
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
 from FSMs.FSMs import FSMRegistration, FSMRereg
 # from data_base.telegram_bot_logic import AsyncDatabase, is_votist
 from data_base.data_base import *
-from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
+from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup, main_menu_markup
 from config_data.config import Config, load_config
 from utils import log_handler_call, log_function_call
 from LEXICON.LEXICON import LEXICON
@@ -30,34 +30,36 @@ bot = Bot(token=config.tg_bot.token)
 path_db = config.db.path_db  # путь к базе данных
 club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
 
-# Функция уведомления пользователей
-from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
-
-async def send_notification_to_user(tg_id: int, message_text: str):
-    try:
-        # Попытка отправить сообщение
-        await bot.send_message(
-            tg_id,
-            text=message_text
-        )
-    except TelegramForbiddenError:
-        # Пользователь заблокировал бота
-        logging.warning(f"Пользователь {tg_id} заблокировал бота.")
-        await mark_user_as_unavailable(tg_id, reason="bot blocked")
-    except TelegramBadRequest as e:
-        if "chat not found" in str(e).lower():
-            # Чат не найден (пользователь удалил аккаунт)
-            logging.warning(f"Пользователь {tg_id} удалил аккаунт или чат не существует.")
-            await mark_user_as_unavailable(tg_id, reason="user lost")
-        else:
-            # Другая ошибка BadRequest
-            logging.error(f"Ошибка при отправке сообщения пользователю {tg_id}: {e}")
-    except TelegramAPIError as e:
-        # Любая другая ошибка Telegram API
-        logging.error(f"Telegram API Error для пользователя {tg_id}: {e}")
-    except Exception as e:
-        # Все остальные исключения
-        logging.error(f"Неизвестная ошибка при отправке сообщения пользователю {tg_id}: {e}")
+# Функция уведомления пользователя
+async def send_notification_to_user(tg_id: int, message_text: str, reply_markup = main_menu_markup):
+    is_available = await is_user_available(tg_id)
+    logging.debug(f"Пользователь {tg_id} доступен: {is_available}")
+    if is_available:
+        try:
+            # Попытка отправить сообщение
+            await bot.send_message(
+                tg_id,
+                text=message_text,
+                reply_markup=reply_markup
+            )
+        except TelegramForbiddenError:
+            # Пользователь заблокировал бота
+            logging.warning(f"Пользователь {tg_id} заблокировал бота.")
+            await mark_user_as_unavailable(tg_id, reason="bot blocked")
+        except TelegramBadRequest as e:
+            if "chat not found" in str(e).lower():
+                # Чат не найден (пользователь удалил аккаунт)
+                logging.warning(f"Пользователь {tg_id} удалил аккаунт или чат не существует.")
+                await mark_user_as_unavailable(tg_id, reason="user lost")
+            else:
+                # Другая ошибка BadRequest
+                logging.error(f"Ошибка при отправке сообщения пользователю {tg_id}: {e}")
+        except TelegramAPIError as e:
+            # Любая другая ошибка Telegram API
+            logging.error(f"Telegram API Error для пользователя {tg_id}: {e}")
+        except Exception as e:
+            # Все остальные исключения
+            logging.error(f"Неизвестная ошибка при отправке сообщения пользователю {tg_id}: {e}")
 
 
 #Функция уведомления регистратора при краткой регистрации.
@@ -93,10 +95,10 @@ async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict
         )
 
         # Отправляем сообщение регистратору
-        await bot.send_message(
+        await send_notification_to_user(
             registrator_tg_id,
-            text=message_text,
-            reply_markup=markup  # клавиатура подтверждения
+            message_text,
+            markup  # клавиатура подтверждения
         )
 
         return True, "Уведомление отправлено."
@@ -143,10 +145,10 @@ async def notify_super_registrator_short(candidate_tg_id, user_dict):
         # Отправляем сообщение суперрегистраторам (а если их нет - регистраторам)
         for registrator in super_registrators:
             registrator_tg_id = registrator[2]
-            await bot.send_message(
+            await send_notification_to_user(
                 registrator_tg_id,
-                text=message_text,
-                reply_markup=markup  # клавиатура подтверждения
+                message_text,
+                markup  # клавиатура подтверждения
         )
 
         return True, "Уведомление отправлено."
@@ -192,10 +194,10 @@ async def notify_registrator(registrator_tg_id, candidate_tg_id, user_dict):
         )
 
         # Отправляем сообщение регистратору
-        await bot.send_message(
+        await send_notification_to_user(
             registrator_tg_id,
-            text=message_text,
-            reply_markup=markup  # клавиатура подтверждения
+            message_text,
+            markup  # клавиатура подтверждения
         )
 
         return True, "Уведомление отправлено."
@@ -240,9 +242,9 @@ async def not_votist_because_proxy_quit(proxy:int):
 Для начала работы наберите или нажмите команду /start
 '''
                     # Отправляем сообщение участннику, чей представитель ушел в отставку
-                    await bot.send_message(
+                    await send_notification_to_user(
                         tg_id,
-                        text=message_text
+                        message_text
                     )
 
                 except aiosqlite.Error as e:
@@ -286,9 +288,9 @@ async def votist_because_proxy_returned(proxy:int):
 Для начала работы наберите или нажмите команду /start
 '''
                     # Отправляем сообщение участннику, чей представитель ушел в отставку
-                    await bot.send_message(
+                    await send_notification_to_user(
                         tg_id,
-                        text=message_text
+                        message_text
                     )
 
                 except aiosqlite.Error as e:

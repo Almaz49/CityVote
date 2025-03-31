@@ -4,11 +4,12 @@
 from aiogram import Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import CallbackQuery, Message
+import logging
 from filters.filters import StatusFilter
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import db_update, extract_user_data_tg, extract_user_member_id, new_status
-import logging
+from services.services import send_notification_to_user
 from utils import log_handler_call
 
 # Настройка логирования
@@ -76,6 +77,19 @@ async def process_registrator_yes_press(callback: CallbackQuery,data:dict):
             text=f"Спасибо! Пользователь {tg_id} получил статус 'Участник'.",
             reply_markup=await user_menu(callback.from_user.id,data['user_status'])
         )
+        #Отправляем сообщение принятому пользователю
+        await send_notification_to_user(
+            user_id,
+            message_text=('Поздравляем! Ваша заявка на вступление в группу одобрена. Теперы вы полноправный участник группы и можете принимать участие в голосованиях'
+            'Обратите внимание - чтобы ваш голос учитывался, вам нужно либо выбрать себе представителя, либо саморму стать представителем'
+            'Выбор представителя не ограничивает вашу возможность голосовать самому в любом голосовании.'
+            'Но если вы не приняли участие в голосовании, будет учитываться то, как за вас проголосовал ваш представитель.'
+            'Если вас не будет устраивать то, как за вас голосует ваш представитель, вы в любой момент сможете его поменять, либо сами стать представителем.'
+            'Но статус предстаителя налагает определенные обязательства. Например - участие во всех голосованиях.'
+            'Представитель может выбрать себе заместителя, который будет голосвать за него в случае отсутствия.'
+            'Представитель несет ответственность за голосования заместителя, как за свои')
+            )
+
     except Exception as e:
         logging.error(f"Ошибка при подтверждении членства пользователя {tg_id}: {e}")
         await callback.message.answer(text="Произошла ошибка при подтверждении членства.")

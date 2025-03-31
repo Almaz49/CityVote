@@ -40,6 +40,7 @@ async def new_member(club_id, user_id):
 # Запись нового статуса (registrator - member_id того, кто присвоил статус,
 # member_id кому, какой статус, подтверждающий токен)
 # Если переан статус в виде 'not_status', соответствующий статус удаляется
+# status в данном случае - не список статусов, а один из статусов
 @log_function_call
 async def new_status(registrator, member_id, status, token_id=None):
     time_reg = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -67,6 +68,20 @@ async def new_status(registrator, member_id, status, token_id=None):
                     '''INSERT OR IGNORE INTO Status(member_id, status) VALUES (?, ?)''',
                     (member_id, status)
                 )
+                # Если присваевается статус member, удаляем статус candidate
+                if status == 'member':
+                    await cursor.execute(
+                    '''DELETE FROM Status WHERE member_id = ? AND status = ?''',
+                    (member_id, 'candidate')
+                )
+                    logging.info(f"Статус '{'candidate'}' удален для member_id: {member_id}")
+                # Если присваевается статус candidate, удаляем статус member
+                if status == 'candidate':
+                    await cursor.execute(
+                    '''DELETE FROM Status WHERE member_id = ? AND status = ?''',
+                    (member_id, 'member')
+                )
+                    logging.info(f"Статус '{'member'}' удален для member_id: {member_id}")
                 logging.info(f"Добавлен новый статус '{status}' для member_id: {member_id}")
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при работе со статусом: {e}")

@@ -210,6 +210,11 @@ confirm_markup = InlineKeyboardMarkup(
 return_to_main_menu_keyboards = {'main_menu' : LEXICON.get('return_to_main_menu','Назад в главное меню')}
 return_to_main_menu_markup = create_inline_kb(1, **return_to_main_menu_keyboards)
 
+# Клавиатура для вызова главного меню
+
+main_menu_keyboards = {'main_menu' : LEXICON.get('main_menu','Главное меню')}
+main_menu_markup = create_inline_kb(1, **return_to_main_menu_keyboards)
+
 # Клавиатура для добавления вариантов голосования
 ok_var_button = InlineKeyboardButton(
     text='Добавить еще вариант',
