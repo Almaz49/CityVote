@@ -205,14 +205,14 @@ async def member_leave_club (member_id,status):
             logging.error(f"Ошибка при работе с доверием: {e}")
             raise
 
-
+@log_function_call
 async def mark_user_as_unavailable(tg_id: int, reason: str):
     """
     Помечает пользователя как недоступного.
     :param tg_id: ID пользователя в Telegram
     :param reason: Причина недоступности (например, "Бот заблокирован")
     """
-    async with AsyncDatabase("your_database.db") as cursor:
+    async with AsyncDatabase(path_db) as cursor:
         try:
             query = """
             UPDATE Users
@@ -224,13 +224,13 @@ async def mark_user_as_unavailable(tg_id: int, reason: str):
         except Exception as e:
             logging.error(f"Ошибка при обновлении статуса пользователя {tg_id}: {e}")
 
-
+@log_function_call
 async def mark_user_as_available(tg_id: int):
     """
     Помечает пользователя как доступного.
     :param tg_id: ID пользователя в Telegram
     """
-    async with AsyncDatabase("your_database.db") as cursor:
+    async with AsyncDatabase(path_db) as cursor:
         try:
             query = """
             UPDATE Users
@@ -242,13 +242,14 @@ async def mark_user_as_available(tg_id: int):
         except Exception as e:
             logging.error(f"Ошибка при обновлении статуса пользователя {tg_id}: {e}")
 
+@log_function_call
 async def is_user_available(tg_id: int) -> bool:
     """
     Проверяет, доступен ли пользователь.
     :param tg_id: ID пользователя в Telegram
     :return: True, если пользователь доступен; False, если недоступен.
     """
-    async with AsyncDatabase("your_database.db") as cursor:
+    async with AsyncDatabase(path_db) as cursor:
         try:
             query = """
             SELECT available
@@ -258,7 +259,7 @@ async def is_user_available(tg_id: int) -> bool:
             await cursor.execute(query, (tg_id,))
             result = await cursor.fetchone()
 
-            if result and result[0] is None:
+            if result[0] is None:
                 # Если available == NULL, пользователь доступен
                 logging.info(f"Пользователь {tg_id} доступен.")
                 return True

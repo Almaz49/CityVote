@@ -31,6 +31,7 @@ path_db = config.db.path_db  # путь к базе данных
 club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
 
 # Функция уведомления пользователя
+@log_function_call
 async def send_notification_to_user(tg_id: int, message_text: str, reply_markup = main_menu_markup):
     is_available = await is_user_available(tg_id)
     logging.debug(f"Пользователь {tg_id} доступен: {is_available}")

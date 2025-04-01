@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS `Members` (
 	`proxy` INTEGER,
 	`number_of_votes` REAL,
 	`desciption` TEXT,
+	`resume`     TEXT,
 FOREIGN KEY(`club_id`) REFERENCES `Clubs`(`id`),
 FOREIGN KEY(`user_id`) REFERENCES `Users`(`id`),
 FOREIGN KEY(`proxy`) REFERENCES `Members`(`id`),
