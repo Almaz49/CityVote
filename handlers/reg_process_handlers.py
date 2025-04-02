@@ -10,7 +10,8 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration, FSMRereg, FSM_short_registration
-from data_base.telegram_bot_logic import status_member, extract_user_data_tg, new_status_tg, list_of_members_tg, update_address
+from data_base.telegram_bot_logic import (status_member, extract_user_data_tg, new_status_tg, list_of_members_tg,
+update_address, recording_user_data_1, recording_user_data, recording_member_data)
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
 from filters.filters import ContactFilter
 from config_data.config import Config, load_config
@@ -97,6 +98,8 @@ async def process_resume_sent(message: Message, state: FSMContext):
              ),
         reply_markup=contact_markup
     )
+
+
     # Устанавливаем состояние ожидания отправки контакта
     await state.set_state(FSM_short_registration.fill_contact)
 
@@ -112,6 +115,7 @@ async def process_get_contact_short(message: Message, state: FSMContext):
     )
     try:
         contact: Contact = message.contact
+        print('Контакт: ', contact)
         logging.info(f"Контакт получен от пользователя {message.from_user.id}: {contact}")
         tg_true = (message.contact.user_id == message.from_user.id)  # проверяем, действительно ли юзер прислал свой контакт - или чужой
 
@@ -174,10 +178,12 @@ async def warning_get_contact_short_reg(message: Message):
                                    .fill_registrator),
                       lambda x: x.data.isdigit() or x.data == 'stranger')
 @log_handler_call
-async def process_registrator_choise(callback: CallbackQuery, state: FSMContext):
+async def process_registrator_choise(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
         logging.info(f"Выбран регистратор {callback.data} пользователем {callback.from_user.id}")
 
+        # Удаляем сообщение с кнопками подтверждения
+        await callback.message.delete()
 
         # Сохраняем знакомого модератора (callback.data нажатой кнопки) в контексте состояния по ключу "familiar"
         await state.update_data(familiar=callback.data)
@@ -185,6 +191,19 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext)
 
         # Заносим данные регистрации в строку соответствующего пользователя в базе данных
         user_dict = await state.get_data()
+
+        user_param = {}
+        user_param['tg_phone_number'] = user_dict.get('tg_phone_number')
+        user_param['tg_first_name'] = user_dict.get('tg_first_name')
+        user_param['tg_last_name'] = user_dict.get('tg_last_name')
+
+        # Записываем в базу данных сведения об участнике
+        await recording_user_data(tg_id, **user_param )
+        member_id = data['member_id']
+        member_param = {}
+        member_param['resume'] = user_dict.get('resume')
+
+        await recording_member_data(member_id, **member_param)
 
 
 

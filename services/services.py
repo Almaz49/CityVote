@@ -87,13 +87,15 @@ async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict
         # Формируем сообщение для регистратора
         message_text = (
             f"Пользователь с данными:\n"
-            f'Контакт: {user_dict["contact"]}\n'
+            f'Имя: {user_dict["tg_first_name"]}\n'
+            f'Фамилия: {user_dict["tg_last_name"]}\n'
             f'Истинность контакта: {user_dict["contact_true"]}\n'
-            f'Резюме: {user_dict["resume"]}\n'
-            f"Просит подтвердить его право стать членом клуба.\n"
-            f"Кого либо из регистраторов он не знает\n"
+            f'Номер телефона: {user_dict["tg_phone_number"]}\n'
+            f"Просит вас подтвердить его право\n"
+            f"стать членом клуба.\n"
             f"Подтверждаете?"
         )
+
 
         # Отправляем сообщение регистратору
         await send_notification_to_user(

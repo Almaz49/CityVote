@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS `Users` (
 	`email` TEXT,
     `tg_username`     TEXT,
     `username`        TEXT    UNIQUE,
-	`available`       TEXT,
+	`tg_available`       TEXT,
 FOREIGN KEY(`id`) REFERENCES `Users`(`id`)
 );
 CREATE TABLE IF NOT EXISTS `Clubs` (

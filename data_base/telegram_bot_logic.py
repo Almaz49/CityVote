@@ -90,10 +90,10 @@ async def extract_user_member_id(tg_id):  # Добавляем club_id как п
             return user_id, member_id
         else:
             logging.info(f"Пользователь с tg_id={tg_id} не найден.")
-            return None
+            return None, None
     except Exception as e:
         logging.error(f"Ошибка при извлечении member_id: {e}")
-        return None
+        return None, None
 
 # Функция извлечения данных о пользователе по его tg_id
 # Используется при создании нового регистратора
@@ -363,7 +363,7 @@ async def update_address(tg_id, city, street, house):
 
         # Здесь должна быть функция для обновления адреса в базе данных
         # Например, используем функцию db_update из db_func.py
-        result = await db_update(user_id, city=city, street=street, house=house)
+        result = await db_update('Users','tg_id', tg_id, city=city, street=street, house=house)
         if result:
             return True, 'Адрес успешно обновлен.'
         else:

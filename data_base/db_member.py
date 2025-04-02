@@ -216,7 +216,7 @@ async def mark_user_as_unavailable(tg_id: int, reason: str):
         try:
             query = """
             UPDATE Users
-            SET available = ?
+            SET tg_available = ?
             WHERE tg_id = ?;
             """
             await cursor.execute(query, (reason, tg_id))
@@ -234,7 +234,7 @@ async def mark_user_as_available(tg_id: int):
         try:
             query = """
             UPDATE Users
-            SET available = NULL
+            SET tg_available = NULL
             WHERE tg_id = ?;
             """
             await cursor.execute(query, (tg_id,))
@@ -252,21 +252,95 @@ async def is_user_available(tg_id: int) -> bool:
     async with AsyncDatabase(path_db) as cursor:
         try:
             query = """
-            SELECT available
+            SELECT tg_available
             FROM Users
             WHERE tg_id = ?;
             """
             await cursor.execute(query, (tg_id,))
             result = await cursor.fetchone()
 
-            if result[0] is None:
-                # Если available == NULL, пользователь доступен
-                logging.info(f"Пользователь {tg_id} доступен.")
-                return True
+            print ('Результат запроса доступности  ',result)
+
+
+
+            if result is not None:
+                if not result[0]:
+                    # Если tg_available == NULL, пользователь доступен
+                    logging.info(f"Пользователь {tg_id} доступен.")
+                    return True
+                else:
+                    # Если tg_available содержит значение, пользователь недоступен
+                    logging.info(f"Пользователь {tg_id} недоступен.")
+                    return False
             else:
-                # Если available содержит значение, пользователь недоступен
-                logging.info(f"Пользователь {tg_id} недоступен.")
+                #Если пользователь не найден в базе данных, считаем его недоступным
                 return False
         except Exception as e:
             logging.error(f"Ошибка при проверке доступности пользователя {tg_id}: {e}")
             return False
+
+# Функция записи в БД данных о пользователе при короткой регистрации (с запросом телефона)
+@log_function_call
+async def recording_user_data_1(tg_id: int, member_id: int, tg_phone_number = None,
+                                tg_first_name = None, tg_last_name = None, resume = None):
+    """
+    Записывает в БД данные пользователя при регистрации.
+    :param tg_id: ID пользователя в Telegram, данные его анкеты
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            query = """
+            UPDATE Users
+            SET
+            tg_phone_number = ?,
+            tg_first_name = ?,
+            tg_last_name = ?
+            WHERE tg_id = ?;
+            """
+            params = (tg_phone_number, tg_first_name, tg_last_name, tg_id)
+            await cursor.execute(query, params)
+
+            query = """
+            UPDATE Members
+            SET
+            resume = ?
+            WHERE id = ?;
+            """
+            params = (resume, member_id)
+            await cursor.execute(query, params)
+
+            logging.info(f"Данные пользователя {tg_id} записаны в базу данных.")
+        except Exception as e:
+            logging.error(f"Ошибка при записи данных пользователя {tg_id}: {e}")
+
+# Функция записи данных о пользователе в таблицу Users
+@log_function_call
+async def recording_user_data(tg_id: int, **data):
+
+    """
+    Записывает в БД данные пользователя.
+    :param tg_id: ID пользователя в Telegram, данные его анкеты
+    """
+
+    try:
+        await db_update('Users', 'tg_id', tg_id, **data)
+        logging.info(f"Данные пользователя {tg_id} записаны в базу данных.")
+    except Exception as e:
+        logging.error(f"Ошибка при записи данных пользователя {tg_id}: {e}")
+
+
+
+# Функция записи данных о пользователе в таблицу Members
+@log_function_call
+async def recording_member_data(member_id: int, **data):
+
+    """
+    Записывает в БД данные пользователя.
+    :param member_id: ID пользователя в Telegram, данные его анкеты
+    """
+
+    try:
+        await db_update('Users', 'tg_id', member_id, **data)
+        logging.info(f"Данные пользователя {member_id} записаны в базу данных.")
+    except Exception as e:
+        logging.error(f"Ошибка при записи данных пользователя {member_id}: {e}")

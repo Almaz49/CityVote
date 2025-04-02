@@ -441,6 +441,7 @@ async def is_username_uniq(username:str):
         return (username,) not in result
 
 
+
 """
 for i in range(5):
     a = count_directly_votes(i+1)
