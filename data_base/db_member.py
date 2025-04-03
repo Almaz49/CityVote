@@ -340,7 +340,7 @@ async def recording_member_data(member_id: int, **data):
     """
 
     try:
-        await db_update('Users', 'tg_id', member_id, **data)
+        await db_update('Members', 'id', member_id, **data)
         logging.info(f"Данные пользователя {member_id} записаны в базу данных.")
     except Exception as e:
         logging.error(f"Ошибка при записи данных пользователя {member_id}: {e}")

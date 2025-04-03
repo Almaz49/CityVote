@@ -192,17 +192,16 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         # Заносим данные регистрации в строку соответствующего пользователя в базе данных
         user_dict = await state.get_data()
 
+        # Записываем в базу данных сведения об участнике
         user_param = {}
         user_param['tg_phone_number'] = user_dict.get('tg_phone_number')
         user_param['tg_first_name'] = user_dict.get('tg_first_name')
         user_param['tg_last_name'] = user_dict.get('tg_last_name')
-
-        # Записываем в базу данных сведения об участнике
         await recording_user_data(tg_id, **user_param )
+
         member_id = data['member_id']
         member_param = {}
         member_param['resume'] = user_dict.get('resume')
-
         await recording_member_data(member_id, **member_param)
 
 
