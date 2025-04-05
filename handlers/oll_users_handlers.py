@@ -348,7 +348,7 @@ async def process_list_of_future_votings(callback: CallbackQuery, data: dict):
 
 # Хэндлер для просмотра всех вариантов (обрабатывает кнопку "посмотреть все варианты")
 # Присылает по сообщению на каждый вариант, к последнему прикладывает клавиатуру из меню.
-# Применяется для будущих и завершенных голосований
+#Для членов группы - кнопка "выбрать вариант для голосвания" 'ongoing_voting:{voting_id}'
 @router.callback_query(F.data.regexp(r'^show_oll_variants:\d+$'))
 @log_handler_call
 async def process_show_oll_variants(callback: CallbackQuery, data: dict):
@@ -378,8 +378,8 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         dict_menu = {}
         if voting_status == 'add_variants':
             dict_menu['future_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
-            # Если пользователь - делегат, добавляем кнопку "Добавить голосование"
-            if 'delegete' in data["user_status"]:
+            # Если пользователь - делегат, добавляем кнопку "Добавить вариант"
+            if 'delegate' in data["user_status"]:
                 dict_menu[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
             if 'admin' in data["user_status"]:
                 dict_menu[f'voting_start:{voting_id}'] = LEXICON.get('voting_start', 'voting_start')
@@ -391,6 +391,8 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         elif voting_status == 'ongoing':
             dict_menu['ongoing_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
             # Если пользователь - админ, добавляем кнопки "Завершить этап","Перейти в финал","Завершить голосование"
+            if 'member' in data['user_status']:
+                dict_menu[f'ongoing_voting:{voting_id}'] = LEXICON.get('select_variant','select_variant')
             if 'admin' in data["user_status"]:
                 dict_menu[f'voting_stage:{voting_id}'] = LEXICON.get('voting_stage', 'voting_stage')
                 dict_menu[f'voting_final:{voting_id}'] = LEXICON.get('voting_final', 'voting_final')

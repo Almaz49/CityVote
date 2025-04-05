@@ -112,7 +112,8 @@ async def voting_start(voting_id, starter=None):
                 )
             status, = await cursor.fetchone()
             await cursor.execute('''SELECT COUNT(*) FROM Variants WHERE (voting_id = ? AND variant_status = 'valid' )''', (voting_id,))
-            count_of_var = cursor.fetchone()
+            count_of_var = await cursor.fetchone()
+            print (count_of_var)
             count_of_var = count_of_var[0] if count_of_var else 0
             if status != 'add_variants':
                 flag = False

@@ -62,6 +62,7 @@ LEXICON_RU = {
 'confirmation_of_voting_results':'Запустить утверждение итога голосования', # через : добавляется voting_id
 'confirmation_of_voting_results_stop':'Завершить утверждение итога голосования', # через : добавляется voting_id
 'voting_complete':'Завершить голосование', # через : добавляется voting_id
+'select_variant':'Выбрать вариант для голосования', #f'ongoing_voting:{voting_id}'
 'show_oll_variants':'Роказать все варианты',
 'continue_voting':'Продолжить голосование', # через : добавляется voting_id
 'show_variants':'Посмотреть варианты',

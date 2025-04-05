@@ -92,8 +92,7 @@ buttons = {
         'candidate':['leave_the_group'],                             #Для статуса 'candidate'
         'member': ['select_proxy', 'become_proxy','leave_the_group'],      # Для статуса 'member'
         'proxy': ['resign_from_proxy'],                  # Для статуса 'proxy'
-        'delegate': ['new_voting', 'new_variant'],          # Для статуса 'delegate'
-        'admin':['voting_start']                           #для статуса 'админ'
+        'delegate': ['new_voting']          # Для статуса 'delegate'
     },
     'settings': {  # Категория: Настройки
         'admin': ['new_status'],                         # Для статуса 'admin'

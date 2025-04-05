@@ -127,7 +127,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
 
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'Спасибо! Голосование создано! Вы вышли из машины состояний.'
-            data['reply_markup'] = None  # Если клавиатура не нужна
+            data['reply_markup'] = await user_menu(data['user_status'])  # Если клавиатура не нужна
 
             # Пытаемся отредактировать сообщение
             await callback.message.edit_text(
@@ -188,130 +188,130 @@ async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FS
 Добавление варианта
 """
 
-# Этот хэндлер будет срабатывать на команду /new_variant
-# и переводить бота в состояние ожидания выбора голосования
-@router.message(Command(commands='new_variant'), StateFilter(default_state))
-@log_handler_call
-async def process_new_variant_start(message: Message, state: FSMContext, data:dict):
-    """
-    Обработчик команды /new_variant.
-    Запрашивает выбор голосования для добавления варианта.
-    """
-    logging.info(f"Пользователь {message.from_user.id} начал добавление варианта.")
-    try:
-        list_of_votings = await list_of_votings_tg('add_variants')
-        if not list_of_votings:
-            await message.answer(text='Сейчас нет активных голосований, вы не можете добавить вариант.',
-                                 reply_markup=await user_menu(message.from_user.id))
-            return
+# # Этот хэндлер будет срабатывать на команду /new_variant
+# # и переводить бота в состояние ожидания выбора голосования
+# @router.message(Command(commands='new_variant'), StateFilter(default_state))
+# @log_handler_call
+# async def process_new_variant_start(message: Message, state: FSMContext, data:dict):
+#     """
+#     Обработчик команды /new_variant.
+#     Запрашивает выбор голосования для добавления варианта.
+#     """
+#     logging.info(f"Пользователь {message.from_user.id} начал добавление варианта.")
+#     try:
+#         list_of_votings = await list_of_votings_tg('add_variants')
+#         if not list_of_votings:
+#             await message.answer(text='Сейчас нет активных голосований, вы не можете добавить вариант.',
+#                                  reply_markup=await user_menu(message.from_user.id))
+#             return
 
-        # Создаем клавиатуру с активными голосованиями
-        keyboards = {str(item[0]): item[1] for item in list_of_votings}
-        markup = create_inline_kb(1, **keyboards)
+#         # Создаем клавиатуру с активными голосованиями
+#         keyboards = {str(item[0]): item[1] for item in list_of_votings}
+#         markup = create_inline_kb(1, **keyboards)
 
-        await message.answer(text='Пожалуйста, выберите, к какому голосованию вы хотите добавить вариант:',
-                            reply_markup=markup)
-        await state.set_state(FSMNewVariant.fill_voting_choise)
-    except Exception as e:
-        logging.error(f"Ошибка при получении списка голосований: {e}")
-        await message.answer(
-            text=f"Произошла ошибка: {str(e)}",
-            reply_markup=await user_menu(message.from_user.id, data['user_status'])
-            )
+#         await message.answer(text='Пожалуйста, выберите, к какому голосованию вы хотите добавить вариант:',
+#                             reply_markup=markup)
+#         await state.set_state(FSMNewVariant.fill_voting_choise)
+#     except Exception as e:
+#         logging.error(f"Ошибка при получении списка голосований: {e}")
+#         await message.answer(
+#             text=f"Произошла ошибка: {str(e)}",
+#             reply_markup=await user_menu(message.from_user.id, data['user_status'])
+#             )
 
-# Этот хэндлер будет срабатывать на нажатие кнопки new_variant
-# и переводить бота в состояние ожидания выбора голосования
-@router.callback_query(F.data =='new_variant', StateFilter(default_state))
-@log_handler_call
-async def process_new_variant_cb_start(callback: CallbackQuery, state: FSMContext, data:dict):
-    """
-    Обработчик кнопки new_variant.
-    Запрашивает выбор голосования для добавления варианта.
-    """
-    logging.info(f"Пользователь {callback.from_user.id} начал добавление варианта.")
-    try:
-        list_of_votings = await list_of_votings_tg('add_variants')
-        if not list_of_votings:
-            # Добавляем данные для SafeEditMiddleware
-            data['response_text'] = 'Сейчас нет активных голосований, вы не можете добавить вариант.'
-            data['reply_markup'] = await user_menu(status = data['user_status'])  # Убираем клавиатуру
+# # Этот хэндлер будет срабатывать на нажатие кнопки new_variant
+# # и переводить бота в состояние ожидания выбора голосования
+# @router.callback_query(F.data =='new_variant', StateFilter(default_state))
+# @log_handler_call
+# async def process_new_variant_cb_start(callback: CallbackQuery, state: FSMContext, data:dict):
+#     """
+#     Обработчик кнопки new_variant.
+#     Запрашивает выбор голосования для добавления варианта.
+#     """
+#     logging.info(f"Пользователь {callback.from_user.id} начал добавление варианта.")
+#     try:
+#         list_of_votings = await list_of_votings_tg('add_variants')
+#         if not list_of_votings:
+#             # Добавляем данные для SafeEditMiddleware
+#             data['response_text'] = 'Сейчас нет голосованийв стадии добавления варианта, вы не можете добавить вариант.'
+#             data['reply_markup'] = await user_menu(status = data['user_status'])  # Убираем клавиатуру
 
-            # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(
-                text=data['response_text'],
-                reply_markup=data['reply_markup']
-            )
+#             # Пытаемся отредактировать сообщение
+#             await callback.message.edit_text(
+#                 text=data['response_text'],
+#                 reply_markup=data['reply_markup']
+#             )
 
-            return
+#             return
 
-        # Создаем клавиатуру с активными голосованиями
-        keyboards = {str(item[0]): item[1] for item in list_of_votings}
+#         # Создаем клавиатуру с активными голосованиями
+#         keyboards = {str(item[0]): item[1] for item in list_of_votings}
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Пожалуйста, выберите, к какому голосованию вы хотите добавить вариант:'
-        data['reply_markup'] = create_inline_kb(1, **keyboards)
+#         # Добавляем данные для SafeEditMiddleware
+#         data['response_text'] = 'Пожалуйста, выберите, к какому голосованию вы хотите добавить вариант:'
+#         data['reply_markup'] = create_inline_kb(1, **keyboards)
 
-        # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+#         # Пытаемся отредактировать сообщение
+#         await callback.message.edit_text(
+#             text=data['response_text'],
+#             reply_markup=data['reply_markup']
+#         )
 
-        await state.set_state(FSMNewVariant.fill_voting_choise)
+#         await state.set_state(FSMNewVariant.fill_voting_choise)
 
-    except Exception as e:
-        logging.error(f"Ошибка при получении списка голосований: {e}")
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = f"Произошла ошибка: {str(e)}"
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+#     except Exception as e:
+#         logging.error(f"Ошибка при получении списка голосований: {e}")
+#         # Добавляем данные для SafeEditMiddleware
+#         data['response_text'] = f"Произошла ошибка: {str(e)}"
+#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
-        # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+#         # Пытаемся отредактировать сообщение
+#         await callback.message.edit_text(
+#             text=data['response_text'],
+#             reply_markup=data['reply_markup']
+#         )
 
-        await state.clear()
-
-
+#         await state.clear()
 
 
-# Этот хэндлер будет срабатывать на нажатие кнопки с названием голосования в машине
-# состояний добавления вариантов
-@router.callback_query(StateFilter(FSMNewVariant.fill_voting_choise), F.data.isdigit())
-@log_handler_call
-async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext, data: dict):
-    """
-    Обработчик выбора голосования.
-    Запрашивает ввод названия варианта.
-    """
-    logging.info(f"Пользователь {callback.from_user.id} выбрал голосование ID={callback.data}.")
-    voting_id = int(callback.data)
-    await state.update_data(voting_id=voting_id)
 
-    # Добавляем данные для SafeEditMiddleware
-    data['response_text'] = 'Пожалуйста, введите название варианта.'
-    data['reply_markup'] = None  # Убираем клавиатуру
 
-    # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
-        text=data['response_text'],
-        reply_markup=data['reply_markup']
-    )
+# # Этот хэндлер будет срабатывать на нажатие кнопки с названием голосования в машине
+# # состояний добавления вариантов
+# @router.callback_query(StateFilter(FSMNewVariant.fill_voting_choise), F.data.isdigit())
+# @log_handler_call
+# async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext, data: dict):
+#     """
+#     Обработчик выбора голосования.
+#     Запрашивает ввод названия варианта.
+#     """
+#     logging.info(f"Пользователь {callback.from_user.id} выбрал голосование ID={callback.data}.")
+#     voting_id = int(callback.data)
+#     await state.update_data(voting_id=voting_id)
 
-    # Устанавливаем следующее состояние
-    await state.set_state(FSMNewVariant.fill_variant_title)
+#     # Добавляем данные для SafeEditMiddleware
+#     data['response_text'] = 'Пожалуйста, введите название варианта.'
+#     data['reply_markup'] = None  # Убираем клавиатуру
+
+#     # Пытаемся отредактировать сообщение
+#     await callback.message.edit_text(
+#         text=data['response_text'],
+#         reply_markup=data['reply_markup']
+#     )
+
+#     # Устанавливаем следующее состояние
+#     await state.set_state(FSMNewVariant.fill_variant_title)
 
 # Этот хэндлер будет срабатывать на нажатие кнопки с добавлением варианта к конкретному голосованию
 # и переводить в машину состояний добавления вариантов
-@router.callback_query(F.data.regexp(r'^create_variant_vote:\d+$'))
+@router.callback_query(F.data.regexp(r'^create_variant:\d+$'), StateFilter(default_state))
 @log_handler_call
 async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext, data: dict):
     """
-    Обработчик выбора голосования.
+    Обработчик кнопки добавления варианта.
     Запрашивает ввод названия варианта.
     """
-    logging.info(f"Пользователь {callback.from_user.id} выбрал голосование ID={callback.data}.")
+    logging.info(f"Пользователь {callback.from_user.id} начал добавление варианта к голосованию ID={callback.data}.")
     voting_id = int(callback.data.split(':')[1])
     await state.update_data(voting_id=voting_id)
 

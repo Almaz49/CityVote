@@ -249,89 +249,86 @@ async def warning_registrator(message: Message):
 
 
 
-# Хэндлер для администрирования конкретного голосования
-@router.callback_query(F.data.regexp(r'^admin_voting:\d+$'))
-@log_handler_call
-async def process_admin_voting(callback: CallbackQuery, data: dict):
-    """
-    Обработчик вызова меню администрирования конкретного голосования.
-    """
-    try:
-        logging.info(f"Пользователь {callback.from_user.id} выбрал голосование для администрирования: {callback.data}")
-        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+# # Хэндлер для администрирования конкретного голосования
+# @router.callback_query(F.data.regexp(r'^admin_voting:\d+$'))
+# @log_handler_call
+# async def process_admin_voting(callback: CallbackQuery, data: dict):
+#     """
+#     Обработчик вызова меню администрирования конкретного голосования.
+#     """
+#     try:
+#         logging.info(f"Пользователь {callback.from_user.id} выбрал голосование для администрирования: {callback.data}")
+#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        voting_id = int(callback.data.split(':')[1])
-        variants = await list_of_variants(voting_id, 'valid')
-        voting_status = await extract_voting_status(voting_id)
-        dict_keyboard = {f'back_to_votings:{voting_status}':LEXICON.get('back_to_votings','back_to_votings')}
+#         voting_id = int(callback.data.split(':')[1])
+#         variants = await list_of_variants(voting_id, 'valid')
+#         voting_status = await extract_voting_status(voting_id)
+#         dict_keyboard = {f'back_to_votings:{voting_status}':LEXICON.get('back_to_votings','back_to_votings')}
 
-# Добавляю кнопки в зависимости от статуса голосования и числа вариантов
-        if voting_status == 'add_variants':
-            if len(variants) < 2:
-                text = 'Это голосование в стадии добавления вариантов. У него пока менее двух вариантов. Вы можете добавить еще варианты либо завершить его'
-                if 'delegate' in data['user_status']:
-                    dict_keyboard[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
-                    dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
-            else:
-                text = 'Это голосование в стадии добавления вариантов. Вы можете добавить вариант или запустить его'
-                dict_keyboard[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
-                dict_keyboard[f'voting_start:{voting_id}'] = LEXICON.get('voting_start','voting_start')
-                dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
-        elif voting_status == 'ongoing':
-            if len(variants) > 2:
-                text = 'Это идущее голосование. Можете перевести его в финал, оставив два варианта'
-                dict_keyboard[f'voting_final:{voting_id}'] = LEXICON.get('voting_final','voting_final')
-                if len(variants) > 3:
-                    text = 'Это идущее голосование. Можете подвести промежуточный итог, либо сразу запустить финальный этап, оставив два варианта'
-                    dict_keyboard[f'voting_stage:{voting_id}'] = LEXICON.get('voting_stage','voting_stage')
-                dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
-            else:
-                text = 'это голосование в финальной стадии. Можете завершить его'
-                dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
-
-
-        elif voting_status == 'confirmation':
-            text = 'Это голосование в стадии утверждения результата. Вы можете завершить его'
-            dict_keyboard[f'confirmation_of_voting_results_stop:{voting_id}'] = LEXICON.get('confirmation_of_voting_results_stop',
-                                                                                      'confirmation of voting results stop')
-
-        elif voting_status == 'completed':
-            text = 'Это завершенное голосование. Вы можете возобновить голосование за него. Отданные ранее голоса сохранятся'
-            dict_keyboard[f'continue_voting{voting_id}'] = LEXICON.get('continue_voting','continue_voting')
-
-        logging.info(f'словарь для клавиатуры вариантов: {dict_keyboard}')
-        markup = create_inline_kb(1, **dict_keyboard)
+# # Добавляю кнопки в зависимости от статуса голосования и числа вариантов
+#         if voting_status == 'add_variants':
+#             if len(variants) < 2:
+#                 text = 'Это голосование в стадии добавления вариантов. У него пока менее двух вариантов. Вы можете добавить еще варианты либо завершить его'
+#                 if 'delegate' in data['user_status']:
+#                     dict_keyboard[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
+#                     dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+#             else:
+#                 text = 'Это голосование в стадии добавления вариантов. Вы можете добавить вариант или запустить его'
+#                 dict_keyboard[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
+#                 dict_keyboard[f'voting_start:{voting_id}'] = LEXICON.get('voting_start','voting_start')
+#                 dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+#         elif voting_status == 'ongoing':
+#             if len(variants) > 2:
+#                 text = 'Это идущее голосование. Можете перевести его в финал, оставив два варианта'
+#                 dict_keyboard[f'voting_final:{voting_id}'] = LEXICON.get('voting_final','voting_final')
+#                 if len(variants) > 3:
+#                     text = 'Это идущее голосование. Можете подвести промежуточный итог, либо сразу запустить финальный этап, оставив два варианта'
+#                     dict_keyboard[f'voting_stage:{voting_id}'] = LEXICON.get('voting_stage','voting_stage')
+#                 dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+#             else:
+#                 text = 'это голосование в финальной стадии. Можете завершить его'
+#                 dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
 
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+#         elif voting_status == 'confirmation':
+#             text = 'Это голосование в стадии утверждения результата. Вы можете завершить его'
+#             dict_keyboard[f'confirmation_of_voting_results_stop:{voting_id}'] = LEXICON.get('confirmation_of_voting_results_stop',
+#                                                                                       'confirmation of voting results stop')
 
-        # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+#         elif voting_status == 'completed':
+#             text = 'Это завершенное голосование. Вы можете возобновить голосование за него. Отданные ранее голоса сохранятся'
+#             dict_keyboard[f'continue_voting{voting_id}'] = LEXICON.get('continue_voting','continue_voting')
 
-    except Exception as e:
-        logging.error(f"Ошибка при создании меню администрирования голосования: {e}")
-
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при администрировании голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-        # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
-
-        raise  # Передаем исключение middleware для обработки
+#         logging.info(f'словарь для клавиатуры вариантов: {dict_keyboard}')
+#         markup = create_inline_kb(1, **dict_keyboard)
 
 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#   Теперь нужны хэндлеры на кнопки меню администрирования голосования !!
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#         # Добавляем данные для SafeEditMiddleware
+#         data['response_text'] = text
+#         data['reply_markup'] = markup
+
+#         # Пытаемся отредактировать сообщение
+#         await callback.message.edit_text(
+#             text=data['response_text'],
+#             reply_markup=data['reply_markup']
+#         )
+
+#     except Exception as e:
+#         logging.error(f"Ошибка при создании меню администрирования голосования: {e}")
+
+#         # Добавляем данные для SafeEditMiddleware
+#         data['response_text'] = 'Произошла ошибка при администрировании голосования.'
+#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+#         # Пытаемся отредактировать сообщение
+#         await callback.message.edit_text(
+#             text=data['response_text'],
+#             reply_markup=data['reply_markup']
+#         )
+
+#         raise  # Передаем исключение middleware для обработки
+
+
 
 # Хэндлер для запуска голосования после нажатия соотвествующей кнопки в меню администратора
 @router.callback_query(F.data.regexp(r'^voting_start:\d+$'))
