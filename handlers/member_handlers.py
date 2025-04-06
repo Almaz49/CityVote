@@ -26,59 +26,59 @@ router = Router()
 router.message.filter(StatusFilter(required_status = ['member']))
 router.callback_query.filter(StatusFilter(required_status = ['member']))
 
-# Хэндлер для кнопки 'ongoing_voting'
-@router.callback_query(F.data == 'ongoing_votings')
-@log_handler_call
-async def process_list_of_ongoing_votings(callback: CallbackQuery, data: dict):
-    try:
-        logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+# # Хэндлер для кнопки 'ongoing_voting'
+# @router.callback_query(F.data == 'ongoing_votings')
+# @log_handler_call
+# async def process_list_of_ongoing_votings(callback: CallbackQuery, data: dict):
+#     try:
+#         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        club_id = data['club_id']
-        voting_status = 'ongoing','confirmation'
+#         club_id = data['club_id']
+#         voting_status = 'ongoing','confirmation'
 
-        votings = await list_of_votings(club_id,*voting_status)
+#         votings = await list_of_votings(club_id,*voting_status)
 
-        if votings:
-            text = 'Список голосований:\n'
-            for voting in votings:
-                text += f'- {voting[1]}\n'
-            text += '\nВыберите голосование для просмотра вариантов:'
+#         if votings:
+#             text = 'Список голосований:\n'
+#             for voting in votings:
+#                 text += f'- {voting[1]}\n'
+#             text += '\nВыберите голосование для просмотра вариантов:'
 
-            dict_votings = {}
-            for voting in votings:
-                dict_votings[f'ongoing_voting:{voting[0]}'] = voting[1]
-            dict_votings['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
-            markup = create_inline_kb(1, **dict_votings)
+#             dict_votings = {}
+#             for voting in votings:
+#                 dict_votings[f'ongoing_voting:{voting[0]}'] = voting[1]
+#             dict_votings['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
+#             markup = create_inline_kb(1, **dict_votings)
 
-        else:
-            text = 'В настоящее время нет активных голосований.'
-            markup = await user_menu(status=data['user_status'])
+#         else:
+#             text = 'В настоящее время нет активных голосований.'
+#             markup = await user_menu(status=data['user_status'])
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+#         # Добавляем данные для SafeEditMiddleware
+#         data['response_text'] = text
+#         data['reply_markup'] = markup
 
-        # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+#         # Пытаемся отредактировать сообщение
+#         await callback.message.edit_text(
+#             text=data['response_text'],
+#             reply_markup=data['reply_markup']
+#         )
 
-    except Exception as e:
-        logging.error(f"Ошибка при обработке кнопки 'list_of_votes': {e}")
+#     except Exception as e:
+#         logging.error(f"Ошибка при обработке кнопки 'list_of_votes': {e}")
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при загрузке списка голосований.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+#         # Добавляем данные для SafeEditMiddleware
+#         data['response_text'] = 'Произошла ошибка при загрузке списка голосований.'
+#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
-        # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+#         # Пытаемся отредактировать сообщение
+#         await callback.message.edit_text(
+#             text=data['response_text'],
+#             reply_markup=data['reply_markup']
+#         )
 
-        raise  # Передаем исключение middleware для обработки
+#         raise  # Передаем исключение middleware для обработки
 
 
 # # Хэндлер для кнопки 'completed_voting'
@@ -192,134 +192,134 @@ async def process_list_of_ongoing_votings(callback: CallbackQuery, data: dict):
 
 
 
-# Хэндлер для выбора конкретного идущего голосования
-@router.callback_query(F.data.regexp(r'^ongoing_voting:\d+$'))
-@log_handler_call
-async def process_ongoing_voting_selection(callback: CallbackQuery, data: dict):
-    """
-    Обработчик выбора конкретного голосования.
-    """
-    try:
-        logging.info(f"Пользователь {callback.from_user.id} выбрал голосование: {callback.data}")
-        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+# # Хэндлер для выбора конкретного идущего голосования
+# @router.callback_query(F.data.regexp(r'^ongoing_voting:\d+$'))
+# @log_handler_call
+# async def process_ongoing_voting_selection(callback: CallbackQuery, data: dict):
+#     """
+#     Обработчик выбора конкретного голосования.
+#     """
+#     try:
+#         logging.info(f"Пользователь {callback.from_user.id} выбрал голосование: {callback.data}")
+#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        voting_id = int(callback.data.split(':')[1])
-        variants = await list_of_variants(voting_id, 'valid')
+#         voting_id = int(callback.data.split(':')[1])
+#         variants = await list_of_variants(voting_id, 'valid')
 
-        if variants:
-            text = ('Выберите вариант за который хотите проголосовать.\n'
-                    'Или нажмите кнопку "Посмотреть варианты", если хотите посмотреть варианты\n')
+#         if variants:
+#             text = ('Выберите вариант за который хотите проголосовать.\n'
+#                     'Или нажмите кнопку "Посмотреть варианты", если хотите посмотреть варианты\n')
 
-            dict_variants = {}
-            for variant in variants:
-                dict_variants[f'variant:{variant[0]}'] = variant[1]
-            dict_variants[f'show_variants:{voting_id}'] = LEXICON.get('show_variants', 'show variants')
+#             dict_variants = {}
+#             for variant in variants:
+#                 dict_variants[f'variant:{variant[0]}'] = variant[1]
+#             dict_variants[f'show_variants:{voting_id}'] = LEXICON.get('show_variants', 'show variants')
 
 
-            dict_variants['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
+#             dict_variants['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
 
-            logging.info(f'словарь для клавиатуры вариантов: {dict_variants}')
-            markup = create_inline_kb(1, **dict_variants)
+#             logging.info(f'словарь для клавиатуры вариантов: {dict_variants}')
+#             markup = create_inline_kb(1, **dict_variants)
 
-            for variant in variants:
-                text += f'- {variant[1]}\n'
-            text = '\nВыберите вариант для голосования:\n' + text
+#             for variant in variants:
+#                 text += f'- {variant[1]}\n'
+#             text = '\nВыберите вариант для голосования:\n' + text
 
-        else:
-            text = 'В настоящее время нет доступных вариантов для голосования.'
-            markup = await user_menu(status=data['user_status'])
+#         else:
+#             text = 'В настоящее время нет доступных вариантов для голосования.'
+#             markup = await user_menu(status=data['user_status'])
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+#         # Добавляем данные для SafeEditMiddleware
+#         data['response_text'] = text
+#         data['reply_markup'] = markup
 
-        # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+#         # Пытаемся отредактировать сообщение
+#         await callback.message.edit_text(
+#             text=data['response_text'],
+#             reply_markup=data['reply_markup']
+#         )
 
-    except Exception as e:
-        logging.error(f"Ошибка при выборе конкретного голосования: {e}")
+#     except Exception as e:
+#         logging.error(f"Ошибка при выборе конкретного голосования: {e}")
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при выборе голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+#         # Добавляем данные для SafeEditMiddleware
+#         data['response_text'] = 'Произошла ошибка при выборе голосования.'
+#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
-        # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+#         # Пытаемся отредактировать сообщение
+#         await callback.message.edit_text(
+#             text=data['response_text'],
+#             reply_markup=data['reply_markup']
+#         )
 
-        raise  # Передаем исключение middleware для обработки
+#         raise  # Передаем исключение middleware для обработки
 
-# Хэндлер для просмотра вариантов идущего голосвания (обрабатывает кнопку "посмотреть варианты")
-# Присылает по сообщению на каждый вариант, к последнему прикладывает клавиаттуру из вариантов
-# Показываются варианты, имеющией статус "действительный"
-@router.callback_query(F.data.regexp(r'^show_variants:\d+$'))
-@log_handler_call
-async def process_show_variants(callback: CallbackQuery, data: dict):
-    """
-    Обработчик просмотра вариантов.
-    """
-    try:
-        logging.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
-        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+# # Хэндлер для просмотра вариантов идущего голосвания (обрабатывает кнопку "посмотреть варианты")
+# # Присылает по сообщению на каждый вариант, к последнему прикладывает клавиаттуру из вариантов
+# # Показываются варианты, имеющией статус "действительный"
+# @router.callback_query(F.data.regexp(r'^show_variants:\d+$'))
+# @log_handler_call
+# async def process_show_variants(callback: CallbackQuery, data: dict):
+#     """
+#     Обработчик просмотра вариантов.
+#     """
+#     try:
+#         logging.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
+#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        voting_id = int(callback.data.split(':')[1])
-        variants = await list_of_variants(voting_id, 'valid')
+#         voting_id = int(callback.data.split(':')[1])
+#         variants = await list_of_variants(voting_id, 'valid')
 
-        if variants:
-            for variant in variants:
-                title, text_var, variant_status = await extract_variant_data(variant[0])
-                await callback.message.answer(
-                    text=(title + '\n\n' + text_var),
-                )
+#         if variants:
+#             for variant in variants:
+#                 title, text_var, variant_status = await extract_variant_data(variant[0])
+#                 await callback.message.answer(
+#                     text=(title + '\n\n' + text_var),
+#                 )
 
-            text = 'Выберите вариант за который хотите проголосовать:\n'
+#             text = 'Выберите вариант за который хотите проголосовать:\n'
 
-            dict_variants = {}
-            for variant in variants:
-                dict_variants[f'variant:{variant[0]}'] = variant[1]
-            dict_variants['ongoing_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
-            dict_variants['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
+#             dict_variants = {}
+#             for variant in variants:
+#                 dict_variants[f'variant:{variant[0]}'] = variant[1]
+#             dict_variants['ongoing_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
+#             dict_variants['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
 
-            logging.info(f'словарь для клавиатуры вариантов: {dict_variants}')
-            markup = create_inline_kb(1, **dict_variants)
+#             logging.info(f'словарь для клавиатуры вариантов: {dict_variants}')
+#             markup = create_inline_kb(1, **dict_variants)
 
-            for variant in variants:
-                text += f'- {variant[1]}\n'
-            text += '\nВыберите вариант для голосования:'
+#             for variant in variants:
+#                 text += f'- {variant[1]}\n'
+#             text += '\nВыберите вариант для голосования:'
 
-        else:
-            text = 'В настоящее время нет доступных вариантов для голосования.'
-            markup = await user_menu(status=data['user_status'])
+#         else:
+#             text = 'В настоящее время нет доступных вариантов для голосования.'
+#             markup = await user_menu(status=data['user_status'])
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+#         # Добавляем данные для SafeEditMiddleware
+#         data['response_text'] = text
+#         data['reply_markup'] = markup
 
-        # Отправляем или редактируем сообщение
-        await callback.message.answer(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+#         # Отправляем или редактируем сообщение
+#         await callback.message.answer(
+#             text=data['response_text'],
+#             reply_markup=data['reply_markup']
+#         )
 
-    except Exception as e:
-        logging.error(f"Ошибка при просмотре вариантов голосования: {e}")
+#     except Exception as e:
+#         logging.error(f"Ошибка при просмотре вариантов голосования: {e}")
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+#         # Добавляем данные для SafeEditMiddleware
+#         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
+#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
-        # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+#         # Редактируем сообщение в случае ошибки
+#         await callback.message.edit_text(
+#             text=data['response_text'],
+#             reply_markup=data['reply_markup']
+#         )
 
-        raise  # Передаем исключение middleware для обработки
+#         raise  # Передаем исключение middleware для обработки
 
 
 # # Хэндлер для просмотра всех вариантов (обрабатывает кнопку "посмотреть все варианты")

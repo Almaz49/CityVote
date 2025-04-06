@@ -382,24 +382,27 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
             if 'delegate' in data["user_status"]:
                 dict_menu[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
             if 'admin' in data["user_status"]:
-                dict_menu[f'voting_start:{voting_id}'] = LEXICON.get('voting_start', 'voting_start')
-        elif voting_status == 'comleted':
+                dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'admin_voting')
+        elif voting_status == 'completed':
             dict_menu['completed_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
             # Если пользователь - админ, добавляем кнопку "Возобновить голосование"
             if 'admin' in data["user_status"]:
-                dict_menu[f'reopen:{voting_id}'] = LEXICON.get('reopen', 'reopen')
+                dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'admin_voting')
         elif voting_status == 'ongoing':
-            dict_menu['ongoing_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
-            # Если пользователь - админ, добавляем кнопки "Завершить этап","Перейти в финал","Завершить голосование"
+            # Если пользователь - участник группы, добавляем кнопки для голосования
             if 'member' in data['user_status']:
-                dict_menu[f'ongoing_voting:{voting_id}'] = LEXICON.get('select_variant','select_variant')
+                for variant in variants:
+                    if variant[2] == 'valid':
+                        dict_menu[f'variant:{variant[0]}'] = variant[1]
+            # Если пользователь - админ, добавляем кнопки "Завершить этап","Перейти в финал","Завершить голосование"
             if 'admin' in data["user_status"]:
-                dict_menu[f'voting_stage:{voting_id}'] = LEXICON.get('voting_stage', 'voting_stage')
-                dict_menu[f'voting_final:{voting_id}'] = LEXICON.get('voting_final', 'voting_final')
-                dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+                dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'admin_voting')
+
+            dict_menu['ongoing_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
+
         elif voting_status =='confirmation':
             if 'admin' in data["user_status"]:
-                dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+                dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'admin_voting')
 
 
         dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')

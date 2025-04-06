@@ -566,7 +566,7 @@ async def voting_complete(voting_id, finisher=None):
         if item[0] != winner_id:
             losers_list.append(item[0],)
 
-    losers = tuple(losers_list)
+    losers = [(id,) for id in losers_list]
 
 
     winner_title = None
@@ -580,7 +580,7 @@ async def voting_complete(voting_id, finisher=None):
             if losers:
                 await cursor.executemany(
                     '''
-                    UPDATE Variants SET variant_status = 'loser' WHERE id = ?
+                   UPDATE Variants SET variant_status = 'loser' WHERE id = ?
                     ''', losers
                 )
         except aiosqlite.Error as e:

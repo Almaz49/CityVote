@@ -329,6 +329,61 @@ async def warning_registrator(message: Message):
 #         raise  # Передаем исключение middleware для обработки
 
 
+# Хэндлер для обработки кнопки "администрирование голосования"
+# callback.data 'admin_voting':{voting_id}
+@router.callback_query(F.data.regexp(r'^admin_voting:\d+$'))
+@log_handler_call
+async def process_voting_start_cb(callback: CallbackQuery, data: dict):
+    try:
+        logging.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        voting_id = int(callback.data.split(':')[1])
+        voting_status = await extract_voting_status(voting_id)
+
+        dict_menu = {}
+        if voting_status == 'add_variants':
+            dict_menu[f'voting_start:{voting_id}'] = LEXICON.get('voting_start', 'voting_start')
+        elif voting_status == 'completed':
+            dict_menu[f'reopen:{voting_id}'] = LEXICON.get('reopen', 'reopen')
+        elif voting_status == 'ongoing':
+            dict_menu[f'voting_stage:{voting_id}'] = LEXICON.get('voting_stage', 'voting_stage')
+            dict_menu[f'voting_final:{voting_id}'] = LEXICON.get('voting_final', 'voting_final')
+            dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+        elif voting_status =='confirmation':
+            dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+
+
+        dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
+
+        logging.info(f'словарь меню при показе вариантов: {dict_menu}')
+        markup = create_inline_kb(1, **dict_menu)
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Выберите действие'
+        data['reply_markup'] = markup
+
+        # Отправляем или редактируем сообщение
+        await callback.message.answer(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при просмотре вариантов голосования: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.answer(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
 
 # Хэндлер для запуска голосования после нажатия соотвествующей кнопки в меню администратора
 @router.callback_query(F.data.regexp(r'^voting_start:\d+$'))
