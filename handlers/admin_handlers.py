@@ -453,12 +453,12 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
         member_id = data['member_id']
         club_id = data['club_id']
 
-        result = await voting_stage(voting_id, club_id, stager=member_id)
+        result = await voting_stage(voting_id, club_id=club_id, stager=member_id)
 
 
 
         if result:
-            flag, text,winners,losers = result
+            flag, text = result
             logging.info(text)
         else:
             text = 'Что-то пошло не так при подведении промежуточного итога голосования'

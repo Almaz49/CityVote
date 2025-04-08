@@ -360,13 +360,44 @@ async def election(member_id, variant_id):
             logging.error(f"Ошибка при выборе варианта: {e}")
             raise
 
+# Функция перевода вариантов в статус "проигравший" (loser)
+# Заодно отданные за проигравший вариант голоса отмечаются как lose
+@log_function_call
+async def lose_variant(losers):
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            if losers:
+                # Присваиваем проигравшему варианту статус loser
+                await cursor.executemany(
+                    '''
+                    UPDATE Variants SET variant_status = 'loser' WHERE id = ?
+                    ''', losers
+                )
+                # Присваиваем голосам, отданным за проигравший вариант статус lose
+                await cursor.executemany(
+                    '''
+                    UPDATE Elections SET status = 'lose' WHERE variant_id = ?
+                    ''', losers
+                )
+                logging.info(f"Проигравшие варианты: {losers}")
+                flag = True
 
+
+            else:
+                logging.info("Нет проигравших вариантов.")
+                flag = False
+            return flag
+        except aiosqlite.Error as e:
+            logging.error(f"Ошибка при записи про промежуточного этапа голосования: {e}")
+            raise
 
 # Функция завершения промежуточного этапа голосования. Переводит в статус "loser" наименее популярные варианты.
 # Оставшиеся варианты должны в сумме набирать 50% голосов от имеющих право голоса.
 # Возвращает кортеж из ID проигравших вариантов.
 @log_function_call
-async def voting_stage(voting_id, club_id, stager=None):
+async def voting_stage(voting_id, club_id=None, stager=None):
+    if club_id is None:
+        club_id = extract_group_id(voting_id)
     time_stage = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(voting_id, 'valid')
     s_votist = await count_votist(club_id)
@@ -404,69 +435,81 @@ async def voting_stage(voting_id, club_id, stager=None):
                 k = sorted_res[i][1][0] #Значение "отсечения" - те варианты, которые набрали меньше, становятся проигравшими
                 break
 
-        losers = [item for item in res if res[item][0] < k]
-        winners = [item for item in res if res[item][0] >= k]
+        losers = [(item,) for item in res if res[item][0] < k]
+        winners = [(item,) for item in res if res[item][0] >= k]
+
+        result = await lose_variant(losers) #Записываем проигравшие варианты
 
         async with AsyncDatabase(path_db) as cursor:
             try:
                 if losers:
-                    await cursor.executemany(
-                        '''
-                        UPDATE Variants SET variant_status = 'loser' WHERE id = ?
-                        ''', losers
-                    )
                     await cursor.execute(
                         '''
                         INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
                         VALUES (?,?,?,?,?)
                         ''', ('voting', voting_id, stager, 'stage', time_stage)
                     )
-                    logging.info(f"Проигравшие варианты: {losers}")
+                    logging.info(f"Произведена запись в журнал регистраций")
                     flag = True
+                    flat_losers = tuple(item[0] for item in losers)
                     text =  f'''Осталось {len(winners)} вариантов. \n
-                    Выбыли варианты:{tuple(zip(*losers))[0]}'''
-                    if len(winners) == 1:
-                        winner_id, = winners[0]
-                        await cursor.execute(
-                        '''
-                        UPDATE Variants SET variant_status = 'winner' WHERE id = ?
-                        ''', (winner_id,)
-                        )
-                        await cursor.execute(
-                            """
-                            UPDATE Votings SET result = ?, time_completed = ?,
-                            voting_status =  WHERE id = ?
-                            """, (winner_id, time_stage, 'completed', voting_id)
-                        )
-
-
-                        await cursor.execute(
-                            '''
-                            INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
-                            VALUES (?,?,?,?,?)
-                            ''', ('voting', voting_id, stager, 'completed', time_stage)
-                        )
-
-                        logging.info(f"Победивший вариант: {winner_id}, Проигравшие варианты: {losers}")
-                        flag = True
-                        for item in variants:
-                            if item[0] == winner_id:
-                                winner_title = item[1]
-                        text = f'Голосование завершено, победил вариант: {winner_title}'
+                    Выбыли варианты:{flat_losers}'''
                 else:
                     logging.info("Нет проигравших вариантов.")
                     flag = False
                     text = 'Нет проигравших вараинтов'
+            # Если остался один победивший вариант, завершаем голосование
+                if len(winners) == 1:
+                    winner_id, = winners[0]
+                    await cursor.execute(
+                    '''
+                    UPDATE Variants SET variant_status = 'winner' WHERE id = ?
+                    ''', (winner_id,)
+                    )
+                    await cursor.execute(
+                        """
+                        UPDATE Votings SET result = ?, time_completed = ?,
+                        voting_status = ? WHERE id = ?
+                        """, (winner_id, time_stage, 'completed', voting_id)
+                    )
+
+
+                    await cursor.execute(
+                        '''
+                        INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
+                        VALUES (?,?,?,?,?)
+                        ''', ('voting', voting_id, stager, 'completed', time_stage)
+                    )
+
+                    logging.info(f"Победивший вариант: {winner_id}, Проигравшие варианты: {losers}")
+                    flag = True
+                    for item in variants:
+                        if item[0] == winner_id:
+                            winner_title = item[1]
+                    text = f'Голосование завершено, победил вариант: {winner_title}'
+                # Если победивших вариантов два - переводим в финал
+                elif len(winners) == 2:
+                    await cursor.execute(
+                    '''
+                    INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
+                    VALUES (?,?,?,?,?)
+                    ''', ('voting', voting_id, stager, 'final', time_stage)
+                )
+                    flag = True
+                    text = 'Осталось два действительных варианта {winners}, переводим голосование в финал.'
+
+
             except aiosqlite.Error as e:
                 logging.error(f"Ошибка при завершении промежуточного этапа голосования: {e}")
+                flag = False
+                text = "Ошибка при завершении промежуточного этапа голосования: {e}"
                 raise
     else:
         logging.info("Сумма голосов недостаточна для завершения промежуточного этапа.")
         flag = False
         text = 'Сумма голосов недостаточна для завершения промежуточного этапа.'
-        winners = variants
-        losers = None
-    return flag,text,winners,losers
+
+    return flag,text
 
 # Функция создания финального этапа голосования (где голосуется два варианта или больше, если есть варианты,
 # которые набрали столько же, сколько второй)
@@ -475,50 +518,59 @@ async def voting_final(voting_id, finaler=None):
     time_final = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(voting_id, 'valid')
 
+    flag = True
+
     if not variants:
         logging.info(f"Для voting_id={voting_id} нет действительных вариантов.")
         flag = False
         text = 'Нет действительных вариантов'
 
-    res = {}
-    for item in variants:
-        dir_votes = await count_directly_votes(item[0])
-        prox_votes = await count_proxy_votes(item[0])
-        empt_votes = await count_directly_empty_votes(item[0])
-        res[item[0]] = (dir_votes + prox_votes, dir_votes, empt_votes)
+    elif len(variants) == 1:
+        logging.info(f"У voting_id={voting_id} только один действительный вариант.")
+        flag = False
+        text = f'Остался только один действительный вариант {variants}. Завершите голосование или запустите утверждение итогов голсоования'
 
-    sorted_res = sorted(res.items(), key=lambda item: item[1], reverse=True)
-    # Находим результат "отсечения" (варианты, набравшие меньше, проигрывают).
-    # Вполне возможно, ниже требуется не float('inf') а 0
-    k = sorted_res[1][1] if len(sorted_res) > 1 else (0, 0, 0)
-    losers = [item for item in res.items() if item[1] < k]
-    winners = [item for item in res if res[item][0] >= k]
+    elif len(variants) == 2:
+        logging.info(f"У voting_id={voting_id} только два действительных варианта. Переводим их в финал")
+        flag = True
+        text = f'Осталось только два действительных варианта {variants}'
+
+    else:
+        res = {}
+        for item in variants:
+            dir_votes = await count_directly_votes(item[0])
+            prox_votes = await count_proxy_votes(item[0])
+            empt_votes = await count_directly_empty_votes(item[0])
+            res[item[0]] = (dir_votes + prox_votes, dir_votes, empt_votes)
+
+        sorted_res = sorted(res.items(), key=lambda item: item[1], reverse=True)
+        # Находим результат "отсечения" (варианты, набравшие меньше, проигрывают).
+        # Вполне возможно, ниже требуется не float('inf') а 0
+        k = sorted_res[1][1] if len(sorted_res) > 1 else (0, 0, 0)
+        losers = [(item,) for item in res.items() if item[1] < k]
+        winners = [(item,) for item in res if res[item][0] >= k]
+        text = f'В финал голосования вышли варианты {winners}'
+        flag = True
+
+        result = await lose_variant(losers)
 
     async with AsyncDatabase(path_db) as cursor:
         try:
-            if losers:
-                await cursor.executemany(
-                    '''
-                    UPDATE Variants SET variant_status = 'loser' WHERE id = ?
-                    ''', losers
-                )
+            if flag:
                 await cursor.execute(
                     '''
                     INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
                     VALUES (?,?,?,?,?)
                     ''', ('voting', voting_id, finaler, 'final', time_final)
                 )
-                logging.info(f"Проигравшие варианты: {losers}")
-                flag = True
-                text = f'В финал голосования вышли варианты {winners}'
-            else:
-                logging.info("Нет проигравших вариантов.")
-                flag = True
-                text = f'В финал голосования вышли варианты {winners}'
+
+
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при создании финального этапа голосования: {e}")
+            flag = False
+            text = "Ошибка при создании финального этапа голосования: {e}"
             raise
-    return flag,text,winners,losers
+    return flag,text
 
 # Функция завершения голосования. Определяет вариант - победитель.
 # При прочих равных (что вряд ли) побеждает тот вариант, который создан раньше.
@@ -575,17 +627,7 @@ async def voting_complete(voting_id, finisher=None):
             winner_title = item[1]
 
 # Записываем в БД проигравшие варианты
-    async with AsyncDatabase(path_db) as cursor:
-        try:
-            if losers:
-                await cursor.executemany(
-                    '''
-                   UPDATE Variants SET variant_status = 'loser' WHERE id = ?
-                    ''', losers
-                )
-        except aiosqlite.Error as e:
-            logging.error(f"Ошибка при завершении голосования: {e}")
-            raise
+    result = await lose_variant(losers)
 
 # Если вариант-победитель набрал менее половины действительных голосов, запускаем процедуру утверждения итогов голосования
     if winner_res[0] * 2 < s_votist:
@@ -707,7 +749,7 @@ async def confirmation_of_voting_results_stop(voting_id, finisher=None):
         if item[0] != winner_id:
             losers_list.append(item[0],)
 
-    losers = tuple(losers_list)
+    losers = [(id,) for id in losers_list]
 
 
     winner_title = None
