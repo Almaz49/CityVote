@@ -10,9 +10,6 @@ CREATE TABLE IF NOT EXISTS `Votings` (
     `time_start`    TEXT,
     `time_completed`    TEXT,
 	`voting_status`   TEXT,
-	`directly_votes` REAL,
-    `proxy_votes`    REAL,
-    `empty_votes`    REAL,
 FOREIGN KEY(`creator`) REFERENCES `Members`(`id`),
 FOREIGN KEY(`club_id`) REFERENCES `Clubs`(`id`),
 FOREIGN KEY(`result`) REFERENCES `Variants`(`id`)
@@ -24,7 +21,10 @@ CREATE TABLE IF NOT EXISTS `Variants` (
 	`title` TEXT NOT NULL,
 	`text` TEXT,
 	`time_create` TEXT,
-	variant_status TEXT,
+	`variant_status` TEXT,
+	`directly_votes` REAL,
+    `proxy_votes`    REAL,
+    `empty_votes`    REAL,
 UNIQUE (voting_id, title),
 FOREIGN KEY(`voting_id`) REFERENCES `Votings`(`id`),
 FOREIGN KEY(`author`) REFERENCES `Members`(`id`)

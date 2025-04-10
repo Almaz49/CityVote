@@ -288,19 +288,19 @@ async def all_status():
 # Функция извлечения списка идущих голосований.
 # В качестве аргументов принимает номер группы и список статусов голосований.
 # Извлекаются голосования имеющие эти статусы
-# Возвращает список кортежей из ID и названий
+# Возвращает список кортежей из ID, названий и описаний голосовний
 @log_function_call
 async def list_of_votings(club_id, *voting_status):
     if voting_status:
         placeholders = ', '.join('?' for _ in voting_status)
         query = f'''
-            SELECT id, title FROM Votings
+            SELECT id, title, text FROM Votings
             WHERE club_id = ? AND voting_status IN ({placeholders})
             '''
         params = (club_id,) + voting_status
     else:
         query = '''
-            SELECT id, title FROM Votings
+            SELECT id, title, text FROM Votings
             WHERE club_id = ?
             '''
         params = (club_id,)
