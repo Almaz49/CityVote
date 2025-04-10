@@ -413,22 +413,17 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
         success, message = await election(member_id, variant_id)
 
         if success:
-            text = f'Ваш голос принят: {message}'
+            text = f'{message}/nВернитесь в главное меню для дальнейших действий'
         else:
             text = f'Ошибка при голосовании: {message}'
 
-        keyboard = {
-            f'show_result_variant:{variant_id}':LEXICON.get('show_result','Текущий результат'),
-            'ongoing_voting':LEXICON.get('ongoing_voting','ongoing voting'),
-            'main_menu':LEXICON.get('main_menu', 'main menu')
-            }
         markup = create_inline_kb(1, 'main_menu')
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = text
         data['reply_markup'] = markup
 
-        # Пытаемся отредактировать сообщение
+        # Отправляем ответ
         await callback.message.edit_text(
             text=data['response_text'],
             reply_markup=data['reply_markup']

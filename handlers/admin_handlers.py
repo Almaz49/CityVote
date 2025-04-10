@@ -335,7 +335,7 @@ async def warning_registrator(message: Message):
 @log_handler_call
 async def process_voting_start_cb(callback: CallbackQuery, data: dict):
     try:
-        logging.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
+        logging.info(f"Пользователь {callback.from_user.id} запустил администрирование голосвания: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         voting_id = int(callback.data.split(':')[1])

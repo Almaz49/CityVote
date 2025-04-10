@@ -262,12 +262,22 @@ async def count_votist(club_id):
 async def count_directly_votes(variant_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
+            # await cursor.execute('''
+            #     SELECT COUNT(*) FROM Members WHERE id IN
+            #     (SELECT member_id FROM Elections WHERE variant_id = ? AND (status = 'valid' OR status = 'loser' OR status = 'winner'))
+            #     AND id IN
+            #     (SELECT member_id FROM Status WHERE status = 'votist')
+            # ''', (variant_id,))
             await cursor.execute('''
-                SELECT COUNT(*) FROM Members WHERE id IN
-                (SELECT member_id FROM Elections WHERE variant_id = ? AND status = 'valid')
-                AND id IN
-                (SELECT member_id FROM Status WHERE status = 'votist')
+            SELECT COUNT(DISTINCT Members.id)
+            FROM Members
+            JOIN Elections ON Members.id = Elections.member_id
+            JOIN Status ON Members.id = Status.member_id
+            WHERE Elections.variant_id = ?
+            AND Elections.status IN ('valid', 'lose', 'winner')
+            AND Status.status = 'votist'
             ''', (variant_id,))
+
             result = await cursor.fetchone()
             if result:
                 amount, = result
@@ -287,7 +297,7 @@ async def count_directly_empty_votes(variant_id):
         try:
             await cursor.execute('''
                 SELECT COUNT(*) FROM Members WHERE id IN
-                (SELECT member_id FROM Elections WHERE variant_id = ? AND status = 'valid')
+                (SELECT member_id FROM Elections WHERE variant_id = ? AND status IN ('valid', 'lose', 'winner'))
                 AND id NOT IN
                 (SELECT member_id FROM Status WHERE status = 'votist')
             ''', (variant_id,))
@@ -310,9 +320,9 @@ async def count_proxy_votes(variant_id):
         try:
             await cursor.execute('''
                 SELECT COUNT(*) FROM Members WHERE proxy IN
-                (SELECT member_id FROM Elections WHERE variant_id = ? AND status = 'valid')
+                (SELECT member_id FROM Elections WHERE variant_id = ? AND status IN ('valid', 'lose', 'winner'))
                 AND id NOT IN
-                (SELECT member_id FROM Elections WHERE status = 'valid'
+                (SELECT member_id FROM Elections WHERE status IN ('valid', 'lose', 'winner')
                 AND variant_id IN
                 (SELECT id FROM Variants WHERE voting_id IN
                 (SELECT voting_id FROM Variants WHERE id = ?)))
@@ -850,6 +860,22 @@ async def extract_voting_status(voting_id):
             else:
                 logging.info(f"Для voting_id={voting_id} не найдено статуса.")
                 return None
+        except aiosqlite.Error as e:
+            logging.error(f"Ошибка при получении статуса голосования: {e}")
+            raise
+
+# Функция возвращает статус и название голосования по его ID
+@log_function_call
+async def extract_voting_info(voting_id):
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(
+                '''
+                SELECT voting_status, title FROM Votings WHERE id = ?
+                ''', (voting_id,)
+            )
+            result = await cursor.fetchone()
+            return result
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при получении статуса голосования: {e}")
             raise
