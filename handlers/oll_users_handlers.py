@@ -13,7 +13,7 @@ from keyboards.keyboards import user_menu, remove_markup, create_inline_kb, conf
 from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned, leave_club
 from config_data.config import Config, load_config
 import logging
-from utils import log_handler_call
+from utils import log_handler_call, help_message
 from LEXICON.LEXICON import LEXICON
 from FSMs.FSMs import FSM_become_proxy, FSM_leave_club
 
@@ -64,8 +64,9 @@ async def process_help_command(message: Message, data: dict):
     """
     logging.info(f"Пользователь {message.from_user.id} запросил справку.")
     await message.answer(
-        text='Здесь будет описание функционала бота и инструкции по использованию.',
-        reply_markup=await user_menu(message.from_user.id, status = data['user_status'])
+        text=help_message(data['user_status']),
+        reply_markup=await user_menu(message.from_user.id, status = data['user_status']),
+        parse_mode="HTML"  # Указываем режим разметки
     )
 
 # Хэндлер для нажатия на кнопку "помощь"
@@ -80,13 +81,14 @@ async def process_help_callback(callback: CallbackQuery, data: dict):
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Добавляем данные для SafeEditMiddleware
-    data['response_text'] = 'Здесь будет описание функционала бота и инструкции по использованию.'
+    data['response_text'] = help_message(data['user_status'])
     data['reply_markup'] = await user_menu(callback.from_user.id, status = data['user_status'])
 
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
         text=data['response_text'],
-        reply_markup=data['reply_markup']
+        reply_markup=data['reply_markup'],
+        parse_mode="HTML"  # Указываем режим разметки
     )
 
 # Хэндлер для команды /cancel в состоянии по умолчанию
@@ -120,6 +122,8 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
     )
     # Сбрасываем состояние и очищаем данные
     await state.clear()
+
+
 
 
 # Хэндлер для кнопки 'Главное меню' в основном состоянии

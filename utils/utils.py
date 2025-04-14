@@ -3,6 +3,7 @@
 
 import logging  # Добавляем импорт модуля logging
 from functools import wraps
+from LEXICON.LEXICON import LEXICON
 
 
 
@@ -51,3 +52,22 @@ def log_handler_call(func):
             logging.error(f"Ошибка в хэндлере {func.__name__}: {e}")
             raise
     return wrapper
+
+# def help_message(status_list:list):
+#     status = set(status_list) - set(['votist'])
+#     text = ''
+#     for item in status:
+#         text += LEXICON.get(item+'_help', f'Для статуса {item} нет справки\n\n')
+#     logging.debug(f'Сформирована справка:\n{text}')
+#     return text
+
+def help_message(status_list: list):
+    status = set(status_list) - {'votist'}  # Исключаем статус 'votist'
+    text = "<b>Справка по вашим ролям:</b>\n\n"  # Заголовок
+
+    for item in sorted(status):  # Сортируем роли для удобства
+        role_help = LEXICON.get(item + '_help', f'Для статуса {item} пока нет справки.')
+        text += f"📌 <b>{LEXICON.get(item, item.capitalize())}:</b>\n{role_help}\n\n"
+
+    logging.debug(f'Сформирована справка:\n{text}')
+    return text

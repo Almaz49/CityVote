@@ -103,7 +103,7 @@ async def process_user_contact_sent(message: Message, state: FSMContext, contact
         user_data = await extract_user_data_tg(user_tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')  # извлекаем данные о пользователе
         if user_data:
             await message.answer(
-                text=f'''Данные нового модератора\nИмя: {user_data[1]},
+                text=f'''Данные которому вы меняете статус\nИмя: {user_data[1]},
 Фамилия: {user_data[2]}, \n Телефон: {user_data[3]}\nВсё верно?''',
                 reply_markup=confirm_markup  # клавиатура подтверждения из модуля клавиатур
             )
@@ -136,6 +136,8 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
 
         vacansy = list(set(all_st) - set(status) - {'owner', 'user', 'candidate','votist','proxy'})
         status = list(set(status) - {'owner', 'member', 'user', 'candidate'})
+
+        logging.debug(f'Вакансии для пользователя: {vacansy}')
 
         keyboards = []
         for item in vacansy:
@@ -209,7 +211,7 @@ async def warning_registrator(message: Message):
     )
 
 # Этот хэндлер будет срабатывать на выбор одного из статусов (или его отмены)
-@router.callback_query(StateFilter(FSMNewStatus.fill_choice))
+@router.callback_query(StateFilter(FSMNewStatus.fill_choice), F.data != 'main_menu')
 @log_handler_call
 async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext, data: dict):
     logging.info(f"Выбран статус: {callback.data} пользователем {callback.from_user.id}")
@@ -222,7 +224,7 @@ async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext,
 
     try:
         user_data = await extract_user_data_tg(member_tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')  # Извлекаем данные о пользователе
-        status_text = LEXICON[status] if status in LEXICON else status
+        status_text = LEXICON.get(status, status)
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f'''Данные пользователя\nИмя: {user_data[1]},
@@ -285,7 +287,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
         else:
             member_tg_id = fsm_data['ID']
             registrator_tg_id = callback.from_user.id
-            ans_str = await new_status_tg(registrator_tg_id, member_tg_id, st)  # Вызов функции присвоения нового статуса
+            ans_str = await new_status_tg(registrator_tg_id, member_tg_id, status)  # Вызов функции присвоения нового статуса
 
             if isinstance(ans_str, str) and 'Ошибка' in ans_str:
                 # Добавляем данные для SafeEditMiddleware
@@ -332,7 +334,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewStatus.fill_new_status_confirm), F.data == 'ConfirmNotOK')
 @log_handler_call
-async def process_no_confirm_sttus_press(callback: CallbackQuery, state: FSMContext, data: dict):
+async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMContext, data: dict):
     logging.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 

@@ -63,26 +63,28 @@ async def new_status(registrator, member_id, status, token_id=None):
                     (member_id, status1[1])
                 )
                 logging.info(f"Статус '{status1[1]}' удален для member_id: {member_id}")
-            else:
+            elif status1[0] == 'AppointAs':
                 await cursor.execute(
                     '''INSERT OR IGNORE INTO Status(member_id, status) VALUES (?, ?)''',
-                    (member_id, status)
+                    (member_id, status1[1])
                 )
                 # Если присваевается статус member, удаляем статус candidate
-                if status == 'member':
+                if status1[1] == 'member':
                     await cursor.execute(
                     '''DELETE FROM Status WHERE member_id = ? AND status = ?''',
                     (member_id, 'candidate')
                 )
                     logging.info(f"Статус '{'candidate'}' удален для member_id: {member_id}")
                 # Если присваевается статус candidate, удаляем статус member
-                if status == 'candidate':
+                if status1[1] == 'candidate':
                     await cursor.execute(
                     '''DELETE FROM Status WHERE member_id = ? AND status = ?''',
                     (member_id, 'member')
                 )
                     logging.info(f"Статус '{'member'}' удален для member_id: {member_id}")
                 logging.info(f"Добавлен новый статус '{status}' для member_id: {member_id}")
+            else:
+                logging.info(f"Непредвиденное действие при присвоении статуса '{status}' для member_id: {member_id}")
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при работе со статусом: {e}")
             raise

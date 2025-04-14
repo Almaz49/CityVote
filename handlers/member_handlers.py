@@ -413,7 +413,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
         success, message = await election(member_id, variant_id)
 
         if success:
-            text = f'{message}/nВернитесь в главное меню для дальнейших действий'
+            text = f'{message}\n\nВоспользуйтесь кнопками под последним сообщением для дальнейших действий'
         else:
             text = f'Ошибка при голосовании: {message}'
 
@@ -421,7 +421,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = text
-        data['reply_markup'] = markup
+        data['reply_markup'] = None # markup
 
         # Отправляем ответ
         await callback.message.edit_text(
