@@ -333,7 +333,7 @@ async def warning_registrator(message: Message):
 # callback.data 'admin_voting':{voting_id}
 @router.callback_query(F.data.regexp(r'^admin_voting:\d+$'))
 @log_handler_call
-async def process_voting_start_cb(callback: CallbackQuery, data: dict):
+async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
     try:
         logging.info(f"Пользователь {callback.from_user.id} запустил администрирование голосвания: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -344,6 +344,7 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
         dict_menu = {}
         if voting_status == 'add_variants':
             dict_menu[f'voting_start:{voting_id}'] = LEXICON.get('voting_start', 'voting_start')
+            dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
         elif voting_status == 'completed':
             dict_menu[f'reopen:{voting_id}'] = LEXICON.get('reopen', 'reopen')
         elif voting_status == 'ongoing':
@@ -584,6 +585,57 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при запуске голосования.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+
+# Хэндлер для снятия варианта после нажатия соотвествующей кнопки в меню администратора
+@router.callback_query(F.data.regexp(r'^voting_complete:\d+$'))
+@log_handler_call
+async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
+    """
+    Обработчик выбора конкретного голосования.
+    """
+    try:
+        logging.info(f"Пользователь {callback.from_user.id} удалаяет вариант: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        variant_id = int(callback.data.split(':')[1])
+        member_id = data['member_id']
+        club_id = data['club_id']
+
+        result = await delete_variant(variant_id, admin=member_id)
+        if result:
+            text = result[0]
+            logging.info(text)
+        else:
+            text = 'Что-то пошло не так при удалении варианта'
+            logging.info(text+f':{variant_id}')
+
+        markup = None
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при удалении варианта: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при удалении варианта.'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение

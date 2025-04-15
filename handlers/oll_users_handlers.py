@@ -84,8 +84,8 @@ async def process_help_callback(callback: CallbackQuery, data: dict):
     data['response_text'] = help_message(data['user_status'])
     data['reply_markup'] = await user_menu(callback.from_user.id, status = data['user_status'])
 
-    # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    # Отправляем сообщение со справкой в ответ
+    await callback.message.answer(
         text=data['response_text'],
         reply_markup=data['reply_markup'],
         parse_mode="HTML"  # Указываем режим разметки
@@ -407,6 +407,13 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
                 # Если это идущее голосование, а пользователь - участник группы, добавляем кнопку проголосовать за вариант
                 if voting_status == 'ongoing' and 'member' in data['user_status'] and variant_status == 'valid':
                     keyboard = {f'variant:{variant_id}': LEXICON.get('Vote for this variant', 'Vote for this variant')}
+                    markup = create_inline_kb(1, **keyboard)
+                else:
+                    markup = None
+
+                # Если это голосование в стадии добавления вариантов, а пользователь - админ, добавляем кнопку "удалить вариант"
+                if voting_status == 'add_variants' and 'admin' in data['user_status'] and variant_status == 'valid':
+                    keyboard = {f'delete_variant:{variant_id}': LEXICON.get('delete variant', 'delete variant')}
                     markup = create_inline_kb(1, **keyboard)
                 else:
                     markup = None

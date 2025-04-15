@@ -496,6 +496,42 @@ async def win_variant(winner_id, voting_id=None, result=None, stager=None):
             logging.error(f"Ошибка при записи про промежуточного этапа голосования: {e}")
             raise
 
+
+# Функция удаления варианта. Применяется на стадии добавления вараинта (на случай идентичных вариантов, например)
+@log_function_call
+async def delete_variant(variant_id, admin=None):
+    time_reg = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+
+            # Присваиваем удаляему варианту статус invalid
+            await cursor.execute(
+                '''
+                UPDATE Variants SET variant_status = 'invalid'  WHERE id = ?
+                ''', (variant_id, )
+            )
+            # Присваиваем голосам, отданным за удаленный вариант статус (хотя их не должно быть) статус lose
+            await cursor.execute(
+                '''
+                UPDATE Elections SET status = 'lose' WHERE variant_id = ?
+                ''', (variant_id,)
+            )
+
+            await cursor.execute(
+                '''
+                INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
+                VALUES (?,?,?,?,?)
+                ''', ('variant', variant_id, admin, 'delete', time_reg)
+            )
+
+            logging.info(f"Удаление варианта записано: {variant_id}")
+
+
+
+        except aiosqlite.Error as e:
+            logging.error(f"Ошибка при записи про промежуточного этапа голосования: {e}")
+            raise
+
 # Функция завершения промежуточного этапа голосования. Переводит в статус "loser" наименее популярные варианты.
 # Оставшиеся варианты должны в сумме набирать 50% голосов от имеющих право голоса.
 # Возвращает кортеж из ID проигравших вариантов.
