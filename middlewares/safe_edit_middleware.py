@@ -20,7 +20,7 @@ class SafeEditMiddleware(BaseMiddleware):
                 logging.info(f'Создан словарь дата в мидлваре исправления едит на ансвер')
 
             result = await handler(event, data)
-            logging.info(f'Данные пользовательской data после прохождения хэндлера: {pformat(data['data'])}')
+            logging.info(f"Данные пользовательской data после прохождения хэндлера: {pformat(data['data'])}")
             return result
         except TelegramBadRequest as e:
             if "message is not modified" in str(e) or "message to edit not found" in str(e):
