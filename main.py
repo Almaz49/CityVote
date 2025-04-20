@@ -60,6 +60,9 @@ logging.basicConfig(
 # Инициализируем логгер модуля
 logger = logging.getLogger(__name__)
 
+# Тестовое сообщение
+logger.info("Логгирование настроено в main.py")
+
 # Регистрируем middleware
 dp.update.middleware(LoggingAndErrorHandlingMiddleware())  # Первым идет логгирование
 dp.update.middleware(StatusMiddleware())
