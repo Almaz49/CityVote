@@ -42,14 +42,18 @@ dp['club_id'] = club_id
 
 
 
-# Настраиваем базовую конфигурацию логирования
+# Глобальная настройка логгирования
 logging.basicConfig(
     level=logging.INFO,
-    format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'
+    format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(message)s',
+    handlers=[logging.StreamHandler()]
 )
 
-# Инициализируем логгер модуля
+# Инициализация логгера
 logger = logging.getLogger(__name__)
+
+# Тестовое сообщение
+logger.info("Логгирование настроено в main.py")
 
 # Тестовое сообщение
 logger.info("Логгирование настроено в main.py")
