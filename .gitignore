@@ -3,6 +3,7 @@ dbg1.db
 test.py
 test2.py
 test3.py
+test_script.py
 *.db
 test*.*
 test/
@@ -11,3 +12,5 @@ test/
 venv/
 __pycache__/
 test/readf.py
+bot.log
+bot_error.log
