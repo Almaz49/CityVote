@@ -53,8 +53,7 @@ handler = RotatingFileHandler(
 # Настраиваем базовую конфигурацию логирования
 logging.basicConfig(
     level=logging.INFO,
-    format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s',
-    handlers=[handler]
+    format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'
 )
 
 # Инициализируем логгер модуля
