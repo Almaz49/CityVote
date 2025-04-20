@@ -1,3 +1,5 @@
+# Модуль main.py - основной цикл бота
+
 import logging
 from logging.handlers import RotatingFileHandler
 import asyncio
@@ -39,16 +41,6 @@ dp['path_db'] = path_db
 dp['club_id'] = club_id
 
 
-
-import logging
-from logging.handlers import RotatingFileHandler
-
-# Настройка ротации файлов логов по размеру
-handler = RotatingFileHandler(
-    "/CityVote/bot.log",           # Имя файла логов, полный путь
-    maxBytes=5*1024*1024,  # Максимальный размер файла (5 МБ)
-    backupCount=3         # Количество резервных копий
-)
 
 # Настраиваем базовую конфигурацию логирования
 logging.basicConfig(

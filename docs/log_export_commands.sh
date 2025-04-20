@@ -1,3 +1,6 @@
+#!/bin/bash
+# Справочник команд для экспорта логов.
+
 # Экспорт всех логов сервиса
 sudo journalctl -u telegram-bot.service > /CityVote/all_logs.txt
 
