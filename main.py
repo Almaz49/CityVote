@@ -54,7 +54,7 @@ handler = RotatingFileHandler(
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s',
-    handlers=[handler, logging.StreamHandler()]
+    handlers=[handler]
 )
 
 # Инициализируем логгер модуля
