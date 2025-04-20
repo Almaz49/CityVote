@@ -45,7 +45,7 @@ from logging.handlers import RotatingFileHandler
 
 # Настройка ротации файлов логов по размеру
 handler = RotatingFileHandler(
-    "bot.log",           # Имя файла логов
+    "/CityVote/bot.log",           # Имя файла логов, полный путь
     maxBytes=5*1024*1024,  # Максимальный размер файла (5 МБ)
     backupCount=3         # Количество резервных копий
 )
