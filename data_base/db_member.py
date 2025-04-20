@@ -41,6 +41,8 @@ async def new_member(club_id, user_id):
 # member_id кому, какой статус, подтверждающий токен)
 # Если переан статус в виде 'not_status', соответствующий статус удаляется
 # status в данном случае - не список статусов, а один из статусов
+# Если статус прислан в виде AppointAs_'status', то записывается 'status'.
+# Если в другом - то записвается как прислан
 @log_function_call
 async def new_status(registrator, member_id, status, token_id=None):
     time_reg = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -63,28 +65,32 @@ async def new_status(registrator, member_id, status, token_id=None):
                     (member_id, status1[1])
                 )
                 logging.info(f"Статус '{status1[1]}' удален для member_id: {member_id}")
-            elif status1[0] == 'AppointAs':
+            else:
+                if status1[0] == 'AppointAs':
+                    new_st = status1[1]
+                else:
+                    new_st = status
+
                 await cursor.execute(
                     '''INSERT OR IGNORE INTO Status(member_id, status) VALUES (?, ?)''',
-                    (member_id, status1[1])
+                    (member_id, new_st)
                 )
                 # Если присваевается статус member, удаляем статус candidate
-                if status1[1] == 'member':
+                if new_st == 'member':
                     await cursor.execute(
                     '''DELETE FROM Status WHERE member_id = ? AND status = ?''',
                     (member_id, 'candidate')
                 )
                     logging.info(f"Статус '{'candidate'}' удален для member_id: {member_id}")
                 # Если присваевается статус candidate, удаляем статус member
-                if status1[1] == 'candidate':
+                if new_st == 'candidate':
                     await cursor.execute(
                     '''DELETE FROM Status WHERE member_id = ? AND status = ?''',
                     (member_id, 'member')
                 )
                     logging.info(f"Статус '{'member'}' удален для member_id: {member_id}")
                 logging.info(f"Добавлен новый статус '{status}' для member_id: {member_id}")
-            else:
-                logging.info(f"Непредвиденное действие при присвоении статуса '{status}' для member_id: {member_id}")
+
         except aiosqlite.Error as e:
             logging.error(f"Ошибка при работе со статусом: {e}")
             raise
