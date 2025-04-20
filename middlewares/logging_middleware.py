@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Update, data: dict):
         # logging.info(f"Data in LoggingAndErrorHandlingMiddleware: {pformat(data)}\n")
-        logger.info('\n Middleware logging_middleware started work\n')
+        logging.info('\n Middleware logging_middleware started work\n')
         try:
             if isinstance(event, Update):
                 user = data['event_from_user']
