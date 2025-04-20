@@ -15,7 +15,7 @@ from keyboards.keyboards import *
 from config_data.config import Config, load_config
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Загружаем конфиг в переменную config
 config: Config = load_config('.env')

@@ -9,7 +9,7 @@ from typing import Union, Optional
 from data_base.telegram_bot_logic import status_member
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 

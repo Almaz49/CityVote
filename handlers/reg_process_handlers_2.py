@@ -19,7 +19,7 @@ from LEXICON.LEXICON import LEXICON
 from services.services import notify_registrator, notify_registrator_short, notify_super_registrator_short
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Загружаем конфиг в переменную config
 config: Config = load_config('.env')

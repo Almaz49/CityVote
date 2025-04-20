@@ -6,6 +6,8 @@ from aiogram.exceptions import TelegramBadRequest  # Обрати внимани
 import logging
 from pprint import pformat
 
+logger = logging.getLogger(__name__)
+
 class SafeEditMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data: dict):
         # logging.info(f"Data in SafeEditMiddleware: \n{pformat(data)}\n")

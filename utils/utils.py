@@ -8,7 +8,7 @@ from LEXICON.LEXICON import LEXICON
 
 
 # Настройка логирования
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 

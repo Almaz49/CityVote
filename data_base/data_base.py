@@ -7,7 +7,7 @@ from utils import log_function_call
 import logging
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @log_function_call
 async def votist(member_id):

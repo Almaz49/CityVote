@@ -1,4 +1,5 @@
 import logging
+from logging.handlers import RotatingFileHandler
 import asyncio
 import os
 from dotenv import load_dotenv
@@ -37,10 +38,23 @@ dp = Dispatcher(storage=MemoryStorage())
 dp['path_db'] = path_db
 dp['club_id'] = club_id
 
+
+
+import logging
+from logging.handlers import RotatingFileHandler
+
+# Настройка ротации файлов логов по размеру
+handler = RotatingFileHandler(
+    "bot.log",           # Имя файла логов
+    maxBytes=5*1024*1024,  # Максимальный размер файла (5 МБ)
+    backupCount=3         # Количество резервных копий
+)
+
 # Настраиваем базовую конфигурацию логирования
 logging.basicConfig(
     level=logging.INFO,
-    format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'
+    format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s',
+    handlers=[handler, logging.StreamHandler()]
 )
 
 # Инициализируем логгер модуля

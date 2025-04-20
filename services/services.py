@@ -22,7 +22,7 @@ from utils import log_handler_call, log_function_call
 from LEXICON.LEXICON import LEXICON
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Загружаем конфиг в переменную config
 config: Config = load_config('.env')

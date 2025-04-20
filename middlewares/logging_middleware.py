@@ -7,6 +7,8 @@ from pprint import pformat
 from data_base.telegram_bot_logic import extract_user_member_id
 from keyboards.keyboards import user_menu
 
+logger = logging.getLogger(__name__)
+
 class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Update, data: dict):
         # logging.info(f"Data in LoggingAndErrorHandlingMiddleware: {pformat(data)}\n")

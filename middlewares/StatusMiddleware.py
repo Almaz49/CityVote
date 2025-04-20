@@ -4,6 +4,8 @@ from aiogram.types import Message, CallbackQuery
 from data_base.telegram_bot_logic import status_member, mark_user_as_available, is_user_available
 import logging
 
+logger = logging.getLogger(__name__)
+
 class StatusMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
         logging.info('\nMiddleware StatusMiddleware начала работу\n')

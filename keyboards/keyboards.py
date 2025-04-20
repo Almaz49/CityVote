@@ -9,7 +9,7 @@ from utils import log_function_call
 import logging
 
 # Настройка логирования
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 """
 КНОПКИ И КЛАВИАТУРЫ

@@ -14,7 +14,7 @@ import logging
 from utils import log_handler_call
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Загружаем конфиг в переменную config
 config: Config = load_config('.env')

@@ -15,7 +15,7 @@ from data_base.db_vote import *
 from utils import log_function_call
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Загружаем конфиг в переменную config
 config: Config = load_config('.env')
