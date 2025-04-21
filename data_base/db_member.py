@@ -267,7 +267,7 @@ async def is_user_available(tg_id: int) -> bool:
             await cursor.execute(query, (tg_id,))
             result = await cursor.fetchone()
 
-            print ('Результат запроса доступности  ',result)
+            logger.debug ('Результат запроса доступности  ',result)
 
 
 

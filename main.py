@@ -46,17 +46,16 @@ dp['club_id'] = club_id
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(message)s',
-    handlers=[logging.StreamHandler()]
+    handlers=[logging.StreamHandler()] # Надо пеппроверить для чего это
 )
 
 # Инициализация логгера
 logger = logging.getLogger(__name__)
+print(f"Handlers: {logger.handlers}")
 
 # Тестовое сообщение
 logger.info("Логгирование настроено в main.py")
 
-# Тестовое сообщение
-logger.info("Логгирование настроено в main.py")
 
 # Регистрируем middleware
 dp.update.middleware(LoggingAndErrorHandlingMiddleware())  # Первым идет логгирование
