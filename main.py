@@ -51,20 +51,21 @@ logging.basicConfig(
 # Инициализируем логгер модуля
 logger = logging.getLogger(__name__)
 
-# # Настройка логгера
-# logger = logging.getLogger()
-# logger.setLevel(logging.INFO)
+# Настройка обработчика для стандартного потока
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(
+    logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(message)s')
+)
 
-# # Добавляем обработчик для стандартного потока
-# stream_handler = logging.StreamHandler()
-# stream_handler.setFormatter(
-#     logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(message)s')
-# )
-# logger.addHandler(stream_handler)
+# Добавляем обработчик к логгеру
+logger.addHandler(stream_handler)
+logger.setLevel(logging.INFO)
 
 # Тестовое сообщение
 logger.info("Логгирование настроено в main.py")
 print(f"Handlers: {logger.handlers}")  # Проверка обработчиков
+
 
 
 
