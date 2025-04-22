@@ -37,7 +37,7 @@ router.callback_query.filter(StatusFilter(required_status = ['registrator']))
 #     Обработчик команды /start для регистраторов.
 #     Отправляет приветственное сообщение.
 #     """
-#     logging.info(f"Пользователь {message.from_user.id} начал работу как регистратор.")
+#     logger.info(f"Пользователь {message.from_user.id} начал работу как регистратор.")
 #     await message.answer(
 #         text='Привет, Регистратор!\nЯ бот для управления голосованиями.\n'
 #              'Вы можете подтверждать членство новых участников.',
@@ -60,7 +60,7 @@ async def process_registrator_yes_press(callback: CallbackQuery,data:dict):
     try:
         # Извлекаем Telegram ID пользователя из callback_data
         tg_id = int(callback.data.split(':')[1])
-        logging.info(f"Регистратор {callback.from_user.id} подтверждает членство пользователя {tg_id}.")
+        logger.info(f"Регистратор {callback.from_user.id} подтверждает членство пользователя {tg_id}.")
 
         # Получаем member_id пользователя
         user_id, member_id = await extract_user_member_id(tg_id)
@@ -91,7 +91,7 @@ async def process_registrator_yes_press(callback: CallbackQuery,data:dict):
             )
 
     except Exception as e:
-        logging.error(f"Ошибка при подтверждении членства пользователя {tg_id}: {e}")
+        logger.error(f"Ошибка при подтверждении членства пользователя {tg_id}: {e}")
         await callback.message.answer(text="Произошла ошибка при подтверждении членства.")
 
 
@@ -106,7 +106,7 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
     try:
         # Извлекаем Telegram ID пользователя из callback_data
         tg_id = int(callback.data.split(':')[1])
-        logging.info(f"Регистратор {callback.from_user.id} отклоняет членство пользователя {tg_id}.")
+        logger.info(f"Регистратор {callback.from_user.id} отклоняет членство пользователя {tg_id}.")
 
         # Получаем member_id пользователя
         user_id, member_id = await extract_user_member_id(tg_id)
@@ -124,7 +124,7 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
             reply_markup=await user_menu(callback.from_user.id,data['user_status'])
         )
     except Exception as e:
-        logging.error(f"Ошибка при отклонении членства пользователя {tg_id}: {e}")
+        logger.error(f"Ошибка при отклонении членства пользователя {tg_id}: {e}")
         await callback.message.answer(
             text="Произошла ошибка при отклонении членства.",
             reply_markup=await user_menu(callback.from_user.id,data['user_status'])

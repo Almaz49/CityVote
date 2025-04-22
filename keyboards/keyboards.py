@@ -53,7 +53,7 @@ def create_inline_kb(width: int, *args: str, **kwargs: str) -> InlineKeyboardMar
         kb_builder.row(*buttons, width=width)
         return kb_builder.as_markup()
     except Exception as e:
-        logging.error(f"Ошибка при создании инлайн-клавиатуры: {e}")
+        logger.error(f"Ошибка при создании инлайн-клавиатуры: {e}")
         raise
 
 
@@ -75,7 +75,7 @@ def button(button: str, text: str = None) -> InlineKeyboardButton:
                 text = button  # Используем callback_data как текст
         return InlineKeyboardButton(text=text, callback_data=button)
     except Exception as e:
-        logging.error(f"Ошибка при создании кнопки: {e}")
+        logger.error(f"Ошибка при создании кнопки: {e}")
         raise
 
 
@@ -143,7 +143,7 @@ async def user_menu(tg_id: int = None, status:list[str] = None) -> InlineKeyboar
     try:
         if not status:
             status = await extract_status_tg(tg_id)
-        logging.info(f"Создание меню для пользователя {tg_id} со статусами: {status}")
+        logger.info(f"Создание меню для пользователя {tg_id} со статусами: {status}")
         # if not status or 'member' not in status:
         #     if 'user' in status:
         #         keyboard = get_keyboard_for_status(['user'])
@@ -169,7 +169,7 @@ async def user_menu(tg_id: int = None, status:list[str] = None) -> InlineKeyboar
             kb_builder.row(*row)
         return kb_builder.as_markup()
     except Exception as e:
-        logging.error(f"Ошибка при создании меню для пользователя {tg_id}: {e}")
+        logger.error(f"Ошибка при создании меню для пользователя {tg_id}: {e}")
         raise
 
 

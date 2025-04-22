@@ -16,10 +16,13 @@ from data_base.telegram_bot_logic import *
 import logging
 from utils import log_handler_call
 
-# Инициализируем бота
-# Загружаем конфиг в переменную config
-config: Config = load_config('.env')
-bot = Bot(token=config.tg_bot.token)
+# Настройка логирования
+logger = logging.getLogger(__name__)
+
+# # Инициализируем бота
+# # Загружаем конфиг в переменную config
+# config: Config = load_config('.env')
+# bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -31,7 +34,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 # @log_handler_call
 # async def process_list_of_ongoing_votings(callback: CallbackQuery, data: dict):
 #     try:
-#         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+#         logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
 #         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 #         club_id = data['club_id']
@@ -66,7 +69,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 #         )
 
 #     except Exception as e:
-#         logging.error(f"Ошибка при обработке кнопки 'list_of_votes': {e}")
+#         logger.error(f"Ошибка при обработке кнопки 'list_of_votes': {e}")
 
 #         # Добавляем данные для SafeEditMiddleware
 #         data['response_text'] = 'Произошла ошибка при загрузке списка голосований.'
@@ -86,7 +89,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 # @log_handler_call
 # async def process_list_of_completed_votings(callback: CallbackQuery, data: dict):
 #     try:
-#         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+#         logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
 #         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 #         club_id = data['club_id']
@@ -120,7 +123,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 #         )
 
 #     except Exception as e:
-#         logging.error(f"Ошибка при обработке кнопки 'completed_votings': {e}")
+#         logger.error(f"Ошибка при обработке кнопки 'completed_votings': {e}")
 
 #         # Добавляем данные для SafeEditMiddleware
 #         data['response_text'] = 'Произошла ошибка при загрузке списка завершенных голосований.'
@@ -140,7 +143,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 # @log_handler_call
 # async def process_list_of_future_votings(callback: CallbackQuery, data: dict):
 #     try:
-#         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+#         logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
 #         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 #         club_id = data['club_id']
@@ -174,7 +177,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 #         )
 
 #     except Exception as e:
-#         logging.error(f"Ошибка при обработке кнопки 'future_votings': {e}")
+#         logger.error(f"Ошибка при обработке кнопки 'future_votings': {e}")
 
 #         # Добавляем данные для SafeEditMiddleware
 #         data['response_text'] = 'Произошла ошибка при загрузке списка будущих голосований.'
@@ -200,7 +203,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 #     Обработчик выбора конкретного голосования.
 #     """
 #     try:
-#         logging.info(f"Пользователь {callback.from_user.id} выбрал голосование: {callback.data}")
+#         logger.info(f"Пользователь {callback.from_user.id} выбрал голосование: {callback.data}")
 #         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 #         voting_id = int(callback.data.split(':')[1])
@@ -218,7 +221,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 
 #             dict_variants['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
 
-#             logging.info(f'словарь для клавиатуры вариантов: {dict_variants}')
+#             logger.info(f'словарь для клавиатуры вариантов: {dict_variants}')
 #             markup = create_inline_kb(1, **dict_variants)
 
 #             for variant in variants:
@@ -240,7 +243,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 #         )
 
 #     except Exception as e:
-#         logging.error(f"Ошибка при выборе конкретного голосования: {e}")
+#         logger.error(f"Ошибка при выборе конкретного голосования: {e}")
 
 #         # Добавляем данные для SafeEditMiddleware
 #         data['response_text'] = 'Произошла ошибка при выборе голосования.'
@@ -264,7 +267,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 #     Обработчик просмотра вариантов.
 #     """
 #     try:
-#         logging.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
+#         logger.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
 #         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 #         voting_id = int(callback.data.split(':')[1])
@@ -285,7 +288,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 #             dict_variants['ongoing_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
 #             dict_variants['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
 
-#             logging.info(f'словарь для клавиатуры вариантов: {dict_variants}')
+#             logger.info(f'словарь для клавиатуры вариантов: {dict_variants}')
 #             markup = create_inline_kb(1, **dict_variants)
 
 #             for variant in variants:
@@ -307,7 +310,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 #         )
 
 #     except Exception as e:
-#         logging.error(f"Ошибка при просмотре вариантов голосования: {e}")
+#         logger.error(f"Ошибка при просмотре вариантов голосования: {e}")
 
 #         # Добавляем данные для SafeEditMiddleware
 #         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
@@ -332,7 +335,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 #     Обработчик просмотра вариантов.
 #     """
 #     try:
-#         logging.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
+#         logger.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
 #         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 #         voting_id = int(callback.data.split(':')[1])
@@ -366,7 +369,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 
 #         dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
 
-#         logging.info(f'словарь меню при показе вариантов: {dict_menu}')
+#         logger.info(f'словарь меню при показе вариантов: {dict_menu}')
 #         markup = create_inline_kb(1, **dict_menu)
 
 #         # Добавляем данные для SafeEditMiddleware
@@ -380,7 +383,7 @@ router.callback_query.filter(StatusFilter(required_status = ['member']))
 #         )
 
 #     except Exception as e:
-#         logging.error(f"Ошибка при просмотре вариантов голосования: {e}")
+#         logger.error(f"Ошибка при просмотре вариантов голосования: {e}")
 
 #         # Добавляем данные для SafeEditMiddleware
 #         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
@@ -405,7 +408,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
     Обработчик выбора конкретного варианта голосования.
     """
     try:
-        logging.info(f"Пользователь {callback.from_user.id} выбрал вариант: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} выбрал вариант: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         variant_id = int(callback.data.split(':')[1])
@@ -430,7 +433,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при выборе конкретного варианта голосования: {e}")
+        logger.error(f"Ошибка при выборе конкретного варианта голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при голосовании.'
@@ -452,7 +455,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
 @log_handler_call
 async def process_select_proxy(callback: CallbackQuery, data: dict):
     try:
-        logging.info(f"Пользователь {callback.from_user.id} запросил список представителей.")
+        logger.info(f"Пользователь {callback.from_user.id} запросил список представителей.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         members = await list_of_members_tg('proxy')
@@ -507,7 +510,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке кнопки 'select_proxy': {e}")
+        logger.error(f"Ошибка при обработке кнопки 'select_proxy': {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка представителей.'
@@ -526,7 +529,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
 @log_handler_call
 async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMContext):
     try:
-        logging.info(f"Представитеь {callback.from_user.id} хочет выбрать заместителя.")
+        logger.info(f"Представитеь {callback.from_user.id} хочет выбрать заместителя.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = '''Пожалуйста, введите телеграм-ID участника,
@@ -541,10 +544,10 @@ async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMC
 
         # Устанавливаем состояние ожидания ввода ID
         await state.set_state(FSM_appoint_deputy.fill_id)
-        logging.info(f"Установлено состояние: {await state.get_state()}")
+        logger.info(f"Установлено состояние: {await state.get_state()}")
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке кнопки 'select_proxy': {e}")
+        logger.error(f"Ошибка при обработке кнопки 'select_proxy': {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка представителей.'
@@ -564,7 +567,7 @@ async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMC
 async def process_trust(callback: CallbackQuery, data: dict):
     try:
         proxy_tg_id = int(callback.data.split(':')[1])
-        logging.info(f"Пользователь {callback.from_user.id} доверил свой голос пользователю с tg_id {proxy_tg_id}.")
+        logger.info(f"Пользователь {callback.from_user.id} доверил свой голос пользователю с tg_id {proxy_tg_id}.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         flag, ans_str = await trust_tg(callback.from_user.id, proxy_tg_id)
@@ -580,7 +583,7 @@ async def process_trust(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при доверии голоса: {e}")
+        logger.error(f"Ошибка при доверии голоса: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при доверии голоса.'
@@ -607,7 +610,7 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
             deputy_tg_id = message.contact.user_id
         else:
             deputy_tg_id = int(message.text)
-        logging.info(f"Представитель {message.from_user.id} выбрал своим заместителем пользователя с tg_id {deputy_tg_id}.")
+        logger.info(f"Представитель {message.from_user.id} выбрал своим заместителем пользователя с tg_id {deputy_tg_id}.")
 
         flag, ans_str = await trust_tg(message.from_user.id, deputy_tg_id)
         if not ans_str:
@@ -625,7 +628,7 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
         await state.clear()
 
     except Exception as e:
-        logging.error(f"Ошибка при выборе  заместителя: {e}")
+        logger.error(f"Ошибка при выборе  заместителя: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при выборе заместителя.'
@@ -646,7 +649,7 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
 @log_handler_call
 async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
-        logging.info(f"Пользователь {callback.from_user.id} запросил статус 'proxy'.")
+        logger.info(f"Пользователь {callback.from_user.id} запросил статус 'proxy'.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         member_id = data['member_id']
@@ -713,7 +716,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             await state.set_state(FSM_become_proxy.fill_username)
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке кнопки 'become_proxy': {e}")
+        logger.error(f"Ошибка при обработке кнопки 'become_proxy': {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при присвоении статуса представителя.'
@@ -738,7 +741,7 @@ async def process_username_sent(message: Message, state: FSMContext):
     Обработчик ввода имени/псевдонима.
     Запрашивает подтверждение.
     """
-    logging.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
+    logger.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
     flag = await is_username_uniq(message.text)
     if flag:
         await state.update_data(username = message.text)
@@ -760,7 +763,7 @@ async def process_username_sent(message: Message, state: FSMContext):
 @router.callback_query(StateFilter(FSM_become_proxy.fill_OK), F.data == 'ConfirmOK')
 @log_handler_call
 async def process_username_entry(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Кнопка 'ВСЁ ВЕРНО' при подтверждении username нажата пользователем {callback.from_user.id}")
+    logger.info(f"Кнопка 'ВСЁ ВЕРНО' при подтверждении username нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     fsm_data = await state.get_data()
@@ -793,7 +796,7 @@ async def process_username_entry(callback: CallbackQuery, state: FSMContext, dat
         await state.clear()
 
     except Exception as e:
-        logging.error(f"Ошибка при записи username: {e}")
+        logger.error(f"Ошибка при записи username: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f'Произошла ошибка: {str(e)}'
@@ -812,7 +815,7 @@ async def process_username_entry(callback: CallbackQuery, state: FSMContext, dat
 @router.callback_query(StateFilter(FSM_become_proxy.fill_OK), F.data == 'ConfirmNotOK')
 @log_handler_call
 async def process_no_confirm_proxy_press(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    logger.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 
@@ -834,7 +837,7 @@ async def process_no_confirm_proxy_press(callback: CallbackQuery, state: FSMCont
 @router.message(StateFilter(FSM_become_proxy.fill_OK))
 @log_handler_call
 async def warning_new_status(message: Message):
-    logging.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
              'Если вы хотите прервать изменение статуса - '
@@ -848,7 +851,7 @@ async def warning_new_status(message: Message):
 @log_handler_call
 async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
     try:
-        logging.info(f"Пользователь {callback.from_user.id} отказывается от статуса 'proxy'.")
+        logger.info(f"Пользователь {callback.from_user.id} отказывается от статуса 'proxy'.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         member_id = data['member_id']
@@ -885,7 +888,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке кнопки 'resign_from_proxy': {e}")
+        logger.error(f"Ошибка при обработке кнопки 'resign_from_proxy': {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при удалении статуса представителя.'

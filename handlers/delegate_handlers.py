@@ -42,7 +42,7 @@ async def process_new_voting_start(message: Message, state: FSMContext):
     Обработчик команды /new_voting.
     Запускает процесс создания нового голосования.
     """
-    logging.info(f"Пользователь {message.from_user.id} начал создание голосования.")
+    logger.info(f"Пользователь {message.from_user.id} начал создание голосования.")
     await message.answer(text='Пожалуйста, введите название голосования.')
     await state.set_state(FSMNewVoting.fill_voting_title)
 
@@ -55,7 +55,7 @@ async def process_new_voting_start(callback: CallbackQuery, state: FSMContext):
     Обработчик кнопки new_voting.
     Запускает процесс создания нового голосования.
     """
-    logging.info(f"Пользователь {callback.from_user.id} начал создание голосования.")
+    logger.info(f"Пользователь {callback.from_user.id} начал создание голосования.")
     await callback.message.answer(text='Пожалуйста, введите название голосования.')
     await state.set_state(FSMNewVoting.fill_voting_title)
 
@@ -69,7 +69,7 @@ async def process_new_voting_title_sent(message: Message, state: FSMContext):
     Обработчик ввода названия голосования.
     Сохраняет название и запрашивает описание.
     """
-    logging.info(f"Пользователь {message.from_user.id} ввел название голосования: {message.text}.")
+    logger.info(f"Пользователь {message.from_user.id} ввел название голосования: {message.text}.")
     if len(message.text) > 40:
         await message.answer("Название не должно быть длиннее 40 символов. Попробуйте снова.")
         return
@@ -87,7 +87,7 @@ async def process_new_voting_description_sent(message: Message, state: FSMContex
     Обработчик ввода описания голосования.
     Запрашивает подтверждение данных.
     """
-    logging.info(f"Пользователь {message.from_user.id} ввел описание голосования: {message.text}.")
+    logger.info(f"Пользователь {message.from_user.id} ввел описание голосования: {message.text}.")
     await state.update_data(description=message.text)
     fsm_data = await state.get_data()
     title = fsm_data['title']
@@ -111,7 +111,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
     Обработчик подтверждения создания голосования.
     Создает новое голосование в базе данных.
     """
-    logging.info(f"Пользователь {callback.from_user.id} подтвердил создание голосования.")
+    logger.info(f"Пользователь {callback.from_user.id} подтвердил создание голосования.")
     try:
         fsm_data = await state.get_data()
         title = fsm_data['title']
@@ -147,7 +147,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
             )
 
     except Exception as e:
-        logging.error(f"Ошибка при создании голосования: {e}")
+        logger.error(f"Ошибка при создании голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f"Произошла ошибка: {str(e)}"
@@ -171,7 +171,7 @@ async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FS
     Обработчик отмены создания голосования.
     Завершает машину состояний.
     """
-    logging.info(f"Пользователь {callback.from_user.id} отменил создание голосования.")
+    logger.info(f"Пользователь {callback.from_user.id} отменил создание голосования.")
     await state.clear()
 
     # Добавляем данные для SafeEditMiddleware
@@ -197,7 +197,7 @@ async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FS
 #     Обработчик команды /new_variant.
 #     Запрашивает выбор голосования для добавления варианта.
 #     """
-#     logging.info(f"Пользователь {message.from_user.id} начал добавление варианта.")
+#     logger.info(f"Пользователь {message.from_user.id} начал добавление варианта.")
 #     try:
 #         list_of_votings = await list_of_votings_tg('add_variants')
 #         if not list_of_votings:
@@ -213,7 +213,7 @@ async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FS
 #                             reply_markup=markup)
 #         await state.set_state(FSMNewVariant.fill_voting_choise)
 #     except Exception as e:
-#         logging.error(f"Ошибка при получении списка голосований: {e}")
+#         logger.error(f"Ошибка при получении списка голосований: {e}")
 #         await message.answer(
 #             text=f"Произошла ошибка: {str(e)}",
 #             reply_markup=await user_menu(message.from_user.id, data['user_status'])
@@ -228,7 +228,7 @@ async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FS
 #     Обработчик кнопки new_variant.
 #     Запрашивает выбор голосования для добавления варианта.
 #     """
-#     logging.info(f"Пользователь {callback.from_user.id} начал добавление варианта.")
+#     logger.info(f"Пользователь {callback.from_user.id} начал добавление варианта.")
 #     try:
 #         list_of_votings = await list_of_votings_tg('add_variants')
 #         if not list_of_votings:
@@ -260,7 +260,7 @@ async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FS
 #         await state.set_state(FSMNewVariant.fill_voting_choise)
 
 #     except Exception as e:
-#         logging.error(f"Ошибка при получении списка голосований: {e}")
+#         logger.error(f"Ошибка при получении списка голосований: {e}")
 #         # Добавляем данные для SafeEditMiddleware
 #         data['response_text'] = f"Произошла ошибка: {str(e)}"
 #         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
@@ -285,7 +285,7 @@ async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FS
 #     Обработчик выбора голосования.
 #     Запрашивает ввод названия варианта.
 #     """
-#     logging.info(f"Пользователь {callback.from_user.id} выбрал голосование ID={callback.data}.")
+#     logger.info(f"Пользователь {callback.from_user.id} выбрал голосование ID={callback.data}.")
 #     voting_id = int(callback.data)
 #     await state.update_data(voting_id=voting_id)
 
@@ -311,7 +311,7 @@ async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext,
     Обработчик кнопки добавления варианта.
     Запрашивает ввод названия варианта.
     """
-    logging.info(f"Пользователь {callback.from_user.id} начал добавление варианта к голосованию ID={callback.data}.")
+    logger.info(f"Пользователь {callback.from_user.id} начал добавление варианта к голосованию ID={callback.data}.")
     voting_id = int(callback.data.split(':')[1])
     await state.update_data(voting_id=voting_id)
 
@@ -338,7 +338,7 @@ async def process_variant_description_sent(message: Message, state: FSMContext):
     Обработчик ввода названия варианта.
     Запрашивает ввод описания.
     """
-    logging.info(f"Пользователь {message.from_user.id} ввел название варианта: {message.text}.")
+    logger.info(f"Пользователь {message.from_user.id} ввел название варианта: {message.text}.")
     if len(message.text) > 40:
         await message.answer("Название не должно быть длиннее 40 символов. Попробуйте снова.")
         return
@@ -356,7 +356,7 @@ async def process_new_variant_description_sent(message: Message, state: FSMConte
     Обработчик ввода описания варианта.
     Запрашивает подтверждение данных.
     """
-    logging.info(f"Пользователь {message.from_user.id} ввел описание варианта: {message.text}.")
+    logger.info(f"Пользователь {message.from_user.id} ввел описание варианта: {message.text}.")
     await state.update_data(description=message.text)
     data = await state.get_data()
     title = data['title']
@@ -380,7 +380,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
     Обработчик подтверждения добавления варианта.
     Создает новый вариант в базе данных.
     """
-    logging.info(f"Пользователь {callback.from_user.id} подтвердил добавление варианта.")
+    logger.info(f"Пользователь {callback.from_user.id} подтвердил добавление варианта.")
     try:
         fsm_data = await state.get_data()
         voting_id = fsm_data['voting_id']
@@ -417,7 +417,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
             )
 
     except Exception as e:
-        logging.error(f"Ошибка при добавлении варианта: {e}")
+        logger.error(f"Ошибка при добавлении варианта: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f"Произошла ошибка: {str(e)}"
@@ -458,7 +458,7 @@ async def process_more_variant(callback: CallbackQuery, state: FSMContext, data:
     Обработчик добавления ещё одного варианта.
     Возвращает пользователя к вводу названия варианта.
     """
-    logging.info(f"Пользователь {callback.from_user.id} решил добавить ещё один вариант.")
+    logger.info(f"Пользователь {callback.from_user.id} решил добавить ещё один вариант.")
 
     # Добавляем данные для SafeEditMiddleware
     data['response_text'] = 'Пожалуйста, введите название варианта.'
@@ -482,7 +482,7 @@ async def process_finish_variant(callback: CallbackQuery, state: FSMContext, dat
     Обработчик завершения добавления вариантов.
     Завершает машину состояний.
     """
-    logging.info(f"Пользователь {callback.from_user.id} завершил добавление вариантов.")
+    logger.info(f"Пользователь {callback.from_user.id} завершил добавление вариантов.")
     await state.clear()
 
     # Добавляем данные для SafeEditMiddleware

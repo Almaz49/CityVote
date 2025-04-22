@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # def log_function_call(func):
 #     @wraps(func)
 #     def wrapper(*args, **kwargs):
-#         logging.debug(f"Вызвана функция {func.__name__} из модуля {func.__module__} ")
+#         logger.debug(f"Вызвана функция {func.__name__} из модуля {func.__module__} ")
 #         return func(*args, **kwargs)
 #     return wrapper
 
@@ -26,7 +26,7 @@ def log_function_call(func):
         args_str = ', '.join([repr(a) for a in args])
         kwargs_str = ', '.join([f"{k}={repr(v)}" for k, v in kwargs.items()])
 
-        logging.debug(
+        logger.debug(
             f"Вызвана функция {func.__name__} из модуля {func.__module__}\n"
             f"Аргументы: ({args_str}) {{{kwargs_str}}}"
         )
@@ -38,18 +38,18 @@ def log_function_call(func):
 # def log_handler_call(func):
 #     @wraps(func)
 #     def wrapper(*args, **kwargs):
-#         logging.info(f"Вызван хэндлер {func.__name__} из модуля {func.__module__} \n")
+#         logger.info(f"Вызван хэндлер {func.__name__} из модуля {func.__module__} \n")
 #         return func(*args, **kwargs)
 #     return wrapper
 
 def log_handler_call(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        logging.info(f"Вызван хэндлер {func.__name__} из модуля {func.__module__}\n")
+        logger.info(f"Вызван хэндлер {func.__name__} из модуля {func.__module__}\n")
         try:
             return await func(*args, **kwargs)
         except Exception as e:
-            logging.error(f"Ошибка в хэндлере {func.__name__}: {e}")
+            logger.error(f"Ошибка в хэндлере {func.__name__}: {e}")
             raise
     return wrapper
 
@@ -58,7 +58,7 @@ def log_handler_call(func):
 #     text = ''
 #     for item in status:
 #         text += LEXICON.get(item+'_help', f'Для статуса {item} нет справки\n\n')
-#     logging.debug(f'Сформирована справка:\n{text}')
+#     logger.debug(f'Сформирована справка:\n{text}')
 #     return text
 
 def help_message(status_list: list):
@@ -69,5 +69,5 @@ def help_message(status_list: list):
         role_help = LEXICON.get(item + '_help', f'Для статуса {item} пока нет справки.')
         text += f"📌 <b>{LEXICON.get(item, item.capitalize())}:</b>\n{role_help}\n\n"
 
-    logging.debug(f'Сформирована справка:\n{text}')
+    logger.debug(f'Сформирована справка:\n{text}')
     return text

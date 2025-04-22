@@ -19,24 +19,24 @@ async def votist(member_id):
                 WHERE member_id = ?
             ''', (member_id,))
             result = await cursor.fetchall()
-            logging.info(f"Проверка статусов для member_id={member_id}: {result}")
+            logger.info(f"Проверка статусов для member_id={member_id}: {result}")
 
             # Проверяем, является ли участник членом
             if ('member',) not in result:
-                logging.info(f"Участник с member_id={member_id} не является членом")
+                logger.info(f"Участник с member_id={member_id} не является членом")
                 await cursor.execute('''
                     DELETE FROM Status WHERE member_id = ? AND status = 'votist'
                 ''', (member_id,))
-                logging.info(f"Отобран статус 'votist' для member_id={member_id}")
+                logger.info(f"Отобран статус 'votist' для member_id={member_id}")
                 return
 
             # Проверяем, является ли участник представителем
             if ('proxy',) in result:
-                logging.info(f"Участник с member_id={member_id} является представителем")
+                logger.info(f"Участник с member_id={member_id} является представителем")
                 await cursor.execute('''
                     INSERT OR IGNORE INTO Status(member_id, status) VALUES (?, 'votist')
                 ''', (member_id,))
-                logging.info(f"Присвоен статус 'votist' для member_id={member_id}")
+                logger.info(f"Присвоен статус 'votist' для member_id={member_id}")
                 return
 
             # Проверяем, есть ли у участника представитель
@@ -45,23 +45,23 @@ async def votist(member_id):
                 (SELECT proxy FROM Members WHERE id = ?)
             ''', (member_id,))
             st_pr = await cursor.fetchall()
-            logging.info(f"Статус представителя для member_id={member_id}: {st_pr}")
+            logger.info(f"Статус представителя для member_id={member_id}: {st_pr}")
 
             if ('proxy',) in st_pr:
-                logging.info(f"У участника с member_id={member_id} есть представитель")
+                logger.info(f"У участника с member_id={member_id} есть представитель")
                 await cursor.execute('''
                     INSERT OR IGNORE INTO Status(member_id, status) VALUES (?, 'votist')
                 ''', (member_id,))
-                logging.info(f"Присвоен статус 'votist' для member_id={member_id}")
+                logger.info(f"Присвоен статус 'votist' для member_id={member_id}")
             else:
-                logging.info(f"У участника с member_id={member_id} нет представителя")
+                logger.info(f"У участника с member_id={member_id} нет представителя")
                 await cursor.execute('''
                     DELETE FROM Status WHERE member_id = ? AND status = 'votist'
                 ''', (member_id,))
-                logging.info(f"Отобран статус 'votist' для member_id={member_id}")
+                logger.info(f"Отобран статус 'votist' для member_id={member_id}")
 
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при работе с правом голоса: {e}", exc_info=True)
+            logger.error(f"Ошибка при работе с правом голоса: {e}", exc_info=True)
             raise
 
 # # Пример использования функции для тестирования

@@ -37,7 +37,7 @@ async def send_echo(message: Message,data:dict):
     Обработчик эхо-сообщений.
     Отправляет обратно текстовые сообщения пользователя.
     """
-    logging.info(f"Пользователь {message.from_user.id} отправил сообщение: {message.text}.")
+    logger.info(f"Пользователь {message.from_user.id} отправил сообщение: {message.text}.")
     await message.answer(
         text=f'Вы написали: "{message.text}".\n'
         'Ваше сообщение не было обработано\n'
@@ -53,7 +53,7 @@ async def send_echo_cb(callback: CallbackQuery,data:dict):
     Обработчик эхо-сообщений.
     Отправляет обратно текстовые сообщения пользователя.
     """
-    logging.info(f"Пользователь {callback.from_user.id} нажал кнопку: {callback.data}.")
+    logger.info(f"Пользователь {callback.from_user.id} нажал кнопку: {callback.data}.")
     await callback.message.answer(
         text=f'Вы нажали кнопку: "{callback.data}".\n'
         'Она не была обработана'

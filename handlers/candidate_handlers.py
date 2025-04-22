@@ -33,7 +33,7 @@ class FSMRegistration(StatesGroup):
 # Этот хэндлер будет срабатывать на команду "/start"
 @router.message(Command(commands=["start"]))
 async def process_start_command(message: Message, state: FSMContext):
-    logging.info(f"Команда /start сработала для пользователя {message.from_user.id}")
+    logger.info(f"Команда /start сработала для пользователя {message.from_user.id}")
     await message.answer(
         text='Привет, Кандидат!\nМеня зовут Эхо-бот!\nЧтобы зарегистрироваться, нажмите кнопку "Регистрация"',
         reply_markup=reg_markup
@@ -42,7 +42,7 @@ async def process_start_command(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать на нажатие кнопки "Регистрация"
 @router.callback_query(F.data == 'register')
 async def process_register_press(callback: CallbackQuery, state: FSMContext):
-    logging.info(f"Нажата кнопка 'Регистрация' пользователем {callback.from_user.id}")
+    logger.info(f"Нажата кнопка 'Регистрация' пользователем {callback.from_user.id}")
     await callback.message.edit_text(
         text='Пожалуйста, введите ваше имя'
     )
@@ -52,7 +52,7 @@ async def process_register_press(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать на ввод имени кандидата
 @router.message(StateFilter(FSMRegistration.fill_name))
 async def process_name_sent(message: Message, state: FSMContext):
-    logging.info(f"Введено имя кандидата: {message.text} от пользователя {message.from_user.id}")
+    logger.info(f"Введено имя кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем введенное имя в контексте состояния
     await state.update_data(name=message.text)
     await message.answer(
@@ -65,7 +65,7 @@ async def process_name_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать на отправку контакта кандидата
 @router.message(StateFilter(FSMRegistration.fill_contact), F.content_type == 'contact')
 async def process_contact_sent(message: Message, state: FSMContext):
-    logging.info(f"Отправлен контакт кандидата от пользователя {message.from_user.id}")
+    logger.info(f"Отправлен контакт кандидата от пользователя {message.from_user.id}")
     # Получаем сохраненные данные из контекста состояния
     user_data = await state.get_data()
     name = user_data['name']
@@ -90,7 +90,7 @@ async def process_contact_sent(message: Message, state: FSMContext):
             )
             await state.clear()
     except Exception as e:
-        logging.error(f"Ошибка при регистрации кандидата: {e}")
+        logger.error(f"Ошибка при регистрации кандидата: {e}")
         await message.answer(
             text='Произошла ошибка при регистрации. Попробуйте снова.',
             reply_markup=remove_markup
@@ -100,7 +100,7 @@ async def process_contact_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать на некорректный ввод в состоянии ожидания имени или контакта
 @router.message(StateFilter(FSMRegistration.fill_name, FSMRegistration.fill_contact))
 async def warning_registration(message: Message):
-    logging.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {await state.get_state()}")
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {await state.get_state()}")
     await message.answer(
         text='Пожалуйста, следуйте инструкциям.\nЕсли вы хотите прервать регистрацию - отправьте команду /cancel'
     )

@@ -48,9 +48,9 @@ async def process_start_command(message: Message, data: dict):
             text=text,
             reply_markup=markup
         )
-        logging.info(f"Пользователь {message.from_user.id} начал работу с ботом.")
+        logger.info(f"Пользователь {message.from_user.id} начал работу с ботом.")
     except Exception as e:
-        logging.error(f"Ошибка при обработке команды /start: {e}")
+        logger.error(f"Ошибка при обработке команды /start: {e}")
         await message.answer(text="Произошла ошибка при загрузке главного меню.",
                              reply_markup=await user_menu(status=data['user_status']))
 
@@ -62,7 +62,7 @@ async def process_help_command(message: Message, data: dict):
     Обработчик команды /help.
     Отправляет справочную информацию о боте.
     """
-    logging.info(f"Пользователь {message.from_user.id} запросил справку.")
+    logger.info(f"Пользователь {message.from_user.id} запросил справку.")
     await message.answer(
         text=help_message(data['user_status']),
         reply_markup=await user_menu(message.from_user.id, status = data['user_status']),
@@ -77,7 +77,7 @@ async def process_help_callback(callback: CallbackQuery, data: dict):
     Обработчик нажатия на кнопку "помощь".
     Отправляет справочную информацию о боте.
     """
-    logging.info(f"Пользователь {callback.from_user.id} запросил справку через кнопку.")
+    logger.info(f"Пользователь {callback.from_user.id} запросил справку через кнопку.")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Добавляем данные для SafeEditMiddleware
@@ -99,7 +99,7 @@ async def process_cancel_command(message: Message, data:dict):
     Обработчик команды /cancel.
     Уведомляет пользователя, что команда работает только внутри машин состояний.
     """
-    logging.info(f"Пользователь {message.from_user.id} попытался использовать /cancel вне машины состояний.")
+    logger.info(f"Пользователь {message.from_user.id} попытался использовать /cancel вне машины состояний.")
     markup = await user_menu(message.from_user.id, data['user_status'])
     await message.answer(
         text='Вы вышли в главное меню.',
@@ -114,7 +114,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
     Обработчик команды /cancel.
     Завершает текущую машину состояний.
     """
-    logging.info(f"Пользователь {message.from_user.id} вышел из машины состояний.")
+    logger.info(f"Пользователь {message.from_user.id} вышел из машины состояний.")
     markup = await user_menu(message.from_user.id, data['user_status'])
     await message.answer(
         text='Вы вышли из машины состояний и вернулись в главное меню.',
@@ -133,7 +133,7 @@ async def process_main_menu_button(callback: CallbackQuery, data: dict):
     """
     Обработчик кнопки "Главное меню".
     """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+    logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     markup = await user_menu(callback.from_user.id,data['user_status'])
@@ -155,7 +155,7 @@ async def process_main_menu_button_state(callback: CallbackQuery, state: FSMCont
     """
     Обработчик кнопки "Главное меню".
     """
-    logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+    logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     markup = await user_menu(callback.from_user.id,data['user_status'])
@@ -182,7 +182,7 @@ async def process_username_sent(message: Message, state: FSMContext):
     Обработчик ввода имени/псевдонима.
     Запрашивает подтверждение.
     """
-    logging.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
+    logger.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
 
 
 # # Универсальный хэндлер вызова списка голосований (в зависимости от их типа). Работает !!!
@@ -190,7 +190,7 @@ async def process_username_sent(message: Message, state: FSMContext):
 # @log_handler_call
 # async def process_list_of_votings(callback: CallbackQuery, data: dict):
 #     try:
-#         logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+#         logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
 #         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 #         # Определяем тип голосования на основе callback.data
@@ -238,7 +238,7 @@ async def process_username_sent(message: Message, state: FSMContext):
 #         )
 
 #     except Exception as e:
-#         logging.error(f"Ошибка при обработке списка голосований ({callback.data}): {e}")
+#         logger.error(f"Ошибка при обработке списка голосований ({callback.data}): {e}")
 
 #         # Добавляем данные для SafeEditMiddleware
 #         data['response_text'] = 'Произошла ошибка при загрузке списка голосований.'
@@ -258,7 +258,7 @@ async def process_username_sent(message: Message, state: FSMContext):
 @log_handler_call
 async def process_list_of_votings(callback: CallbackQuery, data: dict):
     try:
-        logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         # Определяем тип голосования на основе callback.data
@@ -316,7 +316,7 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
             )
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке списка голосований ({callback.data}): {e}")
+        logger.error(f"Ошибка при обработке списка голосований ({callback.data}): {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка голосований.'
@@ -342,7 +342,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
     Обработчик просмотра вариантов.
     """
     try:
-        logging.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         voting_id = int(callback.data.split(':')[1])
@@ -461,7 +461,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
 
         dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'Вернуться в главное меню')
 
-        logging.info(f'Словарь меню при показе вариантов: {dict_menu}')
+        logger.info(f'Словарь меню при показе вариантов: {dict_menu}')
         markup = create_inline_kb(1, **dict_menu)
 
         # Добавляем данные для SafeEditMiddleware
@@ -475,7 +475,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при просмотре вариантов голосования: {e}")
+        logger.error(f"Ошибка при просмотре вариантов голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
@@ -500,7 +500,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
 #     Обработчик просмотра вариантов.
 #     """
 #     try:
-#         logging.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
+#         logger.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
 #         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 #         voting_id = int(callback.data.split(':')[1])
@@ -599,7 +599,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
 
 #         dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
 
-#         logging.info(f'словарь меню при показе вариантов: {dict_menu}')
+#         logger.info(f'словарь меню при показе вариантов: {dict_menu}')
 #         markup = create_inline_kb(1, **dict_menu)
 
 #         # Добавляем данные для SafeEditMiddleware
@@ -613,7 +613,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
 #         )
 
 #     except Exception as e:
-#         logging.error(f"Ошибка при просмотре вариантов голосования: {e}")
+#         logger.error(f"Ошибка при просмотре вариантов голосования: {e}")
 
 #         # Добавляем данные для SafeEditMiddleware
 #         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
@@ -636,7 +636,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
 @log_handler_call
 async def process_leave_the_group(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
-        logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         text = 'Вы действительно хотите выйти из группы?\nВсё верно?'
@@ -655,7 +655,7 @@ async def process_leave_the_group(callback: CallbackQuery, state: FSMContext, da
         await state.set_state(FSM_leave_club.fill_OK)
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке кнопки 'list_of_votes': {e}")
+        logger.error(f"Ошибка при обработке кнопки 'list_of_votes': {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка голосований.'
@@ -676,7 +676,7 @@ async def process_leave_the_group(callback: CallbackQuery, state: FSMContext, da
 @router.callback_query(StateFilter(FSM_leave_club.fill_OK), F.data == 'ConfirmOK')
 @log_handler_call
 async def process_leave_club_entry(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Кнопка 'ВСЁ ВЕРНО' при подтверждении выхода из нажата пользователем {callback.from_user.id}")
+    logger.info(f"Кнопка 'ВСЁ ВЕРНО' при подтверждении выхода из нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 
@@ -700,7 +700,7 @@ async def process_leave_club_entry(callback: CallbackQuery, state: FSMContext, d
         await state.clear()
 
     except Exception as e:
-        logging.error(f"Ошибка при записи username: {e}")
+        logger.error(f"Ошибка при записи username: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f'Произошла ошибка: {str(e)}'
@@ -719,7 +719,7 @@ async def process_leave_club_entry(callback: CallbackQuery, state: FSMContext, d
 @router.callback_query(StateFilter(FSM_leave_club.fill_OK), F.data == 'ConfirmNotOK')
 @log_handler_call
 async def process_no_confirm_leave_club(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    logger.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 
@@ -742,7 +742,7 @@ async def process_no_confirm_leave_club(callback: CallbackQuery, state: FSMConte
 @router.message(StateFilter(FSM_leave_club.fill_OK))
 @log_handler_call
 async def warning_leave_club(message: Message):
-    logging.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
              'Если вы хотите прервать изменение статуса - '
@@ -760,7 +760,7 @@ async def handle_user_unblock(event: ChatMemberUpdated):
     Срабатывает, когда пользователь разблокирует бота.
     """
     tg_id = event.from_user.id  # ID пользователя
-    logging.info(f"Пользователь {tg_id} разблокировал бота.")
+    logger.info(f"Пользователь {tg_id} разблокировал бота.")
 
     # Обновляем статус пользователя в базе данных
     await mark_user_as_available(tg_id)
@@ -774,7 +774,7 @@ async def handle_user_block(event: ChatMemberUpdated):
     Срабатывает, когда пользователь блокирует бота.
     """
     tg_id = event.from_user.id  # ID пользователя
-    logging.warning(f"Пользователь {tg_id} заблокировал бота.")
+    logger.warning(f"Пользователь {tg_id} заблокировал бота.")
 
     # Обновляем статус пользователя в базе данных
     await mark_user_as_unavailable(tg_id, reason="Бот заблокирован")

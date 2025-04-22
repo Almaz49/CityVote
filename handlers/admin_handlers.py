@@ -33,7 +33,7 @@ router.callback_query.filter(StatusFilter(required_status = ['admin','owner']))
 # @router.message(Command(commands='cancel'), StateFilter(default_state))
 # @log_handler_call
 # async def process_cancel_command(message: Message):
-#     logging.info(f"Команда /cancel сработала для пользователя {message.from_user.id} в состоянии по умолчанию")
+#     logger.info(f"Команда /cancel сработала для пользователя {message.from_user.id} в состоянии по умолчанию")
 #     await message.answer(
 #         text='Отменять нечего. Вы вне машины состояний',
 #         reply_markup=remove_markup
@@ -44,7 +44,7 @@ router.callback_query.filter(StatusFilter(required_status = ['admin','owner']))
 # @router.message(Command(commands='cancel'), ~StateFilter(default_state))
 # @log_handler_call
 # async def process_cancel_command_state(message: Message, state: FSMContext):
-#     logging.info(f"Команда /cancel сработала для пользователя {message.from_user.id} в состоянии {await state.get_state()}")
+#     logger.info(f"Команда /cancel сработала для пользователя {message.from_user.id} в состоянии {await state.get_state()}")
 #     await message.answer(
 #         text='Вы вышли из машины состояний',
 #         reply_markup=await user_menu(message.from_user.id)
@@ -60,7 +60,7 @@ router.callback_query.filter(StatusFilter(required_status = ['admin','owner']))
 @router.message(Command(commands='new_registrator'), StateFilter(default_state))
 @log_handler_call
 async def process_new_registrator(message: Message, state: FSMContext):
-    logging.info(f"Команда /new_registrator сработала для пользователя {message.from_user.id}")
+    logger.info(f"Команда /new_registrator сработала для пользователя {message.from_user.id}")
     await message.answer(text='''Пожалуйста, введите телеграм-ID участника,
 которому вы хотите присвоить новый статус или отправьте контакт с ID''')
     # Устанавливаем состояние ожидания ввода имени
@@ -91,7 +91,7 @@ async def process_new_registrator_cb(callback: CallbackQuery, state: FSMContext,
 @router.message(StateFilter(FSMNewRegistrator.fill_ID_NewRegistrator), (lambda x: x.text.isdigit()))
 @log_handler_call
 async def process_registrator_id_sent(message: Message, state: FSMContext, data: dict = None):
-    logging.info(f"Введенный ID нового регистратора: {message.text} от пользователя {message.from_user.id}")
+    logger.info(f"Введенный ID нового регистратора: {message.text} от пользователя {message.from_user.id}")
 
     member_tg_id = int(message.text)
     await state.update_data(ID=member_tg_id)
@@ -136,7 +136,7 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
 async def process_registrator_contact_sent(message: Message, state: FSMContext, data, contact: Contact = None):
 
     contact = message.contact
-    logging.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
+    logger.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
     member_tg_id = contact.user_id
 
     flag, ans_str = await extract_new_registrator_data(member_tg_id)  # извлекаем данные о новом регистраторе
@@ -177,7 +177,7 @@ async def process_registrator_contact_sent(message: Message, state: FSMContext, 
 @router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == 'NewRegistratorOK')
 @log_handler_call
 async def process_yes_registrator_press(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Меняем в базе данных статус пользователя по ключу tg_id пользователя и tg_id регистратора
@@ -209,7 +209,7 @@ async def process_yes_registrator_press(callback: CallbackQuery, state: FSMConte
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при назначении регистратора: {e}")
+        logger.error(f"Ошибка при назначении регистратора: {e}")
         # Необходимость явной обработки ошибок здесь минимальна,
         # так как LoggingAndErrorHandlingMiddleware уже позаботится об этом.
         raise  # Передаем исключение middleware для обработки
@@ -218,7 +218,7 @@ async def process_yes_registrator_press(callback: CallbackQuery, state: FSMConte
 @router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == 'NewRegistratorNotOK')
 @log_handler_call
 async def process_no_registrator_press(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Кнопка 'НЕВЕРНО' нажата пользователем {callback.from_user.id}")
+    logger.info(f"Кнопка 'НЕВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Завершаем машину состояний
@@ -239,7 +239,7 @@ async def process_no_registrator_press(callback: CallbackQuery, state: FSMContex
 @router.message(StateFilter(FSMNewRegistrator.fill_OK))
 @log_handler_call
 async def warning_registrator(message: Message):
-    logging.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewRegistrator.fill_OK}")
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewRegistrator.fill_OK}")
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
              'Если вы хотите прервать назначение регистратора - '
@@ -257,7 +257,7 @@ async def warning_registrator(message: Message):
 #     Обработчик вызова меню администрирования конкретного голосования.
 #     """
 #     try:
-#         logging.info(f"Пользователь {callback.from_user.id} выбрал голосование для администрирования: {callback.data}")
+#         logger.info(f"Пользователь {callback.from_user.id} выбрал голосование для администрирования: {callback.data}")
 #         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
 #         voting_id = int(callback.data.split(':')[1])
@@ -299,7 +299,7 @@ async def warning_registrator(message: Message):
 #             text = 'Это завершенное голосование. Вы можете возобновить голосование за него. Отданные ранее голоса сохранятся'
 #             dict_keyboard[f'continue_voting{voting_id}'] = LEXICON.get('continue_voting','continue_voting')
 
-#         logging.info(f'словарь для клавиатуры вариантов: {dict_keyboard}')
+#         logger.info(f'словарь для клавиатуры вариантов: {dict_keyboard}')
 #         markup = create_inline_kb(1, **dict_keyboard)
 
 
@@ -314,7 +314,7 @@ async def warning_registrator(message: Message):
 #         )
 
 #     except Exception as e:
-#         logging.error(f"Ошибка при создании меню администрирования голосования: {e}")
+#         logger.error(f"Ошибка при создании меню администрирования голосования: {e}")
 
 #         # Добавляем данные для SafeEditMiddleware
 #         data['response_text'] = 'Произошла ошибка при администрировании голосования.'
@@ -335,7 +335,7 @@ async def warning_registrator(message: Message):
 @log_handler_call
 async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
     try:
-        logging.info(f"Пользователь {callback.from_user.id} запустил администрирование голосвания: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} запустил администрирование голосвания: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         voting_id = int(callback.data.split(':')[1])
@@ -357,7 +357,7 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
 
         dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
 
-        logging.info(f'словарь меню при показе вариантов: {dict_menu}')
+        logger.info(f'словарь меню при показе вариантов: {dict_menu}')
         markup = create_inline_kb(1, **dict_menu)
 
         # Добавляем данные для SafeEditMiddleware
@@ -371,7 +371,7 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при просмотре вариантов голосования: {e}")
+        logger.error(f"Ошибка при просмотре вариантов голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
@@ -394,7 +394,7 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
     Обработчик выбора конкретного голосования.
     """
     try:
-        logging.info(f"Пользователь {callback.from_user.id} запускает голосование: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} запускает голосование: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         voting_id = int(callback.data.split(':')[1])
@@ -406,10 +406,10 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
 
         if result:
             flag, text = result
-            logging.info(text)
+            logger.info(text)
         else:
             text = 'Что-то пошло не так при запуске голосования'
-            logging.info(text+f':{voting_id}')
+            logger.info(text+f':{voting_id}')
 
         markup = await user_menu(status=data['user_status'])
 
@@ -424,7 +424,7 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при запуске голосования: {e}")
+        logger.error(f"Ошибка при запуске голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при запуске голосования.'
@@ -447,7 +447,7 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
     Обработчик выбора конкретного голосования.
     """
     try:
-        logging.info(f"Пользователь {callback.from_user.id} запускает промежуточный этап голосования: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} запускает промежуточный этап голосования: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         voting_id = int(callback.data.split(':')[1])
@@ -460,10 +460,10 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
 
         if result:
             flag, text = result
-            logging.info(text)
+            logger.info(text)
         else:
             text = 'Что-то пошло не так при подведении промежуточного итога голосования'
-            logging.info(text+f':{voting_id}')
+            logger.info(text+f':{voting_id}')
 
         markup = await user_menu(status=data['user_status'])
 
@@ -478,7 +478,7 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при запуске голосования: {e}")
+        logger.error(f"Ошибка при запуске голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при запуске голосования.'
@@ -500,7 +500,7 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
     Обработчик перехода в финал конкретного голосования.
     """
     try:
-        logging.info(f"Пользователь {callback.from_user.id} запускает финальный этап голосования: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} запускает финальный этап голосования: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         voting_id = int(callback.data.split(':')[1])
@@ -513,10 +513,10 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
 
         if result:
             flag, text,winners,losers = result
-            logging.info(text)
+            logger.info(text)
         else:
             text = 'Что-то пошло не так при подведении промежуточного итога голосования'
-            logging.info(text+f':{voting_id}')
+            logger.info(text+f':{voting_id}')
 
         markup = await user_menu(status=data['user_status'])
 
@@ -531,7 +531,7 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при запуске голосования: {e}")
+        logger.error(f"Ошибка при запуске голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при запуске голосования.'
@@ -553,7 +553,7 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
     Обработчик выбора конкретного голосования.
     """
     try:
-        logging.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         voting_id = int(callback.data.split(':')[1])
@@ -563,10 +563,10 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
         result = await voting_complete(voting_id, finisher=member_id)
         if result:
             text = result[0]
-            logging.info(text)
+            logger.info(text)
         else:
             text = 'Что-то пошло не так при завершении голосования'
-            logging.info(text+f':{voting_id}')
+            logger.info(text+f':{voting_id}')
 
         markup = await user_menu(status=data['user_status'])
 
@@ -581,7 +581,7 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при запуске голосования: {e}")
+        logger.error(f"Ошибка при запуске голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при запуске голосования.'
@@ -604,7 +604,7 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
     Обработчик выбора конкретного голосования.
     """
     try:
-        logging.info(f"Пользователь {callback.from_user.id} удалаяет вариант: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} удалаяет вариант: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         variant_id = int(callback.data.split(':')[1])
@@ -614,10 +614,10 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
         result = await delete_variant(variant_id, admin=member_id)
         if result:
             text = result[0]
-            logging.info(text)
+            logger.info(text)
         else:
             text = 'Что-то пошло не так при удалении варианта'
-            logging.info(text+f':{variant_id}')
+            logger.info(text+f':{variant_id}')
 
         markup = None
 
@@ -632,7 +632,7 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при удалении варианта: {e}")
+        logger.error(f"Ошибка при удалении варианта: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при удалении варианта.'
@@ -655,7 +655,7 @@ async def confirmation_of_voting_results_stop_cb(callback: CallbackQuery, data: 
     Обработчик выбора конкретного голосования.
     """
     try:
-        logging.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         voting_id = int(callback.data.split(':')[1])
@@ -665,10 +665,10 @@ async def confirmation_of_voting_results_stop_cb(callback: CallbackQuery, data: 
         result = await confirmation_of_voting_results_stop (voting_id, finisher=member_id)
         if result:
             text = result[0]
-            logging.info(text)
+            logger.info(text)
         else:
             text = 'Что-то пошло не так при завершении утверждения голосования'
-            logging.info(text+f':{voting_id}')
+            logger.info(text+f':{voting_id}')
 
         markup = await user_menu(status=data['user_status'])
 
@@ -683,7 +683,7 @@ async def confirmation_of_voting_results_stop_cb(callback: CallbackQuery, data: 
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при запуске голосования: {e}")
+        logger.error(f"Ошибка при запуске голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при запуске голосования.'

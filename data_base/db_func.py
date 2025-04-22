@@ -23,7 +23,7 @@ path_db = config.db.path_db  # путь к базе данных
 # def log_function_call(func):
 #     @wraps(func)
 #     def wrapper(*args, **kwargs):
-#         logging.info(f"Вызвана функция {func.__name__}")
+#         logger.info(f"Вызвана функция {func.__name__}")
 #         return func(*args, **kwargs)
 #     return wrapper
 
@@ -36,29 +36,29 @@ path_db = config.db.path_db  # путь к базе данных
 #         try:
 #             self.conn = sqlite3.connect(self.db_name)
 #             self.cursor = self.conn.cursor()
-#             logging.info(f"Соединение с базой данных {self.db_name} установлено.")
+#             logger.info(f"Соединение с базой данных {self.db_name} установлено.")
 #             return self.cursor
 #         except sqlite3.Error as e:
-#             logging.error(f"Ошибка при установке соединения с базой данных: {e}")
+#             logger.error(f"Ошибка при установке соединения с базой данных: {e}")
 #             raise
 
 #     def __exit__(self, exc_type, exc_val, exc_tb):
 #         if exc_type is None:
 #             try:
 #                 self.conn.commit()  # Если ошибок нет, подтвержаем изменения
-#                 logging.info("Изменения подтверждены.")
+#                 logger.info("Изменения подтверждены.")
 #             except sqlite3.Error as e:
-#                 logging.error(f"Ошибка при подтверждении изменений: {e}")
+#                 logger.error(f"Ошибка при подтверждении изменений: {e}")
 #                 self.conn.rollback()
 #         else:
 #             self.conn.rollback()  # В случае ошибки откатываем изменения
-#             logging.error(f"Произошла ошибка: {exc_val}")
+#             logger.error(f"Произошла ошибка: {exc_val}")
 
 #         try:
 #             self.conn.close()  # Закрываем соединение
-#             logging.info("Соединение с базой данных закрыто.")
+#             logger.info("Соединение с базой данных закрыто.")
 #         except sqlite3.Error as e:
-#             logging.error(f"Ошибка при закрытии соединения: {e}")
+#             logger.error(f"Ошибка при закрытии соединения: {e}")
 
 # Асинхронный контекстный менеджер для работы с базой данных
 class AsyncDatabase:
@@ -69,29 +69,29 @@ class AsyncDatabase:
         try:
             self.conn = await aiosqlite.connect(self.db_name)
             self.cursor = await self.conn.cursor()
-            logging.info(f"Асинхронное соединение с базой данных {self.db_name} установлено.")
+            logger.info(f"Асинхронное соединение с базой данных {self.db_name} установлено.")
             return self.cursor
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при установке асинхронного соединения с базой данных: {e}")
+            logger.error(f"Ошибка при установке асинхронного соединения с базой данных: {e}")
             raise
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is None:
             try:
                 await self.conn.commit()  # Если ошибок нет, подтвержаем изменения
-                logging.info("Асинхронные изменения подтверждены.")
+                logger.info("Асинхронные изменения подтверждены.")
             except aiosqlite.Error as e:
-                logging.error(f"Ошибка при подтверждении асинхронных изменений: {e}")
+                logger.error(f"Ошибка при подтверждении асинхронных изменений: {e}")
                 await self.conn.rollback()
         else:
             await self.conn.rollback()  # В случае ошибки откатываем изменения
-            logging.error(f"Произошла асинхронная ошибка: {exc_val}")
+            logger.error(f"Произошла асинхронная ошибка: {exc_val}")
 
         try:
             await self.conn.close()  # Закрываем соединение
-            logging.info("Асинхронное соединение с базой данных закрыто.")
+            logger.info("Асинхронное соединение с базой данных закрыто.")
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при закрытии асинхронного соединения: {e}")
+            logger.error(f"Ошибка при закрытии асинхронного соединения: {e}")
 
 #Функция выборки данных из БД из таблицы table, c выборкой по столбцу key
 #со значением value. *с - названия столбцов, значения из которых нужны
@@ -125,15 +125,15 @@ async def db_update(table, key, value, **cv):
     cols = cols[:-2]  # отрезаю последнюю запятую и пробел
     ins_str = f'UPDATE {table} SET {cols} WHERE {key} = ?'  # сформирована строка запроса
 
-    logging.info(f"Выполняется запрос: {ins_str}")
-    logging.info(f"Данные для запроса: {data}")
+    logger.info(f"Выполняется запрос: {ins_str}")
+    logger.info(f"Данные для запроса: {data}")
 
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(ins_str, data)
-            logging.info("Запрос успешно выполнен.")
+            logger.info("Запрос успешно выполнен.")
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при выполнении запроса: {e}")
+            logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
 @log_function_call
@@ -143,7 +143,7 @@ async def extract_user_id(tg_id):
     :param tg_id: Telegram ID пользователя.
     :return: ID пользователя в базе данных или None, если пользователь не найден.
     """
-    logging.info(f"Извлечение user_id для tg_id={tg_id}")
+    logger.info(f"Извлечение user_id для tg_id={tg_id}")
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -154,13 +154,13 @@ async def extract_user_id(tg_id):
             result = await cursor.fetchone()
             if result:
                 user_id, = result
-                logging.info(f"Найден user_id={user_id} для tg_id={tg_id}")
+                logger.info(f"Найден user_id={user_id} для tg_id={tg_id}")
                 return user_id
             else:
-                logging.info(f"Пользователь с tg_id={tg_id} не найден.")
+                logger.info(f"Пользователь с tg_id={tg_id} не найден.")
                 return None
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при извлечении user_id для tg_id={tg_id}: {e}")
+            logger.error(f"Ошибка при извлечении user_id для tg_id={tg_id}: {e}")
             raise
 
 
@@ -172,7 +172,7 @@ async def extract_member_id(club_id, user_id):
     :param user_id: ID пользователя.
     :return: ID участника группы в базе данных или None, если участник не найден.
     """
-    logging.info(f"Извлечение member_id для club_id={club_id}, user_id={user_id}")
+    logger.info(f"Извлечение member_id для club_id={club_id}, user_id={user_id}")
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -184,13 +184,13 @@ async def extract_member_id(club_id, user_id):
             result = await cursor.fetchone()
             if result:
                 member_id, = result
-                logging.info(f"Найден member_id={member_id} для club_id={club_id}, user_id={user_id}")
+                logger.info(f"Найден member_id={member_id} для club_id={club_id}, user_id={user_id}")
                 return member_id
             else:
-                logging.info(f"Участник с club_id={club_id}, user_id={user_id} не найден.")
+                logger.info(f"Участник с club_id={club_id}, user_id={user_id} не найден.")
                 return None
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при извлечении member_id для club_id={club_id}, user_id={user_id}: {e}")
+            logger.error(f"Ошибка при извлечении member_id для club_id={club_id}, user_id={user_id}: {e}")
             raise
 
 # Функция извлечения списка участников с определенным статусом, или всех,
@@ -212,17 +212,17 @@ async def list_of_members(club_id, status):
         '''
         params += (status,)
 
-    logging.info(f"Выполняется запрос: {query}")
-    logging.info(f"Параметры для запроса: {params}")
+    logger.info(f"Выполняется запрос: {query}")
+    logger.info(f"Параметры для запроса: {params}")
 
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(query, params)
             answ = await cursor.fetchall()
-            logging.info("Запрос успешно выполнен.")
+            logger.info("Запрос успешно выполнен.")
             return answ
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при выполнении запроса: {e}")
+            logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
 #Функция извлечения ID пользователя по телеграм ID
@@ -248,17 +248,17 @@ async def extract_user_data(user_id, *columns):
 
     ins_str = f"SELECT {cols} FROM Users WHERE id = ?"
 
-    logging.info(f"Выполняется запрос: {ins_str}")
-    logging.info(f"Параметры для запроса: {(user_id,)}")
+    logger.info(f"Выполняется запрос: {ins_str}")
+    logger.info(f"Параметры для запроса: {(user_id,)}")
 
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(ins_str, (user_id,))
             answ = await cursor.fetchone()
-            logging.info("Запрос успешно выполнен.")
+            logger.info("Запрос успешно выполнен.")
             return answ
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при выполнении запроса: {e}")
+            logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
 # Функция выявления всех статусов, использующихся в группе.
@@ -282,7 +282,7 @@ async def all_status():
         # Преобразуем список кортежей просто в список
         all_st = [status[0] for status in all_st]
 
-        logging.info(f"Все статусы: {all_st}")
+        logger.info(f"Все статусы: {all_st}")
         return all_st
 
 # Функция извлечения списка идущих голосований.
@@ -305,17 +305,17 @@ async def list_of_votings(club_id, *voting_status):
             '''
         params = (club_id,)
 
-    logging.info(f"Выполняется запрос: {query}")
-    logging.info(f"Параметры для запроса: {params}")
+    logger.info(f"Выполняется запрос: {query}")
+    logger.info(f"Параметры для запроса: {params}")
 
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(query, params)
             ans = await cursor.fetchall()
-            logging.info("Запрос успешно выполнен.")
+            logger.info("Запрос успешно выполнен.")
             return ans
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при выполнении запроса: {e}")
+            logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
 # Функция извлечения списка вариантов голосования.
@@ -338,17 +338,17 @@ async def list_of_variants(voting_id, *variant_status):
             '''
         params = (voting_id,)
 
-    logging.info(f"Выполняется запрос: {query}")
-    logging.info(f"Параметры для запроса: {params}")
+    logger.info(f"Выполняется запрос: {query}")
+    logger.info(f"Параметры для запроса: {params}")
 
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(query, params)
             result = await cursor.fetchall()
-            logging.info("Запрос успешно выполнен.")
+            logger.info("Запрос успешно выполнен.")
             return result
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при выполнении запроса: {e}")
+            logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
 # Функция извлечения названия и текста варианта по его ID
@@ -362,10 +362,10 @@ async def extract_variant_data(variant_id):
         try:
             await cursor.execute(ins_str,(variant_id,))
             result = await cursor.fetchone()
-            logging.info("Запрос успешно выполнен.")
+            logger.info("Запрос успешно выполнен.")
             return result
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при выполнении запроса: {e}")
+            logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
 
@@ -403,8 +403,8 @@ async def extract_status(member_id):
         )
         result = await cursor.fetchall()
 
-        logging.info(f"Выполняется запрос: SELECT status FROM Status WHERE member_id = {member_id}")
-        logging.info(f"Полученные данные: {result}")
+        logger.info(f"Выполняется запрос: SELECT status FROM Status WHERE member_id = {member_id}")
+        logger.info(f"Полученные данные: {result}")
 
         if result:
             # Преобразуем результат в список уникальных статусов
@@ -424,10 +424,10 @@ async def extract_status(member_id):
             # Добавляем оставшиеся статусы в конец списка
             ordered_statuses += statuses
 
-            logging.info(f"Упорядоченные статусы: {ordered_statuses}")
+            logger.info(f"Упорядоченные статусы: {ordered_statuses}")
             return ordered_statuses
         else:
-            logging.info("Статусы не найдены, возвращается ['user']")
+            logger.info("Статусы не найдены, возвращается ['user']")
             return ['user']
 
 # Функция проверяет уникальность присланного username. Возвращает True если он уникален

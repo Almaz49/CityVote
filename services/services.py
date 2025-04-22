@@ -34,7 +34,7 @@ club_id = config.tg_bot.club_id  # id группы в БД (не телегра�
 @log_function_call
 async def send_notification_to_user(tg_id: int, message_text: str, reply_markup = main_menu_markup):
     is_available = await is_user_available(tg_id)
-    logging.debug(f"Пользователь {tg_id} доступен: {is_available}")
+    logger.debug(f"Пользователь {tg_id} доступен: {is_available}")
     if is_available:
         try:
             # Попытка отправить сообщение
@@ -45,22 +45,22 @@ async def send_notification_to_user(tg_id: int, message_text: str, reply_markup 
             )
         except TelegramForbiddenError:
             # Пользователь заблокировал бота
-            logging.warning(f"Пользователь {tg_id} заблокировал бота.")
+            logger.warning(f"Пользователь {tg_id} заблокировал бота.")
             await mark_user_as_unavailable(tg_id, reason="bot blocked")
         except TelegramBadRequest as e:
             if "chat not found" in str(e).lower():
                 # Чат не найден (пользователь удалил аккаунт)
-                logging.warning(f"Пользователь {tg_id} удалил аккаунт или чат не существует.")
+                logger.warning(f"Пользователь {tg_id} удалил аккаунт или чат не существует.")
                 await mark_user_as_unavailable(tg_id, reason="user lost")
             else:
                 # Другая ошибка BadRequest
-                logging.error(f"Ошибка при отправке сообщения пользователю {tg_id}: {e}")
+                logger.error(f"Ошибка при отправке сообщения пользователю {tg_id}: {e}")
         except TelegramAPIError as e:
             # Любая другая ошибка Telegram API
-            logging.error(f"Telegram API Error для пользователя {tg_id}: {e}")
+            logger.error(f"Telegram API Error для пользователя {tg_id}: {e}")
         except Exception as e:
             # Все остальные исключения
-            logging.error(f"Неизвестная ошибка при отправке сообщения пользователю {tg_id}: {e}")
+            logger.error(f"Неизвестная ошибка при отправке сообщения пользователю {tg_id}: {e}")
 
 
 #Функция уведомления регистратора при краткой регистрации.
@@ -106,7 +106,7 @@ async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict
 
         return True, "Уведомление отправлено."
     except Exception as e:
-        logging.error(f"Ошибка при отправке уведомления регистратору: {e}")
+        logger.error(f"Ошибка при отправке уведомления регистратору: {e}")
         return False, str(e)
 
 #Функция уведомления суперрегистратора при краткой регистрации.
@@ -157,7 +157,7 @@ async def notify_super_registrator_short(candidate_tg_id, user_dict):
 
         return True, "Уведомление отправлено."
     except Exception as e:
-        logging.error(f"Ошибка при отправке уведомления регистратору: {e}")
+        logger.error(f"Ошибка при отправке уведомления регистратору: {e}")
         return False, str(e)
 
 #Функция уведомления регистратора при подробной регистрации. Возможно, ее надо будет вписать в  хэндлер.
@@ -206,13 +206,13 @@ async def notify_registrator(registrator_tg_id, candidate_tg_id, user_dict):
 
         return True, "Уведомление отправлено."
     except Exception as e:
-        logging.error(f"Ошибка при отправке уведомления регистратору: {e}")
+        logger.error(f"Ошибка при отправке уведомления регистратору: {e}")
         return False, str(e)
 
 # Функция уведомления и лишения статуса 'votist' тех пользователей, чей представитель утратил этот статус
 @log_function_call
 async def not_votist_because_proxy_quit(proxy:int):
-    logging.info(f"Лишаем статуса гоосующих тех, чей представитель {proxy} сложил полномочия")
+    logger.info(f"Лишаем статуса гоосующих тех, чей представитель {proxy} сложил полномочия")
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute('''SELECT username FROM Users WHERE id IN
@@ -225,7 +225,7 @@ async def not_votist_because_proxy_quit(proxy:int):
             )
             result = await cursor.fetchall()
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при лишении статуса 'голосующих' доверителей ушедшего представителя: {e}")
+            logger.error(f"Ошибка при лишении статуса 'голосующих' доверителей ушедшего представителя: {e}")
             raise
 
     for item in result:
@@ -252,13 +252,13 @@ async def not_votist_because_proxy_quit(proxy:int):
                     )
 
                 except aiosqlite.Error as e:
-                    logging.error(f"Ошибка при лишении статуса голосующего: {e}")
+                    logger.error(f"Ошибка при лишении статуса голосующего: {e}")
                     raise
 
 # Функция уведомления и присвоения статуса 'votist' тем пользователям, чей представитель возобновил этот статус
 @log_function_call
 async def votist_because_proxy_returned(proxy:int):
-    logging.info(f"Возвращаем статус гоосующих тем, чей представитель {proxy} вернул полномочия")
+    logger.info(f"Возвращаем статус гоосующих тем, чей представитель {proxy} вернул полномочия")
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute('''SELECT username FROM Users WHERE id IN
@@ -271,7 +271,7 @@ async def votist_because_proxy_returned(proxy:int):
             )
             result = await cursor.fetchall()
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при возвращении статуса 'голосующих' доверителям вернувшегося представителя: {e}")
+            logger.error(f"Ошибка при возвращении статуса 'голосующих' доверителям вернувшегося представителя: {e}")
             raise
 
     for item in result:
@@ -298,7 +298,7 @@ async def votist_because_proxy_returned(proxy:int):
                     )
 
                 except aiosqlite.Error as e:
-                    logging.error(f"Ошибка при лишении статуса голосующего: {e}")
+                    logger.error(f"Ошибка при лишении статуса голосующего: {e}")
                     raise
 
 # Функция выхода из группы. Передается id участника.
@@ -306,7 +306,7 @@ async def votist_because_proxy_returned(proxy:int):
 # Если участник был представителем вызывается функция not_votist_because_proxy_quit
 @log_function_call
 async def leave_club (member_id, status):
-    logging.info(f"Выход из группы member_id={member_id}")
+    logger.info(f"Выход из группы member_id={member_id}")
     await member_leave_club(member_id,status)
     if 'proxy' in status:
         await not_votist_because_proxy_quit(member_id)

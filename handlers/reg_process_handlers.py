@@ -38,7 +38,7 @@ router = Router()
 @log_handler_call
 async def process_registration(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
-        logging.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+        logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         tg_id = callback.from_user.id
@@ -66,7 +66,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         await state.set_state(FSM_short_registration.fill_resume)
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке кнопки 'registration': {e}")
+        logger.error(f"Ошибка при обработке кнопки 'registration': {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при начале процесса регистрации.'
@@ -85,7 +85,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 @router.message(StateFilter(FSM_short_registration.fill_resume))
 @log_handler_call
 async def process_resume_sent(message: Message, state: FSMContext):
-    logging.info(f"Введено резюме кандидата: {message.text} от пользователя {message.from_user.id}")
+    logger.info(f"Введено резюме кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем введенное имя в контексте состояния
     await state.update_data(resume=message.text)
 
@@ -117,7 +117,7 @@ async def process_get_contact_short(message: Message, state: FSMContext):
     try:
         contact: Contact = message.contact
         print('Контакт: ', contact)
-        logging.info(f"Контакт получен от пользователя {message.from_user.id}: {contact}")
+        logger.info(f"Контакт получен от пользователя {message.from_user.id}: {contact}")
         tg_true = (message.contact.user_id == message.from_user.id)  # проверяем, действительно ли юзер прислал свой контакт - или чужой
 
 
@@ -161,7 +161,7 @@ async def process_get_contact_short(message: Message, state: FSMContext):
         await state.set_state(FSM_short_registration.fill_registrator)
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке получения контакта: {e}")
+        logger.error(f"Ошибка при обработке получения контакта: {e}")
         await message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
@@ -169,7 +169,7 @@ async def process_get_contact_short(message: Message, state: FSMContext):
 @router.message(StateFilter(FSM_short_registration.fill_contact))
 @log_handler_call
 async def warning_get_contact_short_reg(message: Message):
-    logging.warning(f"Некорректный ввод вместо контакта от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод вместо контакта от пользователя {message.from_user.id}")
     await message.answer(
         text='Пожалуйста, пользуйтесь кнопкой "Отправить контакт"\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel'
     )
@@ -181,7 +181,7 @@ async def warning_get_contact_short_reg(message: Message):
 @log_handler_call
 async def process_registrator_choise(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
-        logging.info(f"Выбран регистратор {callback.data} пользователем {callback.from_user.id}")
+        logger.info(f"Выбран регистратор {callback.data} пользователем {callback.from_user.id}")
 
         # Удаляем сообщение с кнопками подтверждения
         await callback.message.delete()
@@ -229,13 +229,13 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
             if not success:
                 await callback.message.answer(text=f'Ошибка при уведомлении регистратора: {result}')
         elif callback.data == 'stranger':
-            logging.info(f"Пользователь {tg_id} выбрал 'Никого не знаю'.")
+            logger.info(f"Пользователь {tg_id} выбрал 'Никого не знаю'.")
             success, result = await notify_super_registrator_short(tg_id, user_dict)
             if not success:
                 await callback.message.answer(text=f'Ошибка при уведомлении супер-регистратора: {result}')
             # Здесь тоже нужна функция уведомления администрации
     except Exception as e:
-        logging.error(f"Ошибка при выборе регистратора: {e}")
+        logger.error(f"Ошибка при выборе регистратора: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
         # Завершаем машину состояний
         await state.clear()
@@ -245,7 +245,7 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
 @router.message(StateFilter(FSM_short_registration.fill_registrator))
 @log_handler_call
 async def warning_not_registrator(message: Message):
-    logging.warning(f"Некорректный ввод при выборе модератора от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод при выборе модератора от пользователя {message.from_user.id}")
     await message.answer(
         text='Пожалуйста, пользуйтесь кнопками при выборе модератора.\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel'
     )

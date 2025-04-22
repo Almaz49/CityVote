@@ -18,9 +18,9 @@ async def new_user_tg(tg_id):
                 'INSERT OR IGNORE INTO Users(tg_id) VALUES(?)',
                 (tg_id,)
             )
-            logging.info(f"Добавлен новый пользователь с tg_id: {tg_id}")
+            logger.info(f"Добавлен новый пользователь с tg_id: {tg_id}")
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при добавлении нового пользователя: {e}")
+            logger.error(f"Ошибка при добавлении нового пользователя: {e}")
             raise
 
 # Запись нового участника в группу
@@ -32,9 +32,9 @@ async def new_member(club_id, user_id):
                 'INSERT OR IGNORE INTO Members(club_id, user_id) VALUES(?, ?)',
                 (club_id, user_id)
             )
-            logging.info(f"Добавлен новый участник в группу {club_id} с user_id: {user_id}")
+            logger.info(f"Добавлен новый участник в группу {club_id} с user_id: {user_id}")
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при добавлении нового участника: {e}")
+            logger.error(f"Ошибка при добавлении нового участника: {e}")
             raise
 
 # Запись нового статуса (registrator - member_id того, кто присвоил статус,
@@ -46,7 +46,7 @@ async def new_member(club_id, user_id):
 @log_function_call
 async def new_status(registrator, member_id, status, token_id=None):
     time_reg = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logging.info(f"Запись нового статуса: registrator={registrator}, member_id={member_id}, status={status}, token_id={token_id}, time_reg={time_reg}")
+    logger.info(f"Запись нового статуса: registrator={registrator}, member_id={member_id}, status={status}, token_id={token_id}, time_reg={time_reg}")
 
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -64,7 +64,7 @@ async def new_status(registrator, member_id, status, token_id=None):
                     '''DELETE FROM Status WHERE member_id = ? AND status = ?''',
                     (member_id, status1[1])
                 )
-                logging.info(f"Статус '{status1[1]}' удален для member_id: {member_id}")
+                logger.info(f"Статус '{status1[1]}' удален для member_id: {member_id}")
             else:
                 if status1[0] == 'AppointAs':
                     new_st = status1[1]
@@ -81,18 +81,18 @@ async def new_status(registrator, member_id, status, token_id=None):
                     '''DELETE FROM Status WHERE member_id = ? AND status = ?''',
                     (member_id, 'candidate')
                 )
-                    logging.info(f"Статус '{'candidate'}' удален для member_id: {member_id}")
+                    logger.info(f"Статус '{'candidate'}' удален для member_id: {member_id}")
                 # Если присваевается статус candidate, удаляем статус member
                 if new_st == 'candidate':
                     await cursor.execute(
                     '''DELETE FROM Status WHERE member_id = ? AND status = ?''',
                     (member_id, 'member')
                 )
-                    logging.info(f"Статус '{'member'}' удален для member_id: {member_id}")
-                logging.info(f"Добавлен новый статус '{status}' для member_id: {member_id}")
+                    logger.info(f"Статус '{'member'}' удален для member_id: {member_id}")
+                logger.info(f"Добавлен новый статус '{status}' для member_id: {member_id}")
 
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при работе со статусом: {e}")
+            logger.error(f"Ошибка при работе со статусом: {e}")
             raise
 
 
@@ -102,7 +102,7 @@ async def new_status(registrator, member_id, status, token_id=None):
 @log_function_call
 async def trust(member_id, proxy):
     time_trust = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logging.info(f"Запись доверия: member_id={member_id}, proxy={proxy}, time_trust={time_trust}")
+    logger.info(f"Запись доверия: member_id={member_id}, proxy={proxy}, time_trust={time_trust}")
 
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -112,7 +112,7 @@ async def trust(member_id, proxy):
                 UPDATE Members SET proxy = ? WHERE id = ?
                 ''', (proxy, member_id)
             )
-            logging.info(f"Добавлена запись о представителе для member_id: {member_id}")
+            logger.info(f"Добавлена запись о представителе для member_id: {member_id}")
 
             # Проверяем, является ли участник членом группы и не имеет ли уже статус 'votist'
             await cursor.execute(
@@ -128,7 +128,7 @@ async def trust(member_id, proxy):
                     INSERT OR IGNORE INTO Status (member_id, status) VALUES (?, ?)
                     ''', (member_id, 'votist')
                 )
-                logging.info(f"Добавлен статус 'votist' для member_id: {member_id}")
+                logger.info(f"Добавлен статус 'votist' для member_id: {member_id}")
 
             # Добавляем запись в "журнал доверенностей" - таблицу Trusts
             await cursor.execute(
@@ -136,10 +136,10 @@ async def trust(member_id, proxy):
                 INSERT INTO Trusts (member_id, proxy_id, time_trust) VALUES (?, ?, ?)
                 ''', (member_id, proxy, time_trust)
             )
-            logging.info(f"Добавлена запись в журнал доверенностей для member_id: {member_id}")
+            logger.info(f"Добавлена запись в журнал доверенностей для member_id: {member_id}")
             return "Представитель успешно назначен!"
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при работе с доверием: {e}")
+            logger.error(f"Ошибка при работе с доверием: {e}")
             raise
 
 # Функция проверяет, имеет ли пользователь право голоса и дает ему или отбирает статус 'votist' в зависимости от результата
@@ -174,11 +174,11 @@ async def is_votist(member_id):
                 response = 'votist' if flag else 'not_votist'
                 await new_status(registrator=None, member_id=member_id, status=response)
 
-            logging.info(f"Участник с member_id {member_id} имеет ли право голоса: {flag}")
+            logger.info(f"Участник с member_id {member_id} имеет ли право голоса: {flag}")
             return flag
 
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при определении права голоса: {e}")
+            logger.error(f"Ошибка при определении права голоса: {e}")
             raise
 
 
@@ -187,7 +187,7 @@ async def is_votist(member_id):
 @log_function_call
 async def member_leave_club (member_id,status):
     time_leave = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logging.info(f"Запись выхода из группы member_id={member_id}")
+    logger.info(f"Запись выхода из группы member_id={member_id}")
     # Если уходит владелец, оставляем за ним статус владельца
     if 'owner' in status:
         status.remove('owner')
@@ -207,10 +207,10 @@ async def member_leave_club (member_id,status):
                 VALUES (?, ?, ?, ?, ?)''',
                 (member_id, 'member', member_id, 'leave', time_leave)
             )
-            logging.info(f"Добавлена запись в журнал регистраций о выходе для member_id: {member_id}")
+            logger.info(f"Добавлена запись в журнал регистраций о выходе для member_id: {member_id}")
             return "Участник выбыл"
         except aiosqlite.Error as e:
-            logging.error(f"Ошибка при работе с доверием: {e}")
+            logger.error(f"Ошибка при работе с доверием: {e}")
             raise
 
 @log_function_call
@@ -228,9 +228,9 @@ async def mark_user_as_unavailable(tg_id: int, reason: str):
             WHERE tg_id = ?;
             """
             await cursor.execute(query, (reason, tg_id))
-            logging.info(f"Пользователь {tg_id} помечен как недоступный. Причина: {reason}")
+            logger.info(f"Пользователь {tg_id} помечен как недоступный. Причина: {reason}")
         except Exception as e:
-            logging.error(f"Ошибка при обновлении статуса пользователя {tg_id}: {e}")
+            logger.error(f"Ошибка при обновлении статуса пользователя {tg_id}: {e}")
 
 @log_function_call
 async def mark_user_as_available(tg_id: int):
@@ -246,9 +246,9 @@ async def mark_user_as_available(tg_id: int):
             WHERE tg_id = ?;
             """
             await cursor.execute(query, (tg_id,))
-            logging.info(f"Пользователь {tg_id} помечен как доступный.")
+            logger.info(f"Пользователь {tg_id} помечен как доступный.")
         except Exception as e:
-            logging.error(f"Ошибка при обновлении статуса пользователя {tg_id}: {e}")
+            logger.error(f"Ошибка при обновлении статуса пользователя {tg_id}: {e}")
 
 @log_function_call
 async def is_user_available(tg_id: int) -> bool:
@@ -274,17 +274,17 @@ async def is_user_available(tg_id: int) -> bool:
             if result is not None:
                 if not result[0]:
                     # Если tg_available == NULL, пользователь доступен
-                    logging.info(f"Пользователь {tg_id} доступен.")
+                    logger.info(f"Пользователь {tg_id} доступен.")
                     return True
                 else:
                     # Если tg_available содержит значение, пользователь недоступен
-                    logging.info(f"Пользователь {tg_id} недоступен.")
+                    logger.info(f"Пользователь {tg_id} недоступен.")
                     return False
             else:
                 #Если пользователь не найден в базе данных, считаем его недоступным
                 return False
         except Exception as e:
-            logging.error(f"Ошибка при проверке доступности пользователя {tg_id}: {e}")
+            logger.error(f"Ошибка при проверке доступности пользователя {tg_id}: {e}")
             return False
 
 # Функция записи в БД данных о пользователе при короткой регистрации (с запросом телефона)
@@ -317,9 +317,9 @@ async def recording_user_data_1(tg_id: int, member_id: int, tg_phone_number = No
             params = (resume, member_id)
             await cursor.execute(query, params)
 
-            logging.info(f"Данные пользователя {tg_id} записаны в базу данных.")
+            logger.info(f"Данные пользователя {tg_id} записаны в базу данных.")
         except Exception as e:
-            logging.error(f"Ошибка при записи данных пользователя {tg_id}: {e}")
+            logger.error(f"Ошибка при записи данных пользователя {tg_id}: {e}")
 
 # Функция записи данных о пользователе в таблицу Users
 @log_function_call
@@ -332,9 +332,9 @@ async def recording_user_data(tg_id: int, **data):
 
     try:
         await db_update('Users', 'tg_id', tg_id, **data)
-        logging.info(f"Данные пользователя {tg_id} записаны в базу данных.")
+        logger.info(f"Данные пользователя {tg_id} записаны в базу данных.")
     except Exception as e:
-        logging.error(f"Ошибка при записи данных пользователя {tg_id}: {e}")
+        logger.error(f"Ошибка при записи данных пользователя {tg_id}: {e}")
 
 
 
@@ -349,6 +349,6 @@ async def recording_member_data(member_id: int, **data):
 
     try:
         await db_update('Members', 'id', member_id, **data)
-        logging.info(f"Данные пользователя {member_id} записаны в базу данных.")
+        logger.info(f"Данные пользователя {member_id} записаны в базу данных.")
     except Exception as e:
-        logging.error(f"Ошибка при записи данных пользователя {member_id}: {e}")
+        logger.error(f"Ошибка при записи данных пользователя {member_id}: {e}")

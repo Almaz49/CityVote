@@ -59,7 +59,7 @@ async def process_new_status_cb(callback: CallbackQuery, state: FSMContext, data
 
     # Устанавливаем состояние ожидания ввода ID
     await state.set_state(FSMNewStatus.fill_ID_User)
-    logging.info(f"Установлено состояние: {await state.get_state()}")
+    logger.info(f"Установлено состояние: {await state.get_state()}")
 
 
 # Этот хэндлер будет срабатывать, если введен корректный ID (число)
@@ -67,7 +67,7 @@ async def process_new_status_cb(callback: CallbackQuery, state: FSMContext, data
 @router.message(StateFilter(FSMNewStatus.fill_ID_User), ~F.contact, (lambda x: x.text.isdigit()))
 @log_handler_call
 async def process_user_id_sent(message: Message, state: FSMContext):
-    logging.info(f"Введенный ID пользователя: {message.text} от пользователя {message.from_user.id}")
+    logger.info(f"Введенный ID пользователя: {message.text} от пользователя {message.from_user.id}")
     user_tg_id = int(message.text)
     await state.update_data(ID=user_tg_id)
     try:
@@ -85,7 +85,7 @@ async def process_user_id_sent(message: Message, state: FSMContext):
             # Сбрасываем состояние и очищаем данные, полученные внутри состояний
             await state.clear()
     except Exception as e:
-        logging.error(f"Ошибка при извлечении данных пользователя: {e}")
+        logger.error(f"Ошибка при извлечении данных пользователя: {e}")
         await message.answer(text=f'Произошла ошибка: {str(e)}')
         await state.clear()
 
@@ -96,7 +96,7 @@ async def process_user_id_sent(message: Message, state: FSMContext):
 @log_handler_call
 async def process_user_contact_sent(message: Message, state: FSMContext, contact: Contact = None):
     contact = message.contact
-    logging.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
+    logger.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
     user_tg_id = contact.user_id
     await state.update_data(ID=user_tg_id)
     try:
@@ -114,7 +114,7 @@ async def process_user_contact_sent(message: Message, state: FSMContext, contact
             # Сбрасываем состояние и очищаем данные, полученные внутри состояний
             await state.clear()
     except Exception as e:
-        logging.error(f"Ошибка при извлечении данных пользователя: {e}")
+        logger.error(f"Ошибка при извлечении данных пользователя: {e}")
         await message.answer(text=f'Произошла ошибка: {str(e)}')
         await state.clear()
 
@@ -122,11 +122,11 @@ async def process_user_contact_sent(message: Message, state: FSMContext, contact
 @router.callback_query(StateFilter(FSMNewStatus.fill_OK), F.data == 'ConfirmOK')
 @log_handler_call
 async def process_status_choice(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     fsm_data = await state.get_data()
-    logging.info(f'FSM data: \n{fsm_data}\n')
+    logger.info(f'FSM data: \n{fsm_data}\n')
     member_tg_id = fsm_data['ID']
 
     try:
@@ -137,7 +137,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
         vacansy = list(set(all_st) - set(status) - {'owner', 'user', 'candidate','votist','proxy'})
         status = list(set(status) - {'owner', 'member', 'user', 'candidate'})
 
-        logging.debug(f'Вакансии для пользователя: {vacansy}')
+        logger.debug(f'Вакансии для пользователя: {vacansy}')
 
         keyboards = []
         for item in vacansy:
@@ -163,7 +163,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
         await state.set_state(FSMNewStatus.fill_choice)
 
     except Exception as e:
-        logging.error(f"Ошибка при формировании клавиатуры статусов: {e}")
+        logger.error(f"Ошибка при формировании клавиатуры статусов: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f'Произошла ошибка: {str(e)}'
@@ -182,7 +182,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
 @router.callback_query(StateFilter(FSMNewStatus.fill_OK), F.data == 'ConfirmNotOK')
 @log_handler_call
 async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    logger.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Завершаем машину состояний
@@ -203,7 +203,7 @@ async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMCon
 @router.message(StateFilter(FSMNewStatus.fill_OK))
 @log_handler_call
 async def warning_registrator(message: Message):
-    logging.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewStatus.fill_OK}")
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewStatus.fill_OK}")
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
              'Если вы хотите прервать назначение регистратора - '
@@ -214,7 +214,7 @@ async def warning_registrator(message: Message):
 @router.callback_query(StateFilter(FSMNewStatus.fill_choice), F.data != 'main_menu')
 @log_handler_call
 async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Выбран статус: {callback.data} пользователем {callback.from_user.id}")
+    logger.info(f"Выбран статус: {callback.data} пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     await state.update_data(status=callback.data)
@@ -243,7 +243,7 @@ async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext,
         await state.set_state(FSMNewStatus.fill_new_status_confirm)
 
     except Exception as e:
-        logging.error(f"Ошибка при извлечении данных пользователя или формировании сообщения: {e}")
+        logger.error(f"Ошибка при извлечении данных пользователя или формировании сообщения: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f'Произошла ошибка: {str(e)}'
@@ -263,7 +263,7 @@ async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext,
 @router.callback_query(StateFilter(FSMNewStatus.fill_new_status_confirm), F.data == 'ConfirmOK')
 @log_handler_call
 async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     fsm_data = await state.get_data()
@@ -316,7 +316,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
             )
 
     except Exception as e:
-        logging.error(f"Ошибка при присвоении нового статуса: {e}")
+        logger.error(f"Ошибка при присвоении нового статуса: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f'Произошла ошибка: {str(e)}'
@@ -335,7 +335,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
 @router.callback_query(StateFilter(FSMNewStatus.fill_new_status_confirm), F.data == 'ConfirmNotOK')
 @log_handler_call
 async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMContext, data: dict):
-    logging.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    logger.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Завершаем машину состояний
@@ -356,7 +356,7 @@ async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMCon
 @router.message(StateFilter(FSMNewStatus.fill_new_status_confirm))
 @log_handler_call
 async def warning_new_status(message: Message):
-    logging.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewStatus.fill_new_status_confirm}")
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewStatus.fill_new_status_confirm}")
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
              'Если вы хотите прервать изменение статуса - '

@@ -45,22 +45,22 @@ async def reg_button_press(callback: CallbackQuery, state: FSMContext, data:dict
     tg_id = callback.from_user.id
     try:
         user_data = await extract_user_data_tg(tg_id)
-        logging.info(f"Данные пользователя с tg_id={tg_id}: {user_data}")
+        logger.info(f"Данные пользователя с tg_id={tg_id}: {user_data}")
 
         if not any(user_data[2:]):  # если профиль пользователя пуст, кроме телеграм ID
             member_status = await status_member(tg_id)
-            logging.info(f"Статус пользователя с tg_id={tg_id}: {member_status}"
+            logger.info(f"Статус пользователя с tg_id={tg_id}: {member_status}"
                          f'Статус в пользовательском словаре: {data['user_status']}')
 
             if member_status == ['user']:  # если пользователь не зарегистрирован в группе
-                logging.info(f"Пользователь с tg_id={tg_id} начинает регистрацию.")
+                logger.info(f"Пользователь с tg_id={tg_id} начинает регистрацию.")
                 await callback.message.answer(
                     text='Сейчас мы последовательно заполним анкету регистрации.\nВведите ваше имя (только имя, без фамилии)',
                 )
                 # Устанавливаем состояние ожидания ввода имени
                 await state.set_state(FSMRegistration.fill_name)
             else:  # Если пользователь уже зарегистрирован в группе, но анкета почему-то пуста
-                logging.info(f"Пользователь с tg_id={tg_id} хочет обновить данные.")
+                logger.info(f"Пользователь с tg_id={tg_id} хочет обновить данные.")
                 # Создаем объекты инлайн-кнопок
                 yes_button = InlineKeyboardButton(
                     text='Хочу',
@@ -83,10 +83,10 @@ async def reg_button_press(callback: CallbackQuery, state: FSMContext, data:dict
                 await state.set_state(FSMRereg.fill_OK)
         else:
             member_status = await status_member(tg_id)
-            logging.info(f"Статус пользователя с tg_id={tg_id}: {member_status}")
+            logger.info(f"Статус пользователя с tg_id={tg_id}: {member_status}")
 
             if member_status == ['user']:  # если пользователь не зарегистрирован в группе
-                logging.info(f"Пользователь с tg_id={tg_id} хочет обновить данные.")
+                logger.info(f"Пользователь с tg_id={tg_id} хочет обновить данные.")
                 # Создаем объекты инлайн-кнопок
                 yes_button = InlineKeyboardButton(
                     text='Хочу',
@@ -108,7 +108,7 @@ async def reg_button_press(callback: CallbackQuery, state: FSMContext, data:dict
                 # Устанавливаем состояние ожидания подтверждения
                 await state.set_state(FSMRereg.fill_OK)
             else:  # если пользователь зарегистрирован в группе
-                logging.info(f"Пользователь с tg_id={tg_id} уже зарегистрирован в группе.")
+                logger.info(f"Пользователь с tg_id={tg_id} уже зарегистрирован в группе.")
                 # Создаем объекты инлайн-кнопок
                 yes_button = InlineKeyboardButton(
                     text='Хочу',
@@ -130,7 +130,7 @@ async def reg_button_press(callback: CallbackQuery, state: FSMContext, data:dict
                 # Устанавливаем состояние ожидания подтверждения
                 await state.set_state(FSMRereg.fill_OK)
     except Exception as e:
-        logging.error(f"Ошибка при обработке нажатия кнопки регистрации: {e}")
+        logger.error(f"Ошибка при обработке нажатия кнопки регистрации: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
@@ -151,7 +151,7 @@ async def process_yes_reg_member(callback: CallbackQuery, state: FSMContext):
         await state.update_data(is_registration=False)  # Добавляем дополнительное поле в контексте состояния
         await state.set_state(FSMRereg.fill_no_reg)
     except Exception as e:
-        logging.error(f"Ошибка при обработке обновления данных члена без регистрации: {e}")
+        logger.error(f"Ошибка при обработке обновления данных члена без регистрации: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
@@ -169,7 +169,7 @@ async def process_no_reg_member(callback: CallbackQuery, state: FSMContext):
         # Сбрасываем состояние и очищаем данные, полученные внутри состояний
         await state.clear()
     except Exception as e:
-        logging.error(f"Ошибка при обработке отказа от обновления данных: {e}")
+        logger.error(f"Ошибка при обработке отказа от обновления данных: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 # Хэндлер на обновление данных пользователя с последующей регистрацией
@@ -185,7 +185,7 @@ async def process_yes_rereg_user(callback: CallbackQuery, state: FSMContext):
         # Устанавливаем состояние ожидания ввода имени
         await state.set_state(FSMRegistration.fill_name)
     except Exception as e:
-        logging.error(f"Ошибка при обработке обновления данных пользователя с регистрацией: {e}")
+        logger.error(f"Ошибка при обработке обновления данных пользователя с регистрацией: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
@@ -228,7 +228,7 @@ async def process_no_rereg(callback: CallbackQuery, state: FSMContext):
         # Устанавливаем состояние ожидания выбора модератора
         await state.set_state(FSMRegistration.fill_registrator)
     except Exception as e:
-        logging.error(f"Ошибка при обработке необновления данных с регистрацией: {e}")
+        logger.error(f"Ошибка при обработке необновления данных с регистрацией: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
@@ -246,7 +246,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
         # Сбрасываем состояние и очищаем данные, полученные внутри состояний
         await state.clear()
     except Exception as e:
-        logging.error(f"Ошибка при обработке команды /cancel: {e}")
+        logger.error(f"Ошибка при обработке команды /cancel: {e}")
         await message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
@@ -256,7 +256,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
 @router.message(StateFilter(FSMRegistration.fill_name), F.text.isalpha())
 @log_handler_call
 async def process_name_sent(message: Message, state: FSMContext):
-    logging.info(f"Введено имя кандидата: {message.text} от пользователя {message.from_user.id}")
+    logger.info(f"Введено имя кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем введенное имя в контексте состояния
     await state.update_data(first_name=message.text)
     await message.answer(text='Введите вашу фамилию')
@@ -268,7 +268,7 @@ async def process_name_sent(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMRegistration.fill_name))
 @log_handler_call
 async def warning_not_name(message: Message):
-    logging.warning(f"Некорректный ввод имени от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод имени от пользователя {message.from_user.id}")
     await message.answer(
         text='То, что вы отправили не похоже на имя\n\n'
              'Пожалуйста, введите ваше имя\n\n'
@@ -281,7 +281,7 @@ async def warning_not_name(message: Message):
 @router.message(StateFilter(FSMRegistration.fill_last_name), F.text.isalpha())
 @log_handler_call
 async def process_last_name_sent(message: Message, state: FSMContext):
-    logging.info(f"Введена фамилия кандидата: {message.text} от пользователя {message.from_user.id}")
+    logger.info(f"Введена фамилия кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем введенную фамилию в контексте состояния
     await state.update_data(last_name=message.text)
     await message.answer(text='Введите ваш год рождения (формат YYYY)')
@@ -293,7 +293,7 @@ async def process_last_name_sent(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMRegistration.fill_last_name))
 @log_handler_call
 async def warning_last_name(message: Message):
-    logging.warning(f"Некорректный ввод фамилии от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод фамилии от пользователя {message.from_user.id}")
     await message.answer(
         text='То, что вы отправили не похоже на фамилию\n\n'
              'Пожалуйста, введите вашу фамилию\n\n'
@@ -307,7 +307,7 @@ async def warning_last_name(message: Message):
                lambda x: x.text.isdigit() and 1910 <= int(x.text) <= 2020)
 @log_handler_call
 async def process_age_sent(message: Message, state: FSMContext):
-    logging.info(f"Введен год рождения кандидата: {message.text} от пользователя {message.from_user.id}")
+    logger.info(f"Введен год рождения кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем возраст в контексте состояния
     await state.update_data(birth_year=int(message.text))
 
@@ -339,7 +339,7 @@ async def process_age_sent(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMRegistration.fill_age))
 @log_handler_call
 async def warning_age(message: Message):
-    logging.warning(f"Некорректный ввод года рождения от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод года рождения от пользователя {message.from_user.id}")
     await message.answer(
         text='То, что вы отправили не похоже на год рождения\n\n'
              'Пожалуйста, введите ваш год рождения в формате YYYY (например, 1990)\n\n'
@@ -354,7 +354,7 @@ async def warning_age(message: Message):
 @log_handler_call
 async def process_gender_press(callback: CallbackQuery, state: FSMContext):
     try:
-        logging.info(f"Выбран пол {callback.data} пользователем {callback.from_user.id}")
+        logger.info(f"Выбран пол {callback.data} пользователем {callback.from_user.id}")
         # Сохраняем пол (callback.data нажатой кнопки) в хранилище по ключу "gender"
         await state.update_data(gender=callback.data)
         # Удаляем сообщение с кнопками, потому что следующий этап - отправка контакта
@@ -367,7 +367,7 @@ async def process_gender_press(callback: CallbackQuery, state: FSMContext):
         # Устанавливаем состояние ожидания отправки контакта
         await state.set_state(FSMRegistration.fill_contact)
     except Exception as e:
-        logging.error(f"Ошибка при обработке выбора пола: {e}")
+        logger.error(f"Ошибка при обработке выбора пола: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
@@ -376,7 +376,7 @@ async def process_gender_press(callback: CallbackQuery, state: FSMContext):
 @router.message(StateFilter(FSMRegistration.fill_gender))
 @log_handler_call
 async def warning_not_gender(message: Message):
-    logging.warning(f"Некорректный ввод при выборе пола от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод при выборе пола от пользователя {message.from_user.id}")
     await message.answer(
         text='Пожалуйста, пользуйтесь кнопками при выборе пола\n\n'
              'Если вы хотите прервать заполнение анкеты - отправьте команду /cancel'
@@ -437,18 +437,18 @@ async def process_get_contact(message: Message, state: FSMContext):
             text='Всё правильно?',
             reply_markup=markup  # клавиатура подтверждения
         )
-        logging.info(f"Контакт получен от пользователя {message.from_user.id}: {contact}")
+        logger.info(f"Контакт получен от пользователя {message.from_user.id}: {contact}")
         # Устанавливаем состояние ожидания подтверждения личных данных
         await state.set_state(FSMRegistration.fill_confirm1)
     except Exception as e:
-        logging.error(f"Ошибка при обработке получения контакта: {e}")
+        logger.error(f"Ошибка при обработке получения контакта: {e}")
         await message.answer(text=f'Произошла ошибка: {str(e)}')
 
 # Этот хэндлер срабатывает на всё, что пришлют вместо контакта в состоянии ожидания контакта
 @router.message(StateFilter(FSMRegistration.fill_contact))
 @log_handler_call
 async def warning_get_contact(message: Message):
-    logging.warning(f"Некорректный ввод вместо контакта от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод вместо контакта от пользователя {message.from_user.id}")
     await message.answer(
         text='Пожалуйста, пользуйтесь кнопкой "Отправить контакт"\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel'
     )
@@ -458,7 +458,7 @@ async def warning_get_contact(message: Message):
 @log_handler_call
 async def process_yes_contact(callback: CallbackQuery, state: FSMContext):
     try:
-        logging.info(f"Кнопка 'Да, всё верно' нажата пользователем {callback.from_user.id}")
+        logger.info(f"Кнопка 'Да, всё верно' нажата пользователем {callback.from_user.id}")
         # Удаляем сообщение с кнопками подтверждения
         await callback.message.delete()
 
@@ -510,7 +510,7 @@ async def process_yes_contact(callback: CallbackQuery, state: FSMContext):
         # Устанавливаем состояние ожидания выбора города
         await state.set_state(FSMRegistration.fill_city)
     except Exception as e:
-        logging.error(f"Ошибка при подтверждении личных данных: {e}")
+        logger.error(f"Ошибка при подтверждении личных данных: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
@@ -520,7 +520,7 @@ async def process_yes_contact(callback: CallbackQuery, state: FSMContext):
 @log_handler_call
 async def process_no_contact(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
-        logging.info(f"Кнопка 'Не верно' нажата пользователем {callback.from_user.id}")
+        logger.info(f"Кнопка 'Не верно' нажата пользователем {callback.from_user.id}")
 
         # Удаляем сообщение с кнопками подтверждения
         await callback.message.delete()
@@ -539,7 +539,7 @@ async def process_no_contact(callback: CallbackQuery, state: FSMContext, data: d
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при отказе от подтверждения личных данных: {e}")
+        logger.error(f"Ошибка при отказе от подтверждения личных данных: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f'Произошла ошибка: {str(e)}'
@@ -558,7 +558,7 @@ async def process_no_contact(callback: CallbackQuery, state: FSMContext, data: d
 @router.message(StateFilter(FSMRegistration.fill_confirm1))
 @log_handler_call
 async def warning_not_contact(message: Message):
-    logging.warning(f"Некорректный ввод при подтверждении личных данных от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод при подтверждении личных данных от пользователя {message.from_user.id}")
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel'
     )
@@ -569,7 +569,7 @@ async def warning_not_contact(message: Message):
 @log_handler_call
 async def process_city_press(callback: CallbackQuery, state: FSMContext):
     try:
-        logging.info(f"Выбран город {callback.data} пользователем {callback.from_user.id}")
+        logger.info(f"Выбран город {callback.data} пользователем {callback.from_user.id}")
         # Сохраняем город (callback.data нажатой кнопки) в контексте состояния по ключу "city"
         await state.update_data(city=callback.data)
         # Удаляем сообщение с кнопками, потому что следующий этап - ввод улицы
@@ -581,7 +581,7 @@ async def process_city_press(callback: CallbackQuery, state: FSMContext):
         # Устанавливаем состояние ожидания ввода названия улицы
         await state.set_state(FSMRegistration.fill_street)
     except Exception as e:
-        logging.error(f"Ошибка при обработке выбора города: {e}")
+        logger.error(f"Ошибка при обработке выбора города: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "Другое" при выборе города
@@ -589,7 +589,7 @@ async def process_city_press(callback: CallbackQuery, state: FSMContext):
 @log_handler_call
 async def process_other_city_press(callback: CallbackQuery, state: FSMContext):
     try:
-        logging.info(f"Кнопка 'Другое' нажата пользователем {callback.from_user.id}")
+        logger.info(f"Кнопка 'Другое' нажата пользователем {callback.from_user.id}")
         # Удаляем сообщение с кнопками выбора города
         await callback.message.delete()
         await callback.message.answer(
@@ -599,7 +599,7 @@ async def process_other_city_press(callback: CallbackQuery, state: FSMContext):
         # Устанавливаем состояние ожидания ввода названия города
         await state.set_state(FSMRegistration.fill_new_city)
     except Exception as e:
-        logging.error(f"Ошибка при обработке выбора другого города: {e}")
+        logger.error(f"Ошибка при обработке выбора другого города: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 # Этот хэндлер будет срабатывать, если во время ввода названия города
@@ -607,7 +607,7 @@ async def process_other_city_press(callback: CallbackQuery, state: FSMContext):
 @router.message(StateFilter(FSMRegistration.fill_new_city))
 @log_handler_call
 async def warning_not_city(message: Message):
-    logging.warning(f"Некорректный ввод названия города от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод названия города от пользователя {message.from_user.id}")
     await message.answer(
         text='То, что вы отправили не похоже на название населенного пункта\n\n'
              'Пожалуйста, введите название только буквами\n\n'
@@ -646,7 +646,7 @@ async def warning_not_city(message: Message):
 @log_handler_call
 async def process_street_sent(message: Message, state: FSMContext):
     try:
-        logging.info(f"Введена улица {message.text} от пользователя {message.from_user.id}")
+        logger.info(f"Введена улица {message.text} от пользователя {message.from_user.id}")
         # Сохраняем введенное название улицы в контексте состояния по ключу "street"
         await state.update_data(street=message.text)
 
@@ -674,7 +674,7 @@ async def process_street_sent(message: Message, state: FSMContext):
         # Устанавливаем состояние ожидания выбора типа дома
         await state.set_state(FSMRegistration.fill_yes_mkd)
     except Exception as e:
-        logging.error(f"Ошибка при обработке ввода названия улицы: {e}")
+        logger.error(f"Ошибка при обработке ввода названия улицы: {e}")
         await message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
@@ -684,7 +684,7 @@ async def process_street_sent(message: Message, state: FSMContext):
 @log_handler_call
 async def process_mkd_press(callback: CallbackQuery, state: FSMContext):
     try:
-        logging.info(f"Кнопка 'Многоквартирном' нажата пользователем {callback.from_user.id}")
+        logger.info(f"Кнопка 'Многоквартирном' нажата пользователем {callback.from_user.id}")
         # Удаляем сообщение с кнопками,
         # чтобы у пользователя не было желания тыкать кнопки
         await callback.message.delete()
@@ -694,7 +694,7 @@ async def process_mkd_press(callback: CallbackQuery, state: FSMContext):
         # Устанавливаем состояние ожидания ввода номера дома
         await state.set_state(FSMRegistration.fill_number_mkd)
     except Exception as e:
-        logging.error(f"Ошибка при обработке выбора многоквартирного дома: {e}")
+        logger.error(f"Ошибка при обработке выбора многоквартирного дома: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "Частном"
@@ -703,7 +703,7 @@ async def process_mkd_press(callback: CallbackQuery, state: FSMContext):
 @log_handler_call
 async def process_ijs_press(callback: CallbackQuery, state: FSMContext):
     try:
-        logging.info(f"Кнопка 'Частном' нажата пользователем {callback.from_user.id}")
+        logger.info(f"Кнопка 'Частном' нажата пользователем {callback.from_user.id}")
         # Удаляем сообщение с кнопками,
         # чтобы у пользователя не было желания тыкать кнопки
         await callback.message.delete()
@@ -728,7 +728,7 @@ async def process_ijs_press(callback: CallbackQuery, state: FSMContext):
         # Устанавливаем состояние ожидания выбора интервала номеров
         await state.set_state(FSMRegistration.fill_range_num)
     except Exception as e:
-        logging.error(f"Ошибка при обработке выбора частного дома: {e}")
+        logger.error(f"Ошибка при обработке выбора частного дома: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 # Этот хэндлер будет срабатывать, если во время выбора типа дома
@@ -736,7 +736,7 @@ async def process_ijs_press(callback: CallbackQuery, state: FSMContext):
 @router.message(StateFilter(FSMRegistration.fill_yes_mkd))
 @log_handler_call
 async def warning_not_mkd(message: Message):
-    logging.warning(f"Некорректный ввод при выборе типа дома от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод при выборе типа дома от пользователя {message.from_user.id}")
     await message.answer(
         text='Пожалуйста, пользуйтесь кнопками при выборе типа дома\n\n'
              'Если вы хотите прервать заполнение анкеты - '
@@ -749,7 +749,7 @@ async def warning_not_mkd(message: Message):
 @log_handler_call
 async def process_house_number_sent(message: Message, state: FSMContext):
     try:
-        logging.info(f"Введен номер дома {message.text} от пользователя {message.from_user.id}")
+        logger.info(f"Введен номер дома {message.text} от пользователя {message.from_user.id}")
         # Сохраняем введенный номер дома в контексте состояния по ключу "house"
         await state.update_data(house=message.text)
 
@@ -780,11 +780,11 @@ async def process_house_number_sent(message: Message, state: FSMContext):
                  'Всё правильно?',
             reply_markup=markup  # клавиатура подтверждения
         )
-        logging.info(f"Данные адреса для подтверждения: {user_dict}")
+        logger.info(f"Данные адреса для подтверждения: {user_dict}")
         # Устанавливаем состояние ожидания подтверждения адреса
         await state.set_state(FSMRegistration.fill_confirm2)
     except Exception as e:
-        logging.error(f"Ошибка при обработке ввода номера дома: {e}")
+        logger.error(f"Ошибка при обработке ввода номера дома: {e}")
         await message.answer(text=f'Произошла ошибка: {str(e)}')
 
 # Этот хэндлер будет срабатывать на нажатие кнопки диапазона домов
@@ -792,7 +792,7 @@ async def process_house_number_sent(message: Message, state: FSMContext):
 @log_handler_call
 async def process_range_house_press(callback: CallbackQuery, state: FSMContext):
     try:
-        logging.info(f"Выбран диапазон домов {callback.data} пользователем {callback.from_user.id}")
+        logger.info(f"Выбран диапазон домов {callback.data} пользователем {callback.from_user.id}")
         # Сохраняем диапазон (callback.data нажатой кнопки) в контексте состояния по ключу "house"
         await state.update_data(house=callback.data)
 
@@ -826,11 +826,11 @@ async def process_range_house_press(callback: CallbackQuery, state: FSMContext):
                  "Всё правильно?",
             reply_markup=markup  # клавиатура подтверждения
         )
-        logging.info(f"Данные адреса для подтверждения: {user_dict}")
+        logger.info(f"Данные адреса для подтверждения: {user_dict}")
         # Устанавливаем состояние ожидания подтверждения адреса
         await state.set_state(FSMRegistration.fill_confirm2)
     except Exception as e:
-        logging.error(f"Ошибка при обработке выбора диапазона домов: {e}")
+        logger.error(f"Ошибка при обработке выбора диапазона домов: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 # Этот хэндлер будет срабатывать, если во время выбора диапазона номеров домов
@@ -838,7 +838,7 @@ async def process_range_house_press(callback: CallbackQuery, state: FSMContext):
 @router.message(StateFilter(FSMRegistration.fill_range_num))
 @log_handler_call
 async def warning_not_range(message: Message):
-    logging.warning(f"Некорректный ввод при выборе диапазона номеров домов от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод при выборе диапазона номеров домов от пользователя {message.from_user.id}")
     await message.answer(
         text='Пожалуйста, пользуйтесь кнопками при выборе диапазона номеров.\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel'
     )
@@ -848,7 +848,7 @@ async def warning_not_range(message: Message):
 @log_handler_call
 async def process_yes_adress_no_reg(callback: CallbackQuery, state: FSMContext):
     try:
-        logging.info(f"Кнопка 'Да, всё верно' нажата пользователем {callback.from_user.id} без дальнейшей регистрации")
+        logger.info(f"Кнопка 'Да, всё верно' нажата пользователем {callback.from_user.id} без дальнейшей регистрации")
         # Удаляем сообщение с кнопками подтверждения
         await callback.message.delete()
         tg_id = callback.from_user.id
@@ -874,7 +874,7 @@ async def process_yes_adress_no_reg(callback: CallbackQuery, state: FSMContext):
             text='Спасибо! Ваши данные сохранены'
         )
     except Exception as e:
-        logging.error(f"Ошибка при подтверждении адреса без дальнейшей регистрации: {e}")
+        logger.error(f"Ошибка при подтверждении адреса без дальнейшей регистрации: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
@@ -884,7 +884,7 @@ async def process_yes_adress_no_reg(callback: CallbackQuery, state: FSMContext):
 @log_handler_call
 async def process_yes_adress(callback: CallbackQuery, state: FSMContext):
     try:
-        logging.info(f"Кнопка 'Да, всё верно' нажата пользователем {callback.from_user.id} с дальнейшей регистрацией")
+        logger.info(f"Кнопка 'Да, всё верно' нажата пользователем {callback.from_user.id} с дальнейшей регистрацией")
         # Удаляем сообщение с кнопками подтверждения
         await callback.message.delete()
 
@@ -913,7 +913,7 @@ async def process_yes_adress(callback: CallbackQuery, state: FSMContext):
         # Устанавливаем состояние ожидания выбора модератора
         await state.set_state(FSMRegistration.fill_registrator)
     except Exception as e:
-        logging.error(f"Ошибка при обработке подтверждения адреса: {e}")
+        logger.error(f"Ошибка при обработке подтверждения адреса: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
 
 # Этот хэндлер будет срабатывать на отказ подтвердить адрес
@@ -921,7 +921,7 @@ async def process_yes_adress(callback: CallbackQuery, state: FSMContext):
 @log_handler_call
 async def process_no_address(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
-        logging.info(f"Кнопка 'Не верно' нажата пользователем {callback.from_user.id}")
+        logger.info(f"Кнопка 'Не верно' нажата пользователем {callback.from_user.id}")
 
         # Удаляем сообщение с кнопками подтверждения
         await callback.message.delete()
@@ -940,7 +940,7 @@ async def process_no_address(callback: CallbackQuery, state: FSMContext, data: d
         )
 
     except Exception as e:
-        logging.error(f"Ошибка при отказе от подтверждения адреса: {e}")
+        logger.error(f"Ошибка при отказе от подтверждения адреса: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f'Произошла ошибка: {str(e)}'
@@ -960,7 +960,7 @@ async def process_no_address(callback: CallbackQuery, state: FSMContext, data: d
 @router.message(StateFilter(FSMRegistration.fill_confirm2))
 @log_handler_call
 async def warning_not_address(message: Message):
-    logging.warning(f"Некорректный ввод при подтверждении адреса от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод при подтверждении адреса от пользователя {message.from_user.id}")
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel'
     )
@@ -971,7 +971,7 @@ async def warning_not_address(message: Message):
 @log_handler_call
 async def process_registrator_press(callback: CallbackQuery, state: FSMContext):
     try:
-        logging.info(f"Выбран регистратор {callback.data} пользователем {callback.from_user.id}")
+        logger.info(f"Выбран регистратор {callback.data} пользователем {callback.from_user.id}")
 
         # Удаляем сообщение с кнопками подтверждения
         await callback.message.delete()
@@ -1008,9 +1008,9 @@ async def process_registrator_press(callback: CallbackQuery, state: FSMContext):
             if not success:
                 await callback.message.answer(text=f'Ошибка при уведомлении регистратора: {result}')
         else:
-            logging.info(f"Пользователь {tg_id} выбрал 'Никого не знаю'.")
+            logger.info(f"Пользователь {tg_id} выбрал 'Никого не знаю'.")
     except Exception as e:
-        logging.error(f"Ошибка при выборе регистратора: {e}")
+        logger.error(f"Ошибка при выборе регистратора: {e}")
         await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
         # Завершаем машину состояний
         await state.clear()
@@ -1020,7 +1020,7 @@ async def process_registrator_press(callback: CallbackQuery, state: FSMContext):
 @router.message(StateFilter(FSMRegistration.fill_registrator))
 @log_handler_call
 async def warning_not_registrator(message: Message):
-    logging.warning(f"Некорректный ввод при выборе модератора от пользователя {message.from_user.id}")
+    logger.warning(f"Некорректный ввод при выборе модератора от пользователя {message.from_user.id}")
     await message.answer(
         text='Пожалуйста, пользуйтесь кнопками при выборе модератора.\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel'
     )

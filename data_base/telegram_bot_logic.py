@@ -34,11 +34,11 @@ club_id = config.tg_bot.club_id  # id группы в БД (не телегра�
 # Функция используется в фильтрах для хендлеров
 @log_function_call
 async def status_member(tg_id):
-    logging.info(f"Проверка статуса участника по tg_id={tg_id}")
+    logger.info(f"Проверка статуса участника по tg_id={tg_id}")
     user_id = await extract_user_id(tg_id)
 
     if not user_id:
-        logging.info(f"Создание нового пользователя с tg_id={tg_id}")
+        logger.info(f"Создание нового пользователя с tg_id={tg_id}")
         await new_user_tg(tg_id)
         user_id = await extract_user_id(tg_id)
         await new_member(club_id, user_id)
@@ -47,13 +47,13 @@ async def status_member(tg_id):
         member_id = await extract_member_id(club_id, user_id)
 
         if not member_id:
-            logging.info(f"Добавление пользователя с tg_id={tg_id} в группу")
+            logger.info(f"Добавление пользователя с tg_id={tg_id} в группу")
             await new_member(club_id, user_id)
             status = ['user']
         else:
             status = await extract_status(member_id)
 
-    logging.info(f"Статус участника с tg_id={tg_id}: {status}")
+    logger.info(f"Статус участника с tg_id={tg_id}: {status}")
     return status
 
 # Функция извлечения данных о пользователе по его tg_id
@@ -73,10 +73,10 @@ async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voti
     creatot_user_id, creator = await extract_user_member_id(creator_tg_id)
     if creator:
         result = await new_voting(club_id, creator, title, text, vote_type, voting_status)
-        logging.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
+        logger.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
         return result
     else:
-        logging.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы.")
+        logger.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы.")
         return False, 'Вы не являетесь участником группы'
 
 # Функция извлечения user_id и member_id по tg_id
@@ -86,13 +86,13 @@ async def extract_user_member_id(tg_id):  # Добавляем club_id как п
         user_id = await extract_user_id(tg_id)
         if user_id:
             member_id = await extract_member_id(club_id, user_id)
-            logging.info(f"Извлечен member_id={member_id} для tg_id={tg_id}")
+            logger.info(f"Извлечен member_id={member_id} для tg_id={tg_id}")
             return user_id, member_id
         else:
-            logging.info(f"Пользователь с tg_id={tg_id} не найден.")
+            logger.info(f"Пользователь с tg_id={tg_id} не найден.")
             return None, None
     except Exception as e:
-        logging.error(f"Ошибка при извлечении member_id: {e}")
+        logger.error(f"Ошибка при извлечении member_id: {e}")
         return None, None
 
 # Функция извлечения данных о пользователе по его tg_id
@@ -107,7 +107,7 @@ async def extract_new_registrator_data(tg_id):
     if not member_id:
         flag = False
         ans_str = 'Нет такого участника. Попробуйте снова.'
-        logging.warning(f"Участник с tg_id={tg_id} не найден: {ans_str}")
+        logger.warning(f"Участник с tg_id={tg_id} не найден: {ans_str}")
         return flag, ans_str
 
     user_data = await extract_user_data_tg(tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')
@@ -124,7 +124,7 @@ async def extract_new_registrator_data(tg_id):
         flag = False
         ans_str += '\nЭтот участник еще не зарегистрирован в группе.'
 
-    logging.info(f"Результат проверки на регистрацию для tg_id={tg_id}: {flag}, {ans_str}")
+    logger.info(f"Результат проверки на регистрацию для tg_id={tg_id}: {flag}, {ans_str}")
     return flag, ans_str
 
 
@@ -137,13 +137,13 @@ async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
         registrator_user_id = await extract_user_id(registrator_tg_id)
         if not registrator_user_id:
             ans_str += 'Нет такого регистратора.'
-            logging.warning(f"Не найден регистратор с tg_id={registrator_tg_id}: {ans_str}")
+            logger.warning(f"Не найден регистратор с tg_id={registrator_tg_id}: {ans_str}")
             return False, ans_str
 
         registrator = await extract_member_id(club_id, registrator_user_id)
         if not registrator:
             ans_str += 'Нет такого регистратора.'
-            logging.warning(f"Не найден участник с member_id={registrator_user_id} в группе {club_id}: {ans_str}")
+            logger.warning(f"Не найден участник с member_id={registrator_user_id} в группе {club_id}: {ans_str}")
             return False, ans_str
     else:
         registrator = None
@@ -151,22 +151,22 @@ async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
     user_id = await extract_user_id(member_tg_id)
     if not user_id:
         ans_str += 'Нет такого участника.'
-        logging.warning(f"Не найден пользователь с tg_id={member_tg_id}: {ans_str}")
+        logger.warning(f"Не найден пользователь с tg_id={member_tg_id}: {ans_str}")
         return False, ans_str
 
     member_id = await extract_member_id(club_id, user_id)
     if not member_id:
         ans_str += 'Нет такого участника.'
-        logging.warning(f"Не найден участник с user_id={user_id} в группе {club_id}: {ans_str}")
+        logger.warning(f"Не найден участник с user_id={user_id} в группе {club_id}: {ans_str}")
         return False, ans_str
 
     try:
         await new_status(registrator, member_id, status, token_id)
-        logging.info(f"Присвоен новый статус '{status}' участнику с tg_id={member_tg_id} от регистратора с tg_id={registrator_tg_id}")
+        logger.info(f"Присвоен новый статус '{status}' участнику с tg_id={member_tg_id} от регистратора с tg_id={registrator_tg_id}")
         ans_str += f"Присвоен новый статус '{status}' участнику с tg_id={member_tg_id} от регистратора с tg_id={registrator_tg_id}"
         return True, ans_str
     except Exception as e:
-        logging.error(f"Ошибка при присвоении статуса: {e}")
+        logger.error(f"Ошибка при присвоении статуса: {e}")
         ans_str += f"Ошибка при присвоении статуса: {str(e)}"
         return False, ans_str
 
@@ -175,16 +175,16 @@ async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
 async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voting_status='add_variants'):
     creator_user_id = await extract_user_id(creator_tg_id)
     if not creator_user_id:
-        logging.warning(f"Не найден пользователь с tg_id={creator_tg_id}")
+        logger.warning(f"Не найден пользователь с tg_id={creator_tg_id}")
         return False, 'Вы не являетесь участником группы'
 
     creator = await extract_member_id(club_id, creator_user_id)
     if not creator:
-        logging.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы")
+        logger.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы")
         return False, 'Вы не являетесь участником группы'
 
     result = await new_voting(club_id, creator, title, text=text, voting_type=vote_type, voting_status=voting_status)
-    logging.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
+    logger.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
     return result
 
 # Создание варианта для голосования. Добавляется в голосования со статусом ожидания вариантов.
@@ -193,16 +193,16 @@ async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voti
 async def new_variant_tg(voting_id, creator_tg_id, title, text=None):
     user_id = await extract_user_id(creator_tg_id)
     if not user_id:
-        logging.warning(f"Не найден пользователь с tg_id={creator_tg_id}")
+        logger.warning(f"Не найден пользователь с tg_id={creator_tg_id}")
         return False, 'Вы не являетесь участником группы'
 
     author = await extract_member_id(club_id, user_id)
     if not author:
-        logging.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы")
+        logger.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы")
         return False, 'Вы не являетесь участником группы'
 
     result = await new_variant(voting_id, author, title, text=text)
-    logging.info(f"Добавлен новый вариант для голосования voting_id={voting_id} от tg_id={creator_tg_id}: {result}")
+    logger.info(f"Добавлен новый вариант для голосования voting_id={voting_id} от tg_id={creator_tg_id}: {result}")
     return result
 
 # Извлечение статусов участника группы (отдает список статусов)
@@ -210,16 +210,16 @@ async def new_variant_tg(voting_id, creator_tg_id, title, text=None):
 async def extract_status_tg(tg_id):
     user_id = await extract_user_id(tg_id)
     if not user_id:
-        logging.warning(f"Не найден пользователь с tg_id={tg_id}")
+        logger.warning(f"Не найден пользователь с tg_id={tg_id}")
         return None
 
     member_id = await extract_member_id(club_id, user_id)
     if not member_id:
-        logging.warning(f"Пользователь с tg_id={tg_id} не является участником группы")
+        logger.warning(f"Пользователь с tg_id={tg_id} не является участником группы")
         return []
 
     status = await extract_status(member_id)
-    logging.info(f"Статусы участника с tg_id={tg_id}: {status}")
+    logger.info(f"Статусы участника с tg_id={tg_id}: {status}")
     return status
 
 # Функция извлечения списка идущих голосований
@@ -227,10 +227,10 @@ async def extract_status_tg(tg_id):
 async def list_of_votings_tg(*voting_status):
     try:
         votings = await list_of_votings(club_id, *voting_status)
-        logging.info(f"Извлечены голосования для club_id={club_id}: {votings}")
+        logger.info(f"Извлечены голосования для club_id={club_id}: {votings}")
         return votings
     except Exception as e:
-        logging.error(f"Ошибка при извлечении голосований: {e}")
+        logger.error(f"Ошибка при извлечении голосований: {e}")
         raise
 
 # Функция извлечения списка участников с указанным статусом
@@ -238,10 +238,10 @@ async def list_of_votings_tg(*voting_status):
 async def list_of_members_tg(status):
     try:
         members = await list_of_members(club_id, status)
-        logging.info(f"Извлечены участники для club_id={club_id} с status={status}: {members}")
+        logger.info(f"Извлечены участники для club_id={club_id} с status={status}: {members}")
         return members
     except Exception as e:
-        logging.error(f"Ошибка при извлечении участников: {e}")
+        logger.error(f"Ошибка при извлечении участников: {e}")
         raise
 
 # Функция выбора представителя. Принимает в качестве аргумента tg_id пользователя,
@@ -249,14 +249,14 @@ async def list_of_members_tg(status):
 @log_function_call
 async def trust_tg(tg_id, proxy_tg_id):
     try:
-        logging.info(f"Вызвана функция trust_tg")
+        logger.info(f"Вызвана функция trust_tg")
         user_id, member_id = await extract_user_member_id(tg_id)
         proxy_user_id, proxy_member_id = await extract_user_member_id(proxy_tg_id)
         result =  await trust(member_id,proxy_member_id)
-        logging.info(f"Пользователь  с tg_id {tg_id} выбрал представителем учатника с tg_id {proxy_tg_id}")
+        logger.info(f"Пользователь  с tg_id {tg_id} выбрал представителем учатника с tg_id {proxy_tg_id}")
         return True, result
     except Exception as e:
-        logging.error(f"Произошла ошибка при выборе представителя пользователем {tg_id}: {e}")
+        logger.error(f"Произошла ошибка при выборе представителя пользователем {tg_id}: {e}")
         return False, f"Произошла ошибка: {str(e)}"
 
 # Функция выбора варианта при голосовании (от ТГ-id)
@@ -266,13 +266,13 @@ async def election_tg(tg_id, variant_id):
         member_id = await extract_member_id(club_id, await extract_user_id(tg_id))
         if member_id:
             result = await election(member_id, variant_id)
-            logging.info(f"Выбран вариант variant_id={variant_id} участником с tg_id={tg_id}: {result}")
+            logger.info(f"Выбран вариант variant_id={variant_id} участником с tg_id={tg_id}: {result}")
             return True, result
         else:
-            logging.info('Такого участника нет в группе')
+            logger.info('Такого участника нет в группе')
             return False, 'Такого участника нет в группе'
     except Exception as e:
-        logging.error(f"Произошла ошибка при выборе варианта: {e}")
+        logger.error(f"Произошла ошибка при выборе варианта: {e}")
         return False, f"Произошла ошибка: {str(e)}"
 
 # Функция старта голосования. Меняем статус голосования на 'ongoing'.
@@ -285,9 +285,9 @@ async def voting_start_tg(voting_id, starter_tg_id=None):
             await voting_start(voting_id, starter)
         else:
             await voting_start(voting_id)
-        logging.info(f"Голосование voting_id={voting_id} успешно запущено.")
+        logger.info(f"Голосование voting_id={voting_id} успешно запущено.")
     except Exception as e:
-        logging.error(f"Ошибка при старте голосования: {e}")
+        logger.error(f"Ошибка при старте голосования: {e}")
         raise
 
 # Функция завершения промежуточного этапа голосования. Переводит в статус "loser" наименее популярные варианты.
@@ -302,10 +302,10 @@ async def voting_stage_tg(voting_id, stager_tg_id=None):
         else:
             result = await voting_stage(voting_id)
 
-        logging.info(f"Промежуточный этап голосования voting_id={voting_id} завершен: {result}")
+        logger.info(f"Промежуточный этап голосования voting_id={voting_id} завершен: {result}")
         return result
     except Exception as e:
-        logging.error(f"Ошибка при завершении промежуточного этапа голосования: {e}")
+        logger.error(f"Ошибка при завершении промежуточного этапа голосования: {e}")
         raise
 
 
@@ -317,16 +317,16 @@ async def voting_final_tg(voting_id, finaler_tg_id=None):
         if finaler_tg_id:
             finaler = await extract_member_id(club_id, await extract_user_id(finaler_tg_id))
             if not finaler:
-                logging.warning(f"Пользователь с tg_id={finaler_tg_id} не является участником группы")
+                logger.warning(f"Пользователь с tg_id={finaler_tg_id} не является участником группы")
                 return False, 'Вы не являетесь участником группы'
             result = await voting_final(voting_id, finaler)
         else:
             result = await voting_final(voting_id)
 
-        logging.info(f"Создан финальный этап голосования voting_id={voting_id}: {result}")
+        logger.info(f"Создан финальный этап голосования voting_id={voting_id}: {result}")
         return result
     except Exception as e:
-        logging.error(f"Ошибка при создании финального этапа голосования: {e}")
+        logger.error(f"Ошибка при создании финального этапа голосования: {e}")
         raise
 
 # Функция завершения голосования. Определяет вариант - победитель.
@@ -336,16 +336,16 @@ async def voting_complete_tg(voting_id, finisher_tg_id=None):
         if finisher_tg_id:
             finisher = await extract_member_id(club_id, await extract_user_id(finisher_tg_id))
             if not finisher:
-                logging.warning(f"Пользователь с tg_id={finisher_tg_id} не является участником группы")
+                logger.warning(f"Пользователь с tg_id={finisher_tg_id} не является участником группы")
                 return False, 'Вы не являетесь участником группы'
             result = await voting_complete(voting_id, finisher)
         else:
             result = await voting_complete(voting_id)
 
-        logging.info(f"Голосование voting_id={voting_id} успешно завершено: {result}")
+        logger.info(f"Голосование voting_id={voting_id} успешно завершено: {result}")
         return result
     except Exception as e:
-        logging.error(f"Ошибка при завершении голосования: {e}")
+        logger.error(f"Ошибка при завершении голосования: {e}")
         raise
 
 
@@ -369,5 +369,5 @@ async def update_address(tg_id, city, street, house):
         else:
             return False, 'Ошибка при обновлении адреса.'
     except Exception as e:
-        logging.error(f"Ошибка при обновлении адреса: {e}")
+        logger.error(f"Ошибка при обновлении адреса: {e}")
         return False, str(e)

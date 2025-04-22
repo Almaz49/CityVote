@@ -1,4 +1,5 @@
 from aiogram import Bot, Router, F
+import logging
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
@@ -7,10 +8,13 @@ from keyboards.keyboards import reg_markup, contact_markup, remove_markup
 from config_data.config import Config, load_config
 from utils import log_handler_call
 
-#инициализируем бота
-# Загружаем конфиг в переменную config
-config: Config = load_config('.env')
-bot = Bot(token=config.tg_bot.token)
+# #инициализируем бота
+# # Загружаем конфиг в переменную config
+# config: Config = load_config('.env')
+# bot = Bot(token=config.tg_bot.token)
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
 
 # Инициализируем роутер уровня модуля
 router = Router()
