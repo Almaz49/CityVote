@@ -45,26 +45,15 @@ dp['club_id'] = club_id
 # Настраиваем базовую конфигурацию логирования
 logging.basicConfig(
     level=logging.INFO,
-    format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'
+    format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s',
+    handlers=[logging.StreamHandler()]
 )
 
 # Инициализируем логгер модуля
 logger = logging.getLogger(__name__)
 
-# Настройка обработчика для стандартного потока
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.INFO)
-stream_handler.setFormatter(
-    logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(message)s')
-)
-
-# Добавляем обработчик к логгеру
-logger.addHandler(stream_handler)
-logger.setLevel(logging.INFO)
-
 # Тестовое сообщение
 logger.info("Логгирование настроено в main.py")
-print(f"Handlers: {logger.handlers}")  # Проверка обработчиков
 
 
 
