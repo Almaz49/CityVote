@@ -449,8 +449,9 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
                 dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'Администрирование голосования')
         elif voting_status == 'completed':
             dict_menu['completed_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
-            if 'admin' in data["user_status"]:
-                dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'Администрирование голосования')
+            # Пока не администрируем завершенные голосования (не перезапускаем)
+            # if 'admin' in data["user_status"]:
+            #     dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'Администрирование голосования')
         elif voting_status == 'ongoing':
             if 'admin' in data["user_status"]:
                 dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'Администрирование голосования')

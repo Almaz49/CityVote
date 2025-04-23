@@ -345,8 +345,9 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
         if voting_status == 'add_variants':
             dict_menu[f'voting_start:{voting_id}'] = LEXICON.get('voting_start', 'voting_start')
             dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
-        elif voting_status == 'completed':
-            dict_menu[f'reopen:{voting_id}'] = LEXICON.get('reopen', 'reopen')
+        # Пока не пишу восстановление голосования - слоишком сложно "проворачивать фарш назад"
+        # elif voting_status == 'completed':
+        #     dict_menu[f'voting_reopen:{voting_id}'] = LEXICON.get('reopen', 'reopen')
         elif voting_status == 'ongoing':
             dict_menu[f'voting_stage:{voting_id}'] = LEXICON.get('voting_stage', 'voting_stage')
             dict_menu[f'voting_final:{voting_id}'] = LEXICON.get('voting_final', 'voting_final')
@@ -597,7 +598,7 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
 
 
 # Хэндлер для снятия варианта после нажатия соотвествующей кнопки в меню администратора
-@router.callback_query(F.data.regexp(r'^voting_complete:\d+$'))
+@router.callback_query(F.data.regexp(r'^delete_variant:\d+$'))
 @log_handler_call
 async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
     """
