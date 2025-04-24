@@ -11,6 +11,7 @@ from filters.filters import StatusFilter
 from FSMs.FSMs import FSMNewRegistrator, FSMNewVoting, FSMNewStatus
 from data_base.telegram_bot_logic import *
 from utils import log_handler_call
+from services.services import send_notification_to_user
 from keyboards.keyboards import *
 from config_data.config import Config, load_config
 
@@ -183,10 +184,11 @@ async def process_yes_registrator_press(callback: CallbackQuery, state: FSMConte
     # Меняем в базе данных статус пользователя по ключу tg_id пользователя и tg_id регистратора
     fsm_data = await state.get_data()
     member_tg_id = fsm_data['ID']
-    registrator_tg_id = callback.from_user.id
+    admin_tg_id = callback.from_user.id
+    admin_id = data['member_id']
 
     try:
-        ans_str = await new_status_tg(registrator_tg_id, member_tg_id, 'registrator')  # Вызов функции присвоения нового статуса
+        ans_str = await new_status_tg(admin_tg_id, member_tg_id, 'pre-registrator')  # Вызов функции присвоения нового статуса
         if isinstance(ans_str, str) and 'Ошибка' in ans_str:
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = f'Произошла ошибка: {ans_str}'
@@ -198,8 +200,26 @@ async def process_yes_registrator_press(callback: CallbackQuery, state: FSMConte
         # Завершаем машину состояний
         await state.clear()
 
+        # Формируем и отправляем запрос кандидату в регистраторы - согласен ли он
+
+        notification = 'Здравствуйте! Администрация группы назначила вас регистратором.\n' \
+        'Это означает, что вам будут приходить заявки на вступления в группу, ' \
+        'которые вы можете подтверждать или игнорировать.\n' \
+        'Если вы согласны на роль Регистратора, нажмите кнопку "Согласен".\n' \
+        'Если не согласны - кнопку "Не согласен"'
+
+        keyboard = {f'pre_registrator_yes:{admin_id}:{member_tg_id}':'Согласен',
+                    f'pre_registrator_no:{admin_id}:{member_tg_id}':'Не согласен'}
+
+        pre_reg_markup = create_inline_kb(2, **keyboard)
+
+        response = send_notification_to_user(member_tg_id, notification, pre_reg_markup   )
+
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Спасибо! Регистратор добавлен!\n\nВы вышли из машины состояний'
+        data['response_text'] = 'Спасибо! Кандидат в Регистраторы добавлен!\n' \
+        'Результат отправки сообщения кандидату:\n' \
+        f'{response}' \
+        '\nВы вышли из машины состояний'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Отправляем в чат сообщение о выходе из машины состояний

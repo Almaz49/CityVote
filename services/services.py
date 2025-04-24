@@ -43,24 +43,34 @@ async def send_notification_to_user(tg_id: int, message_text: str, reply_markup 
                 text=message_text,
                 reply_markup=reply_markup
             )
+            response = f'Сообщение отправлено пользователю {tg_id}'
         except TelegramForbiddenError:
             # Пользователь заблокировал бота
             logger.warning(f"Пользователь {tg_id} заблокировал бота.")
+            response = f"Пользователь {tg_id} заблокировал бота."
             await mark_user_as_unavailable(tg_id, reason="bot blocked")
         except TelegramBadRequest as e:
             if "chat not found" in str(e).lower():
                 # Чат не найден (пользователь удалил аккаунт)
                 logger.warning(f"Пользователь {tg_id} удалил аккаунт или чат не существует.")
+                response = f"Пользователь {tg_id} удалил аккаунт или чат не существует."
                 await mark_user_as_unavailable(tg_id, reason="user lost")
             else:
                 # Другая ошибка BadRequest
                 logger.error(f"Ошибка при отправке сообщения пользователю {tg_id}: {e}")
+                response = f"Ошибка при отправке сообщения пользователю {tg_id}: {e}"
         except TelegramAPIError as e:
             # Любая другая ошибка Telegram API
             logger.error(f"Telegram API Error для пользователя {tg_id}: {e}")
+            response = f"Telegram API Error для пользователя {tg_id}: {e}"
         except Exception as e:
             # Все остальные исключения
             logger.error(f"Неизвестная ошибка при отправке сообщения пользователю {tg_id}: {e}")
+            response = f"Неизвестная ошибка при отправке сообщения пользователю {tg_id}: {e}"
+    else:
+        response = f"Пользователь {tg_id} недоступен для отправки сообщений"
+
+    return response
 
 
 #Функция уведомления регистратора при краткой регистрации.

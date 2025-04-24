@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from filters.filters import StatusFilter
 from LEXICON.LEXICON import LEXICON
-from FSMs.FSMs import FSM_become_proxy, FSM_appoint_deputy, FSM_leave_club
+from FSMs.FSMs import FSM_become_proxy, FSM_appoint_deputy, FSM_leave_club, FSM_become_registrator
 from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned, leave_club
 from keyboards.keyboards import (reg_markup, contact_markup, remove_markup, user_menu,
             create_inline_kb, confirm_markup, return_to_main_menu_markup)
@@ -420,7 +420,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
         else:
             text = f'Ошибка при голосовании: {message}'
 
-        markup = create_inline_kb(1, 'main_menu')
+        # markup = create_inline_kb(1, 'main_menu')
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = text
@@ -901,3 +901,239 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
         )
 
         raise  # Передаем исключение middleware для обработки
+
+
+
+# Хэндлер для согласия стать регистратором (кнопки pre_registrator_yes: )
+@router.callback_query(F.data.regexp(r'^pre_registrator_yes:\d+:\d+$'), StateFilter(default_state))
+@log_handler_call
+async def process_become_registrator(callback: CallbackQuery, state: FSMContext, data: dict):
+    try:
+        logger.info(f"Пользователь {callback.from_user.id} дал согласие стать регистратором.")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+        # Разбираем callback_data на части
+        action, admin_id, member_tg_id = callback.data.split(':')
+
+        # Преобразуем ID в целые числа
+        admin_id = int(admin_id)
+        member_tg_id = int(member_tg_id)
+        await state.update_data(admin_id=admin_id)
+
+        user_id = data['user_id']
+        member_id = data['member_id']
+
+        # Проверяем, что отправитель коллбэка и кандидат в регистраторы - один и тот же аккаунт
+        if user_id != member_tg_id:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Предложение стать регистратором предназначалось не вам'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        if not member_id:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы не являетесь участником группы.'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        if 'registrator' in data['user_status']:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы уже являетесь регистратором'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        if 'pre-registrator' not in data['user_status']:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы не являетесь кандидатом в регистраторы'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        # Переходим к обработке запроса. Проверяем, есть ли у кандидата псевдоним
+        columns = ('username',)
+        username, = await extract_user_data(data['user_id'], *columns)
+        # Если есть псевдоним - записываем новый статус
+        if username:
+            # Присваиваем статус 'proxy'
+            await new_status(admin_id, member_id, 'registrator')
+            # Удаляем статус 'pre-registrator'
+            await new_status(admin_id,member_id,'not_pre-registrator')
+
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы стали регистратором!'
+            data['reply_markup'] = await user_menu(callback.from_user.id)
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            await state.clear()
+        # Если нет псевдонима, просим его создать
+        else:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = (
+                'Введите уникальное имя или псевдоним.'
+                'Это может быть ваше собственное имя (фамилия).'
+                'Важно, чтобы оно было уникальным для этой группы, чтобы пользователи различали представителей.'
+                'И желательно не длиннее 40 символов'
+            )
+            data['reply_markup'] = None
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+
+            await state.set_state(FSM_become_registrator.fill_username)
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке кнопки 'become_proxy': {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при присвоении статуса представителя.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+        await state.clear()
+
+        raise  # Передаем исключение middleware для обработки
+
+# Хэндлер будет обрабатывать ввод username регистратора
+# и переводить в состояние ожидания подтверждения
+@router.message(StateFilter(FSM_become_registrator.fill_username))
+@log_handler_call
+async def process_reg_username_sent(message: Message, state: FSMContext):
+    """
+    Обработчик ввода имени/псевдонима.
+    Запрашивает подтверждение.
+    """
+    logger.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
+    flag = await is_username_uniq(message.text)
+    if flag:
+        await state.update_data(username = message.text)
+        # Отправляем сообщение с подтверждением
+        await message.answer(
+            text=f'''Пожалуйста, подтвердите, правильно ли введено ваше имя/псевдоним?
+    {message.text}''',
+            reply_markup=confirm_markup
+        )
+        await state.set_state(FSM_become_registrator.fill_OK)
+    else:
+        await message.answer(
+            text='Такое имя/псевдоним уже есть. Попрбуйте придумать другой псевдоним или добавьте что-нибудь, что выделяло бы вас'
+        )
+
+
+# Этот хендлер будет срабатывать на нажатие кнопки "всё верно" при подтверждении username
+
+@router.callback_query(StateFilter(FSM_become_registrator.fill_OK), F.data == 'ConfirmOK')
+@log_handler_call
+async def process_reg_username_entry(callback: CallbackQuery, state: FSMContext, data: dict):
+    logger.info(f"Кнопка 'ВСЁ ВЕРНО' при подтверждении username нажата пользователем {callback.from_user.id}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    fsm_data = await state.get_data()
+    admin_id = fsm_data['admin_id']
+    username = fsm_data['username']
+    user_id = data['user_id']
+    member_id = data['member_id']
+
+
+    try:
+        # Записываем username в базу данных
+        await db_update('Users', 'id', user_id, username=username)
+        # Присваиваем статус 'registrator'
+        await new_status(admin_id, member_id, 'registrator')
+        # Удаляем статус 'pre-registrator'
+        await new_status(admin_id,member_id,'not_pre-registrator')
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Вы стали представителем!'
+        data['reply_markup'] = await user_menu(callback.from_user.id)
+
+        # Редактируем сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+
+        # Завершаем машину состояний
+        await state.clear()
+
+    except Exception as e:
+        logger.error(f"Ошибка при записи username: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = f'Произошла ошибка: {str(e)}'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        await state.clear()
+        raise  # Передаем исключение middleware для обработки
+
+# Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
+@router.callback_query(StateFilter(FSM_become_registrator.fill_OK), F.data == 'ConfirmNotOK')
+@log_handler_call
+async def process_no_confirm_registrator_press(callback: CallbackQuery, state: FSMContext, data: dict):
+    logger.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Спасибо! Псевдоним не доавлен\nПопробуйте ввести псевдоним еще раз, или нажмите кнопку для прерывания процедуры'
+    data['reply_markup'] = return_to_main_menu_markup
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+    await state.set_state(FSM_become_registrator.fill_username)
+
+
+# Этот хэндлер будет срабатывать, если во время подтверждения
+# статуса будет введено/отправлено что-то некорректное
+@router.message(StateFilter(FSM_become_proxy.fill_OK))
+@log_handler_call
+async def warning_new_status(message: Message):
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
+    await message.answer(
+        text='Пожалуйста, воспользуйтесь кнопками!\n\n'
+             'Если вы хотите прервать изменение статуса - '
+             'отправьте команду /cancel'
+    )

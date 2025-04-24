@@ -60,14 +60,15 @@ async def new_status(registrator, member_id, status, token_id=None):
             # Проверяем, не удаляется ли статус (не начинается ли с 'not')
             status1 = status.split('_')
             if status1[0] == 'not':
+                status2 = status[4:]
                 await cursor.execute(
                     '''DELETE FROM Status WHERE member_id = ? AND status = ?''',
-                    (member_id, status1[1])
+                    (member_id, status2)
                 )
-                logger.info(f"Статус '{status1[1]}' удален для member_id: {member_id}")
+                logger.info(f"Статус '{status2}' удален для member_id: {member_id}")
             else:
                 if status1[0] == 'AppointAs':
-                    new_st = status1[1]
+                    new_st = status[10:]
                 else:
                     new_st = status
 
