@@ -64,7 +64,7 @@ async def process_new_registrator(message: Message, state: FSMContext):
     logger.info(f"Команда /new_registrator сработала для пользователя {message.from_user.id}")
     await message.answer(text='''Пожалуйста, введите телеграм-ID участника,
 которому вы хотите присвоить новый статус или отправьте контакт с ID''')
-    # Устанавливаем состояние ожидания ввода имени
+    # Устанавливаем состояние ожидания ввода ID
     await state.set_state(FSMNewRegistrator.fill_ID_NewRegistrator)
 
 
@@ -84,6 +84,8 @@ async def process_new_registrator_cb(callback: CallbackQuery, state: FSMContext,
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
+    # Устанавливаем состояние ожидания ввода ID
+    await state.set_state(FSMNewRegistrator.fill_ID_NewRegistrator)
 
 
 # Этот хэндлер будет срабатывать, если введен корректный ID (число)
@@ -114,7 +116,7 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
         )
 
         # Устанавливаем состояние ожидания подтверждения
-        await state.set_state(FSMNewStatus.fill_OK)
+        await state.set_state(FSMNewRegistrator.fill_OK)
 
     else:
         # Добавляем данные для SafeEditMiddleware
@@ -157,7 +159,7 @@ async def process_registrator_contact_sent(message: Message, state: FSMContext, 
         )
 
         # Устанавливаем состояние ожидания подтверждения
-        await state.set_state(FSMNewStatus.fill_OK)
+        await state.set_state(FSMNewRegistrator.fill_OK)
 
     else:
         # Добавляем данные для SafeEditMiddleware
