@@ -177,7 +177,7 @@ async def process_registrator_contact_sent(message: Message, state: FSMContext, 
 
 
 # Хэндлер для обработки нажатии кнопки ВСЁ ВЕРНО
-@router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == 'NewRegistratorOK')
+@router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == 'ConfirmOK')
 @log_handler_call
 async def process_yes_registrator_press(callback: CallbackQuery, state: FSMContext, data: dict):
     logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
@@ -237,7 +237,7 @@ async def process_yes_registrator_press(callback: CallbackQuery, state: FSMConte
         raise  # Передаем исключение middleware для обработки
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕВЕРНО"
-@router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == 'NewRegistratorNotOK')
+@router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == 'ConfirmNotOK')
 @log_handler_call
 async def process_no_registrator_press(callback: CallbackQuery, state: FSMContext, data: dict):
     logger.info(f"Кнопка 'НЕВЕРНО' нажата пользователем {callback.from_user.id}")
