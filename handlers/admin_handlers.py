@@ -215,7 +215,7 @@ async def process_yes_registrator_press(callback: CallbackQuery, state: FSMConte
 
         pre_reg_markup = create_inline_kb(2, **keyboard)
 
-        response = send_notification_to_user(member_tg_id, notification, pre_reg_markup   )
+        response = await send_notification_to_user(member_tg_id, notification, pre_reg_markup   )
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Спасибо! Кандидат в Регистраторы добавлен!\n' \

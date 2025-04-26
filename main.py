@@ -44,7 +44,7 @@ dp['club_id'] = club_id
 
 # Настраиваем базовую конфигурацию логирования
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s',
     handlers=[logging.StreamHandler()]
 )

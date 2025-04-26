@@ -268,7 +268,11 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
 
     fsm_data = await state.get_data()
     status = fsm_data['status']
-    st = status.split('_')[1] if '_' in status else status
+    st = status
+    if status.split('_')[0] == 'not':
+        st = status[4:]
+    if status.split('_')[0] == 'AppointAs':
+        st = status[10:]
 
     try:
         if st not in await all_status():
@@ -277,7 +281,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'Извините, такого статуса нет.\n\n Попробуйте снова.' \
                                     'Вы вышли из машины состояний'
-            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'], data['user_status'])
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Пытаемся отредактировать сообщение
             await callback.message.edit_text(

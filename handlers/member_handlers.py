@@ -919,11 +919,10 @@ async def process_become_registrator(callback: CallbackQuery, state: FSMContext,
         member_tg_id = int(member_tg_id)
         await state.update_data(admin_id=admin_id)
 
-        user_id = data['user_id']
         member_id = data['member_id']
 
         # Проверяем, что отправитель коллбэка и кандидат в регистраторы - один и тот же аккаунт
-        if user_id != member_tg_id:
+        if callback.from_user.id != member_tg_id:
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'Предложение стать регистратором предназначалось не вам'
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])

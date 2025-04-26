@@ -282,8 +282,7 @@ async def all_status():
     #     # Преобразуем список кортежей просто в список
     #     all_st = [status[0] for status in all_st]
 
-        all_st = [('admin',), ('registrator',), ('member',),
-                               ('delegate',), ('proxy',), ('moderator',)]
+        all_st = ['admin','registrator', 'member','delegate', 'proxy', 'pre-registrator']
 
         logger.info(f"Все статусы: {all_st}")
         return all_st
