@@ -134,7 +134,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
         status = status if status else []
         all_st = await all_status()
 
-        vacansy = list(set(all_st) - set(status) - {'owner', 'user', 'candidate','votist','proxy'})
+        vacansy = list(set(all_st) - set(status) - {'owner', 'user', 'candidate','votist','proxy','pre-registrator'})
         status = list(set(status) - {'owner', 'member', 'user', 'candidate'})
 
         logger.debug(f'Вакансии для пользователя: {vacansy}')
