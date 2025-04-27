@@ -90,6 +90,8 @@ buttons = {
     'actions': {  # Категория: Действия
         'user':['registration'],                                      #Для статуса 'user'
         'candidate':['leave_the_group'],                             #Для статуса 'candidate'
+        'registrator':['resign_from_registrator'],
+        'pre-registrator':['become_registrator','resign_from_registrator'],
         'member': ['select_proxy', 'become_proxy','leave_the_group'],      # Для статуса 'member'
         'proxy': ['resign_from_proxy'],                  # Для статуса 'proxy'
         'delegate': ['new_voting']          # Для статуса 'delegate'

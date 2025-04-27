@@ -29,376 +29,6 @@ router = Router()
 router.message.filter(StatusFilter(required_status = ['member']))
 router.callback_query.filter(StatusFilter(required_status = ['member']))
 
-# # Хэндлер для кнопки 'ongoing_voting'
-# @router.callback_query(F.data == 'ongoing_votings')
-# @log_handler_call
-# async def process_list_of_ongoing_votings(callback: CallbackQuery, data: dict):
-#     try:
-#         logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-#         club_id = data['club_id']
-#         voting_status = 'ongoing','confirmation'
-
-#         votings = await list_of_votings(club_id,*voting_status)
-
-#         if votings:
-#             text = 'Список голосований:\n'
-#             for voting in votings:
-#                 text += f'- {voting[1]}\n'
-#             text += '\nВыберите голосование для просмотра вариантов:'
-
-#             dict_votings = {}
-#             for voting in votings:
-#                 dict_votings[f'ongoing_voting:{voting[0]}'] = voting[1]
-#             dict_votings['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
-#             markup = create_inline_kb(1, **dict_votings)
-
-#         else:
-#             text = 'В настоящее время нет активных голосований.'
-#             markup = await user_menu(status=data['user_status'])
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = text
-#         data['reply_markup'] = markup
-
-#         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#     except Exception as e:
-#         logger.error(f"Ошибка при обработке кнопки 'list_of_votes': {e}")
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = 'Произошла ошибка при загрузке списка голосований.'
-#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-#         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#         raise  # Передаем исключение middleware для обработки
-
-
-# # Хэндлер для кнопки 'completed_voting'
-# @router.callback_query(F.data == 'completed_votings')
-# @log_handler_call
-# async def process_list_of_completed_votings(callback: CallbackQuery, data: dict):
-#     try:
-#         logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-#         club_id = data['club_id']
-
-#         votings = await list_of_votings(club_id,'completed')
-
-#         if votings:
-#             text = 'Список завершенных голосований:\n'
-#             for voting in votings:
-#                 text += f'- {voting[1]}\n'
-#             text += '\nВыберите голосование для просмотра:'
-
-#             dict_votings = {}
-#             for voting in votings:
-#                 dict_votings[f'show_oll_variants:{voting[0]}'] = voting[1]
-#             dict_votings['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
-#             markup = create_inline_kb(1, **dict_votings)
-
-#         else:
-#             text = 'В настоящее время нет завершенных голосований.'
-#             markup = await user_menu(status=data['user_status'])
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = text
-#         data['reply_markup'] = markup
-
-#         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#     except Exception as e:
-#         logger.error(f"Ошибка при обработке кнопки 'completed_votings': {e}")
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = 'Произошла ошибка при загрузке списка завершенных голосований.'
-#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-#         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#         raise  # Передаем исключение middleware для обработки
-
-
-# # Хэндлер для кнопки 'future_votes'
-# @router.callback_query(F.data == 'future_votings')
-# @log_handler_call
-# async def process_list_of_future_votings(callback: CallbackQuery, data: dict):
-#     try:
-#         logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
-#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-#         club_id = data['club_id']
-
-#         votings = await list_of_votings(club_id,'add_variants')
-
-#         if votings:
-#             text = 'Список голосований:\n'
-#             for voting in votings:
-#                 text += f'- {voting[1]}\n'
-#             text += '\nВыберите голосование для просмотра:'
-
-#             dict_votings = {}
-#             for voting in votings:
-#                 dict_votings[f'show_oll_variants:{voting[0]}'] = voting[1]
-#             dict_votings['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
-#             markup = create_inline_kb(1, **dict_votings)
-
-#         else:
-#             text = 'В настоящее время нет голосований в стадии добавления вариантов.'
-#             markup = await user_menu(status=data['user_status'])
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = text
-#         data['reply_markup'] = markup
-
-#         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#     except Exception as e:
-#         logger.error(f"Ошибка при обработке кнопки 'future_votings': {e}")
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = 'Произошла ошибка при загрузке списка будущих голосований.'
-#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-#         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#         raise  # Передаем исключение middleware для обработки
-
-
-
-
-
-# # Хэндлер для выбора конкретного идущего голосования
-# @router.callback_query(F.data.regexp(r'^ongoing_voting:\d+$'))
-# @log_handler_call
-# async def process_ongoing_voting_selection(callback: CallbackQuery, data: dict):
-#     """
-#     Обработчик выбора конкретного голосования.
-#     """
-#     try:
-#         logger.info(f"Пользователь {callback.from_user.id} выбрал голосование: {callback.data}")
-#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-#         voting_id = int(callback.data.split(':')[1])
-#         variants = await list_of_variants(voting_id, 'valid')
-
-#         if variants:
-#             text = ('Выберите вариант за который хотите проголосовать.\n'
-#                     'Или нажмите кнопку "Посмотреть варианты", если хотите посмотреть варианты\n')
-
-#             dict_variants = {}
-#             for variant in variants:
-#                 dict_variants[f'variant:{variant[0]}'] = variant[1]
-#             dict_variants[f'show_variants:{voting_id}'] = LEXICON.get('show_variants', 'show variants')
-
-
-#             dict_variants['main_menu'] = LEXICON.get('return_to_main_menu','main menu')
-
-#             logger.info(f'словарь для клавиатуры вариантов: {dict_variants}')
-#             markup = create_inline_kb(1, **dict_variants)
-
-#             for variant in variants:
-#                 text += f'- {variant[1]}\n'
-#             text = '\nВыберите вариант для голосования:\n' + text
-
-#         else:
-#             text = 'В настоящее время нет доступных вариантов для голосования.'
-#             markup = await user_menu(status=data['user_status'])
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = text
-#         data['reply_markup'] = markup
-
-#         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#     except Exception as e:
-#         logger.error(f"Ошибка при выборе конкретного голосования: {e}")
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = 'Произошла ошибка при выборе голосования.'
-#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-#         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#         raise  # Передаем исключение middleware для обработки
-
-# # Хэндлер для просмотра вариантов идущего голосвания (обрабатывает кнопку "посмотреть варианты")
-# # Присылает по сообщению на каждый вариант, к последнему прикладывает клавиаттуру из вариантов
-# # Показываются варианты, имеющией статус "действительный"
-# @router.callback_query(F.data.regexp(r'^show_variants:\d+$'))
-# @log_handler_call
-# async def process_show_variants(callback: CallbackQuery, data: dict):
-#     """
-#     Обработчик просмотра вариантов.
-#     """
-#     try:
-#         logger.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
-#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-#         voting_id = int(callback.data.split(':')[1])
-#         variants = await list_of_variants(voting_id, 'valid')
-
-#         if variants:
-#             for variant in variants:
-#                 title, text_var, variant_status = await extract_variant_data(variant[0])
-#                 await callback.message.answer(
-#                     text=(title + '\n\n' + text_var),
-#                 )
-
-#             text = 'Выберите вариант за который хотите проголосовать:\n'
-
-#             dict_variants = {}
-#             for variant in variants:
-#                 dict_variants[f'variant:{variant[0]}'] = variant[1]
-#             dict_variants['ongoing_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
-#             dict_variants['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
-
-#             logger.info(f'словарь для клавиатуры вариантов: {dict_variants}')
-#             markup = create_inline_kb(1, **dict_variants)
-
-#             for variant in variants:
-#                 text += f'- {variant[1]}\n'
-#             text += '\nВыберите вариант для голосования:'
-
-#         else:
-#             text = 'В настоящее время нет доступных вариантов для голосования.'
-#             markup = await user_menu(status=data['user_status'])
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = text
-#         data['reply_markup'] = markup
-
-#         # Отправляем или редактируем сообщение
-#         await callback.message.answer(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#     except Exception as e:
-#         logger.error(f"Ошибка при просмотре вариантов голосования: {e}")
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
-#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-#         # Редактируем сообщение в случае ошибки
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#         raise  # Передаем исключение middleware для обработки
-
-
-# # Хэндлер для просмотра всех вариантов (обрабатывает кнопку "посмотреть все варианты")
-# # Присылает по сообщению на каждый вариант, к последнему прикладывает клавиатуру из меню.
-# # Применяется для будущих и завершенных голосований
-# @router.callback_query(F.data.regexp(r'^show_oll_variants:\d+$'))
-# @log_handler_call
-# async def process_show_oll_variants(callback: CallbackQuery, data: dict):
-#     """
-#     Обработчик просмотра вариантов.
-#     """
-#     try:
-#         logger.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
-#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-#         voting_id = int(callback.data.split(':')[1])
-#         variants = await list_of_variants(voting_id)
-#         voting_status = await extract_voting_status(voting_id)
-
-
-#         if variants:
-#             for variant in variants:
-#                 variant_id, title, variant_status, text_var = variant
-#                 await callback.message.answer(
-#                     text=(title + '\n' + 'Статус варианта: ' + LEXICON.get(variant_status, variant_status) + '\n\n' + text_var),
-#                 )
-#             text = 'Выберите дальнейшее действие'
-
-#         else:
-#             text = 'В настоящее время нет доступных вариантов.'
-
-#         dict_menu = {}
-#         if voting_status == 'add_variants':
-#             dict_menu['future_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
-#             # Если пользователь - делегат, добавляем кнопку "Добавить голосование"
-#             if 'delegete' in data["user_status"]:
-#                 dict_menu[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
-#         elif voting_status == 'comleted':
-#             dict_menu['completed_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
-#             # Если пользователь - админ, добавляем кнопку "Возобновить голосование"
-#             if 'admin' in data["user_status"]:
-#                 dict_menu[f'reopen:{voting_id}'] = LEXICON.get('reopen', 'reopen')
-
-
-#         dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
-
-#         logger.info(f'словарь меню при показе вариантов: {dict_menu}')
-#         markup = create_inline_kb(1, **dict_menu)
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = text
-#         data['reply_markup'] = markup
-
-#         # Отправляем или редактируем сообщение
-#         await callback.message.answer(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#     except Exception as e:
-#         logger.error(f"Ошибка при просмотре вариантов голосования: {e}")
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
-#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-#         # Редактируем сообщение в случае ошибки
-#         await callback.message.answer(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#         raise  # Передаем исключение middleware для обработки
-
-
-
 
 # Хэндлер для выбора конкретного варианта при голосовании
 @router.callback_query(F.data.regexp(r'^variant:\d+$'))
@@ -903,6 +533,61 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
         raise  # Передаем исключение middleware для обработки
 
 
+# Хэндлер для кнопки 'resign_from_registrator'
+# Удаляет статус регистратора  или кандидата в регистраторы при отказе быть регистратором
+@router.callback_query(F.data == 'resign_from_registrator')
+@log_handler_call
+async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
+    try:
+        logger.info(f"Пользователь {callback.from_user.id} отказывается от статуса 'registrator'.")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        member_id = data['member_id']
+        if not member_id:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы не являетесь участником группы.'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        # Убираем статус 'registrator'
+        await new_status(member_id, member_id, 'not_registrator') # Для регистратора
+        await new_status(member_id, member_id, 'not_pre-registrator') # Для кандидата в регистраторы
+        text = 'Вы отказались от роли регистратора!'
+
+
+
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = await user_menu(callback.from_user.id)
+
+        # Редактируем сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке кнопки 'resign_from_proxy': {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при удалении статуса представителя.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
 
 # Хэндлер для согласия стать регистратором (кнопки pre_registrator_yes: )
 @router.callback_query(F.data.regexp(r'^pre_registrator_yes:\d+:\d+$'), StateFilter(default_state))
@@ -917,7 +602,6 @@ async def process_become_registrator(callback: CallbackQuery, state: FSMContext,
         # Преобразуем ID в целые числа
         admin_id = int(admin_id)
         member_tg_id = int(member_tg_id)
-        await state.update_data(admin_id=admin_id)
 
         member_id = data['member_id']
 
@@ -975,10 +659,10 @@ async def process_become_registrator(callback: CallbackQuery, state: FSMContext,
         username, = await extract_user_data(data['user_id'], *columns)
         # Если есть псевдоним - записываем новый статус
         if username:
-            # Присваиваем статус 'proxy'
-            await new_status(admin_id, member_id, 'registrator')
+            # Присваиваем статус 'registrator'
+            await new_status(member_id, member_id, 'registrator')
             # Удаляем статус 'pre-registrator'
-            await new_status(admin_id,member_id,'not_pre-registrator')
+            await new_status(member_id,member_id,'not_pre-registrator')
 
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'Вы стали регистратором!'
@@ -1010,7 +694,180 @@ async def process_become_registrator(callback: CallbackQuery, state: FSMContext,
             await state.set_state(FSM_become_registrator.fill_username)
 
     except Exception as e:
-        logger.error(f"Ошибка при обработке кнопки 'become_proxy': {e}")
+        logger.error(f"Ошибка при обработке кнопки 'pre_registrator_yes': {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при присвоении статуса регистратора.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+        await state.clear()
+
+        raise  # Передаем исключение middleware для обработки
+
+# Хэндлер для позднего согласия стать регистратором (кнопка основного меню become_registrator: )
+@router.callback_query(F.data == 'become_registrator', StateFilter(default_state))
+@log_handler_call
+async def process_become_registrator_own(callback: CallbackQuery, state: FSMContext, data: dict):
+    try:
+        logger.info(f"Пользователь {callback.from_user.id} дал согласие стать регистратором.")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        member_id = data['member_id']
+        status = data['user_status']
+
+
+        if 'registrator' in status:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы уже являетесь регистратором'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        if 'pre-registrator' not in status:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы не являетесь кандидатом в регистраторы'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        # Переходим к обработке запроса. Проверяем, есть ли у кандидата псевдоним
+        columns = ('username',)
+        username, = await extract_user_data(data['user_id'], *columns)
+        # Если есть псевдоним - записываем новый статус
+        if username:
+            # Присваиваем статус 'registrator'
+            await new_status(member_id, member_id, 'registrator')
+            # Удаляем статус 'pre-registrator'
+            await new_status(member_id,member_id,'not_pre-registrator')
+
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы стали регистратором!'
+            data['reply_markup'] = await user_menu(callback.from_user.id)
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            await state.clear()
+        # Если нет псевдонима, просим его создать
+        else:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = (
+                'Введите уникальное имя или псевдоним.'
+                'Это может быть ваше собственное имя (фамилия).'
+                'Важно, чтобы оно было уникальным для этой группы, чтобы пользователи различали представителей.'
+                'И желательно не длиннее 40 символов'
+            )
+            data['reply_markup'] = None
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+
+            await state.set_state(FSM_become_registrator.fill_username)
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке кнопки 'pre_registrator_yes': {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при присвоении статуса представителя.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+        await state.clear()
+
+        raise  # Передаем исключение middleware для обработки
+
+# Хэндлер для отказа стать регистратором (кнопки pre_registrator_no: )
+@router.callback_query(F.data.regexp(r'^pre_registrator_no:\d+:\d+$'), StateFilter(default_state))
+@log_handler_call
+async def process_not_become_registrator(callback: CallbackQuery, state: FSMContext, data: dict):
+    try:
+        logger.info(f"Пользователь {callback.from_user.id} не дал согласие стать регистратором.")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+        # Разбираем callback_data на части
+        action, admin_id, member_tg_id = callback.data.split(':')
+
+        # Преобразуем ID в целые числа
+        member_tg_id = int(member_tg_id)
+
+        member_id = data['member_id']
+
+        # Проверяем, что отправитель коллбэка и кандидат в регистраторы - один и тот же аккаунт
+        if callback.from_user.id != member_tg_id:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Предложение стать регистратором предназначалось не вам'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        if not member_id:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы не являетесь участником группы.'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        if 'pre-registrator' not in data['user_status']:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы не являетесь кандидатом в регистраторы'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        # Удаляем статус 'pre-registrator'
+        await new_status(member_id,member_id,'not_pre-registrator')
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Вы не стали регистратором!'
+        data['reply_markup'] = await user_menu(callback.from_user.id)
+
+        # Редактируем сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке кнопки 'pre_registrator_no': {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при присвоении статуса представителя.'
@@ -1060,7 +917,6 @@ async def process_reg_username_entry(callback: CallbackQuery, state: FSMContext,
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     fsm_data = await state.get_data()
-    admin_id = fsm_data['admin_id']
     username = fsm_data['username']
     user_id = data['user_id']
     member_id = data['member_id']
@@ -1070,12 +926,12 @@ async def process_reg_username_entry(callback: CallbackQuery, state: FSMContext,
         # Записываем username в базу данных
         await db_update('Users', 'id', user_id, username=username)
         # Присваиваем статус 'registrator'
-        await new_status(admin_id, member_id, 'registrator')
+        await new_status(member_id, member_id, 'registrator')
         # Удаляем статус 'pre-registrator'
-        await new_status(admin_id,member_id,'not_pre-registrator')
+        await new_status(member_id,member_id,'not_pre-registrator')
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Вы стали представителем!'
+        data['response_text'] = 'Вы стали регистратором!'
         data['reply_markup'] = await user_menu(callback.from_user.id)
 
         # Редактируем сообщение
@@ -1133,6 +989,6 @@ async def warning_new_status(message: Message):
     logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
-             'Если вы хотите прервать изменение статуса - '
+             'Если вы хотите прервать процедуру - '
              'отправьте команду /cancel'
     )

@@ -257,7 +257,7 @@ async def process_no_registrator_press(callback: CallbackQuery, state: FSMContex
     )
 
 # Этот хэндлер будет срабатывать, если во время подтверждения
-# модератора будет введено/отправлено что-то некорректное
+# регистратора будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSMNewRegistrator.fill_OK))
 @log_handler_call
 async def warning_registrator(message: Message):

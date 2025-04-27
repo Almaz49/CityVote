@@ -20,8 +20,8 @@ from FSMs.FSMs import FSM_become_proxy, FSM_leave_club
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# Загружаем конфиг в переменную config
-config: Config = load_config('.env')
+# # Загружаем конфиг в переменную config
+# config: Config = load_config('.env')
 
 # Инициализируем роутер уровня модуля
 router = Router()
