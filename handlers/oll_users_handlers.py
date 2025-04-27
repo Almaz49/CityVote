@@ -408,11 +408,8 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
                 if voting_status == 'ongoing' and 'member' in data['user_status'] and variant_status == 'valid':
                     keyboard = {f'variant:{variant_id}': LEXICON.get('Vote for this variant', 'Vote for this variant')}
                     markup = create_inline_kb(1, **keyboard)
-                else:
-                    markup = None
-
                 # Если это голосование в стадии добавления вариантов, а пользователь - админ, добавляем кнопку "удалить вариант"
-                if voting_status == 'add_variants' and 'admin' in data['user_status'] and variant_status == 'valid':
+                elif voting_status == 'add_variants' and 'admin' in data['user_status'] and variant_status == 'valid':
                     keyboard = {f'delete_variant:{variant_id}': LEXICON.get('delete variant', 'delete variant')}
                     markup = create_inline_kb(1, **keyboard)
                 else:
@@ -459,6 +456,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         elif voting_status == 'confirmation':
             if 'admin' in data["user_status"]:
                 dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'Администрирование голосования')
+            dict_menu['ongoing_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
 
         dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'Вернуться в главное меню')
 
