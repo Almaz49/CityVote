@@ -537,7 +537,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
 # Удаляет статус регистратора  или кандидата в регистраторы при отказе быть регистратором
 @router.callback_query(F.data == 'resign_from_registrator')
 @log_handler_call
-async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
+async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
     try:
         logger.info(f"Пользователь {callback.from_user.id} отказывается от статуса 'registrator'.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -578,6 +578,60 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при удалении статуса представителя.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+# Хэндлер для кнопки 'resign_from_admin'
+# Удаляет статус администратора при отказе быть администратором
+@router.callback_query(F.data == 'resign_from_admin')
+@log_handler_call
+async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
+    try:
+        logger.info(f"Пользователь {callback.from_user.id} отказывается от статуса 'admin'.")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        member_id = data['member_id']
+        if not member_id:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'Вы не являетесь участником группы.'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        # Убираем статус 'registrator'
+        await new_status(member_id, member_id, 'not_admin')
+        text = 'Вы отказались от роли администратора!'
+
+
+
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = await user_menu(callback.from_user.id)
+
+        # Редактируем сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке кнопки 'resign_from_proxy': {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при удалении статуса администратора.'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки

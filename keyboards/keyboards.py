@@ -94,7 +94,8 @@ buttons = {
         'pre-registrator':['become_registrator','resign_from_registrator'],
         'member': ['select_proxy', 'become_proxy','leave_the_group'],      # Для статуса 'member'
         'proxy': ['resign_from_proxy'],                  # Для статуса 'proxy'
-        'delegate': ['new_voting']          # Для статуса 'delegate'
+        'delegate': ['new_voting'],          # Для статуса 'delegate'
+        'admin': ['resign_from_admin']      # Для статуса 'admin'
     },
     'settings': {  # Категория: Настройки
         'admin': ['new_registrator'],                         # Для статуса 'admin'

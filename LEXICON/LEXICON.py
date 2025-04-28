@@ -53,6 +53,7 @@ LEXICON_RU = {
 'become_proxy':'Стать представителем',
 'resign_from_proxy':'Уйти из представителей',
 'resign_from_registrator':'Отказаться от роли регистратора',
+'resign_from_admin':'Отказаться от роли администратора',
 'become_registrator':'Стать регистратором',
 'main_menu':'Главное меню',
 'leave_the_group':'Покинуть группу',
