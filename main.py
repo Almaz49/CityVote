@@ -85,7 +85,10 @@ for router in routers:
 
 async def main():
     try:
-        await dp.start_polling(bot)
+        await dp.start_polling(
+        bot,
+        allowed_updates=["message", "callback_query", "chat_member",  "my_chat_member","commands"]
+        )
     except Exception as e:
         logger.error(f"Ошибка при запуске бота: {e}")
     finally:

@@ -1,7 +1,7 @@
 # Модуль oll_users_handlers
 # В нем хэндлеры, которые работают для всех пользователей
 from aiogram import Router, F
-from aiogram.filters import Command, CommandStart, StateFilter
+from aiogram.filters import Command, CommandStart, StateFilter, CommandObject
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.text_decorations import html_decoration as html
 from aiogram.fsm.state import default_state, State, StatesGroup
@@ -40,8 +40,8 @@ async def process_start_command(message: Message, data: dict):
     """
     try:
         markup = await user_menu(message.from_user.id, status=data['user_status'])
-        text = ('Привет!\nЭто бот для проведения голосований.\n'
-                  'Ваш статус в группе:')
+        text = (LEXICON.get('greetings','Привет!\nЭто бот для проведения голосований.')/
+                  '\nВаш статус в группе:')
         for status in data['user_status']:
             text += f'\n   -{LEXICON.get(status, status)}'
         await message.answer(
@@ -53,6 +53,53 @@ async def process_start_command(message: Message, data: dict):
         logger.error(f"Ошибка при обработке команды /start: {e}")
         await message.answer(text="Произошла ошибка при загрузке главного меню.",
                              reply_markup=await user_menu(status=data['user_status']))
+
+
+@router.message(Command(commands=["start"]))
+@log_handler_call
+async def process_start_command(message: Message, command: CommandObject, data: dict):
+    """
+    Обработчик команды /start.
+    Отправляет приветственное сообщение и главное меню.
+    Если команда /start вызвана с параметром (например, через URL), обрабатывает его.
+    """
+    try:
+        # Извлекаем параметр из команды /start
+        args = command.args  # Это то, что идет после ?start= в URL
+
+        # Логика обработки параметра
+        if args == "start":
+            # Пользователь перешел по ссылке с параметром "start"
+            text = (
+                "🎉 Добро пожаловать! Вы перешли по специальной ссылке.\n"
+                "Это бот для проведения голосований."
+            )
+        else:
+            # Обычный старт без параметра
+            text = (
+                LEXICON.get('greetings', 'Привет!\nЭто бот для проведения голосований.')
+                + '\nВаш статус в группе:'
+            )
+            for status in data['user_status']:
+                text += f'\n   - {LEXICON.get(status, status)}'
+
+        # Создаем клавиатуру
+        markup = await user_menu(message.from_user.id, status=data['user_status'])
+
+        # Отправляем сообщение
+        await message.answer(
+            text=text,
+            reply_markup=markup
+        )
+
+        logger.info(f"Пользователь {message.from_user.id} начал работу с ботом. Параметр: {args}")
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке команды /start: {e}")
+        await message.answer(
+            text="Произошла ошибка при загрузке главного меню.",
+            reply_markup=await user_menu(status=data['user_status'])
+        )
 
 # Хэндлер для команды /help
 @router.message(Command(commands=['help']))

@@ -30,6 +30,11 @@ bot = Bot(token=config.tg_bot.token)
 path_db = config.db.path_db  # путь к базе данных
 club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
 
+# Получение информации о боте
+async def get_bot_username():
+    bot_info = await bot.get_me()
+    return bot_info.username
+
 # Функция уведомления пользователя
 @log_function_call
 async def send_notification_to_user(tg_id: int, message_text: str, reply_markup = main_menu_markup):
@@ -72,6 +77,82 @@ async def send_notification_to_user(tg_id: int, message_text: str, reply_markup 
 
     return response
 
+
+@log_function_call
+async def send_notification_to_chat_or_channel(
+    chat_id: int,
+    message_text: str,
+    inline_button_text: str = "Принять участие в голосованиях",
+    inline_button_callback_data: str = None, # Параметр, который передается при нажатии на кнопку
+    member_id: int = None,
+    parse_mode: str = "HTML"
+):
+    """
+    Отправляет уведомление в чат или канал с возможностью добавления inline-кнопки.
+
+    :param chat_id: ID чата или канала, куда отправляется уведомление.
+    :param message_text: Текст уведомления (может быть в формате HTML).
+    :param inline_button_text: Текст для inline-кнопки (опционально). По умолчанию "Принять участие в голосованиях".
+    :param inline_button_callback_data: Callback data для inline-кнопки (опционально). Передается как аргумент команды /start.
+    :param member_id: ID участника, который является автором уведомления (опционально).
+    :param parse_mode: Режим разбора текста ("HTML" по умолчанию).
+    :return: Сообщение об успешной отправке или ошибке.
+    """
+    try:
+        #Излекаем имя бота
+        bot_username = asyncio.run(get_bot_username())
+        # Создаем inline-клавиатуру, если указаны текст и callback_data кнопки
+        reply_markup = None
+        if inline_button_text and inline_button_callback_data:
+            reply_markup = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text=inline_button_text,
+                            url=f"https://t.me/{bot_username}?start={inline_button_callback_data}"
+                        )
+                    ]
+                ]
+            )
+
+# Хорошо бы еще добавить к message_text автора, если он есть
+
+        # Попытка отправить сообщение
+        await bot.send_message(
+            chat_id=chat_id,
+            text=message_text,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode
+        )
+
+        response = f"Уведомление успешно отправлено в чат/канал {chat_id}"
+
+    except TelegramForbiddenError:
+        # Канал или чат заблокировали бота
+        logger.warning(f"Бот заблокирован в чате/канале {chat_id}.")
+        response = f"Бот заблокирован в чате/канале {chat_id}."
+
+    except TelegramBadRequest as e:
+        if "chat not found" in str(e).lower():
+            # Чат или канал не существует
+            logger.warning(f"Чат/канал {chat_id} не найден.")
+            response = f"Чат/канал {chat_id} не найден."
+        else:
+            # Другая ошибка BadRequest
+            logger.error(f"Ошибка при отправке уведомления в чат/канал {chat_id}: {e}")
+            response = f"Ошибка при отправке уведомления в чат/канал {chat_id}: {e}"
+
+    except TelegramAPIError as e:
+        # Любая другая ошибка Telegram API
+        logger.error(f"Telegram API Error для чата/канала {chat_id}: {e}")
+        response = f"Telegram API Error для чата/канала {chat_id}: {e}"
+
+    except Exception as e:
+        # Все остальные исключения
+        logger.error(f"Неизвестная ошибка при отправке уведомления в чат/канал {chat_id}: {e}")
+        response = f"Неизвестная ошибка при отправке уведомления в чат/канал {chat_id}: {e}"
+
+    return response
 
 #Функция уведомления регистратора при краткой регистрации.
 @log_function_call
