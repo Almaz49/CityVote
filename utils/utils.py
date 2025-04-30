@@ -71,3 +71,9 @@ def help_message(status_list: list):
 
     logger.debug(f'Сформирована справка:\n{text}')
     return text
+
+def greetings_message(channel_link=None, club_name: str = None):
+    description = f"<b>👋 Привет! Я — бот для голосований группы {club_name}.</b>" + LEXICON.get('greetings','Это бот для голсоований')
+    if channel_link:
+        description = description + f"<a href='{channel_link}'>[Подпишитесь на наш канал, чтобы быть в курсе всех событий:]</a>"
+    return description

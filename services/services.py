@@ -100,7 +100,7 @@ async def send_notification_to_chat_or_channel(
     """
     try:
         #Излекаем имя бота
-        bot_username = asyncio.run(get_bot_username())
+        bot_username = await get_bot_username()
         # Создаем inline-клавиатуру, если указаны текст и callback_data кнопки
         reply_markup = None
         if inline_button_text and inline_button_callback_data:

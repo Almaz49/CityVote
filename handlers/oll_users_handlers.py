@@ -13,7 +13,7 @@ from keyboards.keyboards import user_menu, remove_markup, create_inline_kb, conf
 from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned, leave_club
 from config_data.config import Config, load_config
 import logging
-from utils import log_handler_call, help_message
+from utils import log_handler_call, help_message, greetings_message
 from LEXICON.LEXICON import LEXICON
 from FSMs.FSMs import FSM_become_proxy, FSM_leave_club
 
@@ -40,8 +40,8 @@ async def process_start_command(message: Message, data: dict):
     """
     try:
         markup = await user_menu(message.from_user.id, status=data['user_status'])
-        text = (LEXICON.get('greetings','Привет!\nЭто бот для проведения голосований.')/
-                  '\nВаш статус в группе:')
+        text = await greetings_message(club_name=data['club_name'])
+        text = text + '\nВаш статус в группе:'
         for status in data['user_status']:
             text += f'\n   -{LEXICON.get(status, status)}'
         await message.answer(
@@ -77,7 +77,7 @@ async def process_start_command(message: Message, command: CommandObject, data: 
         else:
             # Обычный старт без параметра
             text = (
-                LEXICON.get('greetings', 'Привет!\nЭто бот для проведения голосований.')
+                await ()
                 + '\nВаш статус в группе:'
             )
             for status in data['user_status']:

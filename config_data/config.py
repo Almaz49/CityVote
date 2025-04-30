@@ -8,14 +8,14 @@ class DatabaseConfig:
     path_db: str          # URL-адрес базы данных
     #db_user: str          # Username пользователя базы данных
     #db_password: str      # Пароль к базе данных
-    
+
 
 @dataclass
 class TgBot:
     token: str            # Токен для доступа к телеграм-боту
     club_id: int # id группы, которую администрирует бот (групп в БД, а не в телеграм)
     admin_ids: list  # Список id администраторов бота
-    
+
 
 
 @dataclass
@@ -40,6 +40,7 @@ def load_config(path: str) -> Config:
         tg_bot=TgBot(
         token=env('BOT_TOKEN'),
         club_id = club_id,
+        club_name = club_name,
         admin_ids=list(map(int, env.list('ADMIN_IDS'))),
          ),
         db=DatabaseConfig(path_db)
