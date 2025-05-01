@@ -29,18 +29,11 @@ def load_config(path: str) -> Config:
     env = Env()
     env.read_env(path)
     path_db=env('path_db')
-    club_name=env('CLUB_NAME')
-    with sqlite3.connect(path_db) as connection:
-        cursor = connection.cursor()
-        cursor.execute('INSERT OR IGNORE INTO Clubs(name) VALUES(?)', (club_name,)) # Добавляем группу в список групп, если ее там еще нет
-        cursor.execute('SELECT id FROM Clubs WHERE name = ?', (club_name,)) #Извлекаем id группы
-        club_id, = cursor.fetchone()
-        club_id = int(club_id)
+    club_id=env('CLUB_ID')
     return Config(
         tg_bot=TgBot(
         token=env('BOT_TOKEN'),
         club_id = club_id,
-        club_name = club_name,
         admin_ids=list(map(int, env.list('ADMIN_IDS'))),
          ),
         db=DatabaseConfig(path_db)

@@ -41,6 +41,13 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
+        if 'member' in data['user_status']:
+            await callback.message.answer(
+                text='Вы уже зарегистрированы в группе',
+                reply_markup=return_to_main_menu_markup
+            )
+            return
+
         tg_id = callback.from_user.id
 
         club_id = data['club_id']

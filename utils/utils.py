@@ -7,6 +7,7 @@ from LEXICON.LEXICON import LEXICON
 
 
 
+
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
@@ -60,20 +61,3 @@ def log_handler_call(func):
 #         text += LEXICON.get(item+'_help', f'Для статуса {item} нет справки\n\n')
 #     logger.debug(f'Сформирована справка:\n{text}')
 #     return text
-
-def help_message(status_list: list):
-    status = set(status_list) - {'votist'}  # Исключаем статус 'votist'
-    text = "<b>Справка по вашим ролям:</b>\n\n"  # Заголовок
-
-    for item in sorted(status):  # Сортируем роли для удобства
-        role_help = LEXICON.get(item + '_help', f'Для статуса {item} пока нет справки.')
-        text += f"📌 <b>{LEXICON.get(item, item.capitalize())}:</b>\n{role_help}\n\n"
-
-    logger.debug(f'Сформирована справка:\n{text}')
-    return text
-
-def greetings_message(channel_link=None, club_name: str = None):
-    description = f"<b>👋 Привет! Я — бот для голосований группы {club_name}.</b>" + LEXICON.get('greetings','Это бот для голсоований')
-    if channel_link:
-        description = description + f"<a href='{channel_link}'>[Подпишитесь на наш канал, чтобы быть в курсе всех событий:]</a>"
-    return description

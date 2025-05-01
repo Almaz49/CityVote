@@ -15,11 +15,11 @@ from config_data.config import Config, load_config
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# Загружаем конфиг в переменную config
-config: Config = load_config('.env')
-bot = Bot(token=config.tg_bot.token)
-path_db = config.db.path_db  # путь к базе данных
-club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
+# # Загружаем конфиг в переменную config
+# config: Config = load_config('.env')
+# bot = Bot(token=config.tg_bot.token)
+# path_db = config.db.path_db  # путь к базе данных
+# club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
 
 # Инициализируем роутер уровня модуля
 router = Router()

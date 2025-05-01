@@ -10,10 +10,10 @@ from aiogram.types import ChatMemberUpdated
 from aiogram.filters import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
 from data_base.data_base import *
 from keyboards.keyboards import user_menu, remove_markup, create_inline_kb, confirm_markup, return_to_main_menu_markup
-from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned, leave_club
+from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned, leave_club, greetings_message, help_message
 from config_data.config import Config, load_config
 import logging
-from utils import log_handler_call, help_message, greetings_message
+from utils import log_handler_call
 from LEXICON.LEXICON import LEXICON
 from FSMs.FSMs import FSM_become_proxy, FSM_leave_club
 
@@ -40,13 +40,14 @@ async def process_start_command(message: Message, data: dict):
     """
     try:
         markup = await user_menu(message.from_user.id, status=data['user_status'])
-        text = await greetings_message(club_name=data['club_name'])
+        text = await greetings_message(club_id=data['club_id'])
         text = text + '\nВаш статус в группе:'
         for status in data['user_status']:
             text += f'\n   -{LEXICON.get(status, status)}'
         await message.answer(
             text=text,
-            reply_markup=markup
+            reply_markup=markup,
+            parse_mode="HTML"
         )
         logger.info(f"Пользователь {message.from_user.id} начал работу с ботом.")
     except Exception as e:

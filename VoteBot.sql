@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS `Clubs` (
 	`description` TEXT,
 	`father_group` INTEGER,
 	`tg_bot` TEXT,
+	`channel_link`        TEXT,
+    `conditions_of_entry` TEXT,
 FOREIGN KEY(`father_group`) REFERENCES `Clubs`(`id`)
 );
 CREATE TABLE IF NOT EXISTS `Members` (

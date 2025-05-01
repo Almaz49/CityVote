@@ -19,46 +19,6 @@ logger = logging.getLogger(__name__)
 config: Config = load_config('.env')
 path_db = config.db.path_db  # путь к базе данных
 
-# # Это декоратор, который каждую функцию объявляет в логах
-# def log_function_call(func):
-#     @wraps(func)
-#     def wrapper(*args, **kwargs):
-#         logger.info(f"Вызвана функция {func.__name__}")
-#         return func(*args, **kwargs)
-#     return wrapper
-
-# # Создаем контекстный менеджер для работы с базой данных
-# class Database:
-#     def __init__(self, db_name):
-#         self.db_name = db_name
-
-#     def __enter__(self):
-#         try:
-#             self.conn = sqlite3.connect(self.db_name)
-#             self.cursor = self.conn.cursor()
-#             logger.info(f"Соединение с базой данных {self.db_name} установлено.")
-#             return self.cursor
-#         except sqlite3.Error as e:
-#             logger.error(f"Ошибка при установке соединения с базой данных: {e}")
-#             raise
-
-#     def __exit__(self, exc_type, exc_val, exc_tb):
-#         if exc_type is None:
-#             try:
-#                 self.conn.commit()  # Если ошибок нет, подтвержаем изменения
-#                 logger.info("Изменения подтверждены.")
-#             except sqlite3.Error as e:
-#                 logger.error(f"Ошибка при подтверждении изменений: {e}")
-#                 self.conn.rollback()
-#         else:
-#             self.conn.rollback()  # В случае ошибки откатываем изменения
-#             logger.error(f"Произошла ошибка: {exc_val}")
-
-#         try:
-#             self.conn.close()  # Закрываем соединение
-#             logger.info("Соединение с базой данных закрыто.")
-#         except sqlite3.Error as e:
-#             logger.error(f"Ошибка при закрытии соединения: {e}")
 
 # Асинхронный контекстный менеджер для работы с базой данных
 class AsyncDatabase:
@@ -163,6 +123,32 @@ async def extract_user_id(tg_id):
             logger.error(f"Ошибка при извлечении user_id для tg_id={tg_id}: {e}")
             raise
 
+@log_function_call
+async def extract_club_info(club_id):
+    """
+    Извлекает имя группы пользователя по её ID.
+    :param club_id: ID группы.
+    :return: Имя группы в базе данных или None, если имя не найдено.
+    """
+    logger.info(f"Извлечение club_name для club_id={club_id}")
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(
+                '''
+                SELECT name, description, father_group, tg_bot, channel_link, conditions_of_entry
+                FROM Clubs WHERE id = ?
+                ''', (club_id,)
+            )
+            result = await cursor.fetchone()
+            if result:
+                logger.info(f"Найдена информация {result} для club_id={club_id}")
+                return result
+            else:
+                logger.info(f"Информация о группе club_id={club_id} не найдено.")
+                return None
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при извлечении информации о группе club_id={club_id}: {e}")
+            raise
 
 @log_function_call
 async def extract_member_id(club_id, user_id):

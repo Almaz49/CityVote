@@ -14,6 +14,7 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
 from FSMs.FSMs import FSMRegistration, FSMRereg
+from data_base.db_func import extract_club_info
 # from data_base.telegram_bot_logic import AsyncDatabase, is_votist
 from data_base.data_base import *
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup, main_menu_markup
@@ -401,3 +402,68 @@ async def leave_club (member_id, status):
     await member_leave_club(member_id,status)
     if 'proxy' in status:
         await not_votist_because_proxy_quit(member_id)
+
+# Функция создания приветственного обращения. Использует информацию о группе
+@log_function_call
+async def greetings_message(club_id:int):
+    result = await extract_club_info(club_id)
+    if result:
+        name, description,father_group, tg_bot, channel_link, conditions_of_entry = result
+        response = f"<b>👋 Привет! Я — бот для голосований группы {name}.</b>" + LEXICON.get('greetings',
+        'Пройдите регистрацию, чтобы воспользоваться всеми моими возможностями')
+        if channel_link:
+            response = response + f"<a href='{channel_link}'>[Подпишитесь на наш канал, чтобы быть в курсе всех событий:]</a>"
+        logger.debug('Текст приветствия успешно составлен')
+    else:
+        response = 'Привет! Произошла ошибка, информация о группе не найдена, сообщите об этом администрациии'
+        logger.debug('Не найдена информация о группе для составления приветствия')
+    return response
+
+# Функция создания справки в зависимости от ролей участника
+@log_function_call
+def help_message(status_list: list):
+    status = set(status_list) - {'votist'}  # Исключаем статус 'votist'
+    text = "<b>Справка по вашим ролям:</b>\n\n"  # Заголовок
+
+    for item in sorted(status):  # Сортируем роли для удобства
+        role_help = LEXICON.get(item + '_help', f'Для статуса {item} пока нет справки.')
+        text += f"📌 <b>{LEXICON.get(item, item.capitalize())}:</b>\n{role_help}\n\n"
+
+    logger.debug(f'Сформирована справка:\n{text}')
+    return text
+
+# Функция создания ссылки на публичный канал по его ID
+async def get_channel_link(channel_id):
+    try:
+        chat = await bot.get_chat(chat_id=channel_id)
+        if chat.username:
+            # Формируем ссылку для публичного канала
+            return f"https://t.me/{chat.username}"
+        else:
+            # Если канал приватный, можно попробовать получить invite link
+            invite_link = await bot.export_chat_invite_link(chat_id=channel_id)
+            return invite_link
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        return None
+
+# Функция создания пригласительной ссылки в приватный канал (работает, если бот администратор) по ID канала
+@log_function_call
+async def get_invite_link(channel_id):
+    try:
+        invite_link = await bot.export_chat_invite_link(chat_id=channel_id)
+        return invite_link
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        return None
+
+# Функция создания справки в зависимости от ролей участника
+@log_function_call
+async def get_channel_id(channel_username): # Имя канала без @
+    try:
+        chat = await bot.get_chat(chat_id=channel_username)
+        channel_id = chat.id
+        return channel_id
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        return None
