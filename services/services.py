@@ -467,3 +467,94 @@ async def get_channel_id(channel_username): # Имя канала без @
     except Exception as e:
         print(f"Ошибка: {e}")
         return None
+
+@log_function_call
+async def validate_and_get_channel_info(channel_info: str) -> dict:
+    """
+    Проверяет существование канала/чата и права бота.
+    :param channel_info: ID или username канала/чата
+    :return: Словарь с информацией о канале/чате или сообщением об ошибке
+    """
+    try:
+        # Определяем, является ли ввод числовым ID или username
+        if channel_info.startswith('@') or not channel_info.lstrip('-').isdigit():
+            # Это username
+            chat = await bot.get_chat(chat_id=channel_info)
+            channel_id = chat.id
+            channel_type = 'username'
+        else:
+            # Это ID
+            channel_id = int(channel_info)
+            chat = await bot.get_chat(chat_id=channel_id)
+            channel_type = 'id'
+
+        # Проверяем права бота
+        member = await bot.get_chat_member(chat_id=channel_id, user_id=bot.id)
+        can_send_messages = member.can_send_messages if hasattr(member, 'can_send_messages') else False
+        is_admin = member.status in ['administrator', 'creator']
+
+        if not (is_admin and can_send_messages):
+            return {
+                "success": False,
+                "message": ("Бот не имеет прав на отправку сообщений в этот канал/чат. "
+                            "Добавьте бота в администраторы и дайте право на отправку сообщений.")
+            }
+
+        # Формируем ответ
+        invite_link = None
+        if chat.username:
+            invite_link = f"https://t.me/{chat.username}"
+        elif chat.invite_link:
+            invite_link = chat.invite_link
+        else:
+            try:
+                invite_link = await bot.export_chat_invite_link(chat_id=channel_id)
+            except TelegramForbiddenError:
+                pass
+
+        return {
+            "success": True,
+            "channel_id": channel_id,
+            "channel_title": chat.title,
+            "invite_link": invite_link,
+            "input_type": channel_type
+        }
+
+    except TelegramBadRequest as e:
+        if "chat not found" in str(e).lower():
+            return {"success": False, "message": "Канал/чат не найден."}
+        return {"success": False, "message": f"Ошибка при получении информации о канале/чате: {e}"}
+    except TelegramForbiddenError:
+        return {"success": False, "message": "Бот заблокирован в этом канале/чате."}
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка при проверке канала/чата: {e}")
+        return {"success": False, "message": f"Произошла ошибка: {e}"}
+
+@log_function_call
+async def process_channel_info(channel_info: str, club_id: int, action: str) -> dict:
+    """
+    Обрабатывает информацию о канале/чате для различных действий.
+    :param channel_info: ID или username канала/чата
+    :param club_id: ID группы в базе данных
+    :param action: Тип действия ('add', 'remove', 'set_main')
+    :return: Словарь с результатом операции
+    """
+    # Проверяем существование канала и права бота
+    validation_result = await validate_and_get_channel_info(channel_info)
+    if not validation_result["success"]:
+        return {"success": False, "message": validation_result["message"]}
+
+    channel_id = validation_result["channel_id"]
+    channel_title = validation_result["channel_title"]
+    invite_link = validation_result["invite_link"]
+
+    if action == "add":
+        result = await add_telegram_channel(club_id, channel_id, channel_title)
+    elif action == "remove":
+        result = await remove_telegram_channel(club_id, channel_id)
+    elif action == "set_main":
+        result = await set_main_channel(club_id, invite_link)
+    else:
+        return {"success": False, "message": "Неверное действие."}
+
+    return result

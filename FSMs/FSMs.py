@@ -133,3 +133,12 @@ class FSM_leave_club(StatesGroup):
     # перечисляя возможные состояния, в которых будет находиться
     # бот в разные моменты взаимодействия с пользователем
     fill_OK = State()         # Состояние ожидания подтверждения
+
+# FSM администрирования настроек телеграм-бота
+class AdminStates(StatesGroup):
+    entering_club_name = State()
+    entering_club_description = State()
+    entering_club_conditions = State()
+    adding_telegram_channel = State()
+    removing_telegram_channel = State()
+    setting_main_channel = State()

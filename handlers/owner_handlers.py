@@ -6,8 +6,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from filters.filters import StatusFilter
-from FSMs.FSMs import FSMNewRegistrator, FSMNewVoting, FSMNewStatus
+from FSMs.FSMs import FSMNewRegistrator, FSMNewVoting, FSMNewStatus, AdminStates
 from data_base.telegram_bot_logic import *
+from services.services import process_channel_info
 from utils import log_handler_call
 from keyboards.keyboards import *
 from config_data.config import Config, load_config
@@ -366,3 +367,141 @@ async def warning_new_status(message: Message):
              'Если вы хотите прервать изменение статуса - '
              'отправьте команду /cancel'
     )
+
+"""
+АДМИНИСТРИРОВАНИЕ БОТА
+"""
+# Обрабатывает нажатие кнопик "admin_bot", присылает клавиатуру администрирования
+@log_handler_call
+@router.callback_query(F.data == "admin_bot")
+async def admin_menu(callback: CallbackQuery):
+    markup = get_admin_menu_keyboard()
+    await callback.message.edit_text("Выберите действие:", reply_markup=markup)
+
+
+# Изменение имени группы
+
+@log_handler_call
+@router.callback_query(F.data == "edit_club_name")
+async def edit_club_name_start(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите новое имя группы:")
+    await state.set_state(AdminStates.entering_club_name)
+
+@log_handler_call
+@router.message(AdminStates.entering_club_name)
+async def process_club_name(message: Message, state: FSMContext, club_id: int):
+    new_name = message.text.strip()
+    if not new_name:
+        await message.answer("Имя не может быть пустым. Попробуйте снова.")
+        return
+
+    success = await update_club_name(club_id=club_id, new_name=new_name)
+    if success:
+        await message.answer(f"Имя группы успешно изменено на: {new_name}")
+    else:
+        await message.answer("Произошла ошибка при изменении имени группы.")
+
+    await state.clear()
+
+
+# Изменение описания группы
+
+@router.callback_query(F.data == "edit_club_description")
+async def edit_club_description_start(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите новое описание группы:")
+    await state.set_state(AdminStates.entering_club_description)
+
+@router.message(AdminStates.entering_club_description)
+async def process_club_description(message: Message, state: FSMContext, club_id: int):
+    new_description = message.text.strip()
+    if not new_description:
+        await message.answer("Описание не может быть пустым. Попробуйте снова.")
+        return
+
+    success = await update_club_description(club_id=club_id, new_description=new_description)
+    if success:
+        await message.answer(f"Описание группы успешно изменено.")
+    else:
+        await message.answer("Произошла ошибка при изменении описания группы.")
+
+    await state.clear()
+
+
+# Изменение условий участия
+
+@router.callback_query(F.data == "edit_club_conditions")
+async def edit_club_conditions_start(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите новые условия участия в группе:")
+    await state.set_state(AdminStates.entering_club_conditions)
+
+@router.message(AdminStates.entering_club_conditions)
+async def process_club_conditions(message: Message, state: FSMContext, club_id: int):
+    new_conditions = message.text.strip()
+    if not new_conditions:
+        await message.answer("Условия не могут быть пустыми. Попробуйте снова.")
+        return
+
+    success = await update_club_conditions(club_id=club_id, new_conditions=new_conditions)
+    if success:
+        await message.answer(f"Условия участия успешно изменены.")
+    else:
+        await message.answer("Произошла ошибка при изменении условий участия.")
+
+    await state.clear()
+
+
+# Добавление телеграм-канала
+
+@router.callback_query(F.data == "add_channel")
+async def add_channel_start(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите ID или ссылку на канал/чат для рассылок:")
+    await state.set_state(AdminStates.adding_telegram_channel)
+
+@router.message(AdminStates.adding_telegram_channel)
+async def process_add_channel(message: Message, state: FSMContext, club_id: int):
+    channel_info = message.text.strip()
+    if not channel_info:
+        await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
+        return
+
+    result = await process_channel_info(channel_info, club_id, "add")
+    await message.answer(result["message"])
+    await state.clear()
+
+
+# Удаление телеграм-канала
+
+@router.callback_query(F.data == "remove_channel")
+async def remove_channel_start(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите ID или ссылку на канал/чат для удаления из рассылок:")
+    await state.set_state(AdminStates.removing_telegram_channel)
+
+@router.message(AdminStates.removing_telegram_channel)
+async def process_remove_channel(message: Message, state: FSMContext, club_id: int):
+    channel_info = message.text.strip()
+    if not channel_info:
+        await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
+        return
+
+    result = await process_channel_info(channel_info, club_id, "remove")
+    await message.answer(result["message"])
+    await state.clear()
+
+
+# Установка основного канала
+
+@router.callback_query(F.data == "set_main_channel")
+async def set_main_channel_start(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите ID или ссылку на основной канал/чат:")
+    await state.set_state(AdminStates.setting_main_channel)
+
+@router.message(AdminStates.setting_main_channel)
+async def process_set_main_channel(message: Message, state: FSMContext, club_id: int):
+    channel_info = message.text.strip()
+    if not channel_info:
+        await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
+        return
+
+    result = await process_channel_info(channel_info, club_id, "set_main")
+    await message.answer(result["message"])
+    await state.clear()

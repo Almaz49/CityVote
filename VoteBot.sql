@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `Votings` (
 	`id` integer primary key NOT NULL UNIQUE,
 	`creator` INTEGER NOT NULL,
-	`voting_type` TEXT NOT NULL DEFAULT usual,
+	`voting_type` TEXT NOT NULL DEFAULT 'usual',
 	`title` TEXT NOT NULL,
 	`text` TEXT DEFAULT 'null',
 	`club_id` INTEGER NOT NULL,
@@ -52,8 +52,7 @@ CREATE TABLE IF NOT EXISTS `Users` (
 	`email` TEXT,
     `tg_username`     TEXT,
     `username`        TEXT    UNIQUE,
-	`tg_available`       TEXT,
-FOREIGN KEY(`id`) REFERENCES `Users`(`id`)
+	`tg_available`       TEXT
 );
 CREATE TABLE IF NOT EXISTS `Clubs` (
 	`id` integer primary key NOT NULL UNIQUE,
@@ -86,14 +85,14 @@ CREATE TABLE IF NOT EXISTS `Tokens` (
 	`status` INTEGER,
 	`validity` TEXT,
 	`time_of_action` TEXT,
-	`number_of_possible` INTEGER DEFAULT '1',
+	`number_of_possible` INTEGER DEFAULT 1,
 	`sity` TEXT,
 	`district` TEXT,
 	`street` TEXT,
 	`house` TEXT,
 	`entrance` INTEGER,
 	`apartment` INTEGER,
-	`telephon_number` TEXT,
+	`telephone_number` TEXT,
 	`first_name` TEXT,
 	`lust_name` TEXT,
 	`polling_station` INTEGER,
@@ -104,12 +103,12 @@ FOREIGN KEY(`creator`) REFERENCES `Members`(`id`)
 );
 CREATE TABLE IF NOT EXISTS `Registrations` (
 	`id` integer primary key NOT NULL UNIQUE,
-	object_type TEXT,
+	`object_type` TEXT,
 	`object_id` INTEGER NOT NULL,
 	`token_id` INTEGER,
 	`registrator` INTEGER,
 	`status` TEXT,
-	time_reg    TEXT,
+	`time_reg`    TEXT,
 FOREIGN KEY(`token_id`) REFERENCES `Tokens`(`id`),
 FOREIGN KEY(`registrator`) REFERENCES `Members`(`id`)
 );
@@ -120,20 +119,28 @@ CREATE TABLE IF NOT EXISTS `Status` (
 FOREIGN KEY(`member_id`) REFERENCES `Members`(`id`),
 UNIQUE (member_id, status)
 );
-CREATE TABLE IF NOT EXISTS Elections (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT
+CREATE TABLE IF NOT EXISTS `Elections` (
+    `id`            INTEGER PRIMARY KEY AUTOINCREMENT
                           UNIQUE,
-    member_id     INTEGER REFERENCES Members (id),
-    variant_id    INTEGER REFERENCES Variants (id),
-    time_election TEXT,
-    status        TEXT
+    `member_id`     INTEGER REFERENCES `Members` (`id`),
+    `variant_id`    INTEGER REFERENCES `Variants` (`id`),
+    `time_election` TEXT,
+    `status`        TEXT
 );
-CREATE TABLE IF NOT EXISTS Trusts (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT
+CREATE TABLE IF NOT EXISTS `Trusts` (
+    `id`         INTEGER PRIMARY KEY AUTOINCREMENT
                        UNIQUE,
-    member_id  INTEGER REFERENCES Members (id)
+    `member_id`  INTEGER REFERENCES `Members` (`id`)
                        NOT NULL,
-    proxy_id   INTEGER REFERENCES Members (id)
+    `proxy_id`   INTEGER REFERENCES `Members` (`id`)
                        NOT NULL,
-    time_trust TEXT    NOT NULL
+    `time_trust` TEXT    NOT NULL
+);
+CREATE TABLE TgChats (
+    `id`      INTEGER PRIMARY KEY AUTOINCREMENT
+                    UNIQUE
+                    NOT NULL,
+    `club_id` INTEGER REFERENCES `Clubs` (`id`),
+    `tg_id`   INTEGER,
+    `name`    TEXT
 );

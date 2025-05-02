@@ -1,5 +1,5 @@
 # Модуль keyboards
-# Содержит кнопки и клавиатуры
+# Содержит кнопки, клавиатуры и функции для их создания
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
@@ -99,7 +99,7 @@ buttons = {
     },
     'settings': {  # Категория: Настройки
         'admin': ['new_registrator'],                         # Для статуса 'admin'
-        'owner': ['new_status']                          # Для статуса 'owner'
+        'owner': ['new_status', 'admin_bot']                          # Для статуса 'owner'
     }
 }
 
@@ -250,6 +250,17 @@ contact_markup = ReplyKeyboardMarkup(
 # Клавиатура для удаления предыдущей клавиатуры
 remove_markup = ReplyKeyboardRemove()
 
+# Функция для создания клавиатуры администрирования бот
+def get_admin_menu_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Изменить имя группы", callback_data="edit_club_name")
+    builder.button(text="Изменить описание", callback_data="edit_club_description")
+    builder.button(text="Изменить условия участия", callback_data="edit_club_conditions")
+    builder.button(text="Добавить канал", callback_data="add_channel")
+    builder.button(text="Удалить канал", callback_data="remove_channel")
+    builder.button(text="Установить основной канал", callback_data="set_main_channel")
+    builder.adjust(2)
+    return builder.as_markup()
 
 """
 ДОПОЛНИТЕЛЬНЫЕ КОММЕНТАРИИ
