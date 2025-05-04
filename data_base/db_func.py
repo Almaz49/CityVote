@@ -460,17 +460,26 @@ async def add_telegram_channel(club_id: int, tg_id: int, name: str):
         try:
             await cursor.execute(
                 '''
-                INSERT INTO TgChats (club_id, tg_id, name) VALUES (?, ?, ?)
+                INSERT OR IGNORE INTO TgChats (club_id, tg_id, name) VALUES (?, ?, ?)
                 ''', (club_id, tg_id, name)
             )
             logger.info(f"Телеграм-канал/чат с tg_id={tg_id} успешно добавлен для club_id={club_id}")
-            return "Телеграм-канал/чат успешно добавлен."
+            return {
+                "success": True,
+                "message": "Телеграм-канал/чат успешно добавлен."
+            }
         except aiosqlite.IntegrityError as e:
             logger.error(f"Ошибка при добавлении телеграм-канала/чата: {e}")
-            return "Такой телеграм-канал/чат уже существует."
+            return {
+                "success": False,
+                "message":"Такой телеграм-канал/чат уже существует."
+            }
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при добавлении телеграм-канала/чата: {e}")
-            return "Произошла ошибка при добавлении телеграм-канала/чата."
+            return {
+                "success": False,
+                "message":"Произошла ошибка при добавлении телеграм-канала/чата."
+            }
 
 @log_function_call
 async def remove_telegram_channel(club_id: int, tg_id: int):
@@ -489,13 +498,22 @@ async def remove_telegram_channel(club_id: int, tg_id: int):
             )
             if cursor.rowcount > 0:
                 logger.info(f"Телеграм-канал/чат с tg_id={tg_id} успешно удален.")
-                return "Телеграм-канал/чат успешно удален."
+                return {
+                "success": True,
+                "message": "Телеграм-канал/чат успешно удален."
+                }
             else:
                 logger.info(f"Телеграм-канал/чат с tg_id={tg_id} не найден.")
-                return "Телеграм-канал/чат не найден."
+                return {
+                "success": False,
+                "message":"Телеграм-канал/чат не найден."
+                }
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при удалении телеграм-канала/чата: {e}")
-            return "Произошла ошибка при удалении телеграм-канала/чата."
+            return {
+                "success": False,
+                "message":"Произошла ошибка при удалении телеграм-канала/чата."
+            }
 
 @log_function_call
 async def set_main_channel(club_id: int, channel_link: str):
@@ -506,6 +524,7 @@ async def set_main_channel(club_id: int, channel_link: str):
     :return: Сообщение об успешности или неудачности операции.
     """
     logger.info(f"Установка основного канала для club_id={club_id}: {channel_link}")
+
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -514,7 +533,13 @@ async def set_main_channel(club_id: int, channel_link: str):
                 ''', (channel_link, club_id)
             )
             logger.info(f"Основной канал успешно установлен для club_id={club_id}")
-            return "Основной канал успешно установлен."
+            return {
+                "success": True,
+                "message": "Основной канал успешно установлен."
+            }
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при установке основного канала для club_id={club_id}: {e}")
-            return "Произошла ошибка при установке основного канала."
+            return {
+                "success": False,
+                "message":"Произошла ошибка при установке основного канала."
+            }

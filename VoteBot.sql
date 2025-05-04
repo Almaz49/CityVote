@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS `Status` (
 	`member_id` INTEGER NOT NULL,
 	`status` TEXT,
 FOREIGN KEY(`member_id`) REFERENCES `Members`(`id`),
-UNIQUE (member_id, status)
+UNIQUE (`member_id`, `status`)
 );
 CREATE TABLE IF NOT EXISTS `Elections` (
     `id`            INTEGER PRIMARY KEY AUTOINCREMENT
@@ -142,5 +142,6 @@ CREATE TABLE TgChats (
                     NOT NULL,
     `club_id` INTEGER REFERENCES `Clubs` (`id`),
     `tg_id`   INTEGER,
-    `name`    TEXT
+    `name`    TEXT,
+	UNIQUE (`club_id`, `tg_id`)
 );

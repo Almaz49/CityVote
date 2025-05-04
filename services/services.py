@@ -476,6 +476,15 @@ async def validate_and_get_channel_info(channel_info: str) -> dict:
     :return: Словарь с информацией о канале/чате или сообщением об ошибке
     """
     try:
+        """ Извлекает username/ID из разных форматов """
+        # Обработка ссылок
+        if channel_info.startswith(("https://", "http://", "t.me")):
+            parts = channel_info.split("/")
+            username = parts[-1].split("?")[0]  # Убираем GET-параметры
+            if not username.startswith("@"):
+                username = "@" + username
+            channel_info = username
+
         # Определяем, является ли ввод числовым ID или username
         if channel_info.startswith('@') or not channel_info.lstrip('-').isdigit():
             # Это username
@@ -490,15 +499,26 @@ async def validate_and_get_channel_info(channel_info: str) -> dict:
 
         # Проверяем права бота
         member = await bot.get_chat_member(chat_id=channel_id, user_id=bot.id)
-        can_send_messages = member.can_send_messages if hasattr(member, 'can_send_messages') else False
-        is_admin = member.status in ['administrator', 'creator']
 
-        if not (is_admin and can_send_messages):
+        # Исправленная проверка прав
+        is_admin = member.status in ['administrator', 'creator']
+        can_send = False
+
+        if is_admin:
+            # Для админов/создателей права неявно включают отправку сообщений
+            can_send = True
+        else:
+            # Для обычных пользователей проверяем явное разрешение
+            can_send = member.can_post_messages if hasattr(member, 'can_send_messages') else False
+
+        if not can_send:
             return {
                 "success": False,
-                "message": ("Бот не имеет прав на отправку сообщений в этот канал/чат. "
-                            "Добавьте бота в администраторы и дайте право на отправку сообщений.")
+                "message": ("Бот не имеет прав на отправку сообщений. "
+                            "Добавьте его в администраторы с правом публикации.")
             }
+
+        logger.debug(f"Статус бота: {member.status}, can_send_messages: {hasattr(member, 'can_send_messages')}")
 
         # Формируем ответ
         invite_link = None
@@ -553,7 +573,10 @@ async def process_channel_info(channel_info: str, club_id: int, action: str) -> 
     elif action == "remove":
         result = await remove_telegram_channel(club_id, channel_id)
     elif action == "set_main":
+        add_result = await add_telegram_channel(club_id, channel_id, channel_title)
+        logger.info(f"Результат добавления канала при его установке, как основного:{result}")
         result = await set_main_channel(club_id, invite_link)
+        result["add_channel"] = add_result
     else:
         return {"success": False, "message": "Неверное действие."}
 

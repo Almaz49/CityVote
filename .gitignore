@@ -12,6 +12,7 @@ test/
 venv/
 __pycache__/
 test/readf.py
+change.sql
 bot.log
 bot_error.log
 *logs.txt

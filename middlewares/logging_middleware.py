@@ -22,7 +22,6 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
                 logger.info(f"Получено событие {event_type} от пользователя {tg_id}") #:\n {pformat(event)}\n")
 
             club_id = data.get('club_id',None)
-            club_name = data.get('club_name',None)
             user_id, member_id = await extract_user_member_id(tg_id)
 
             if 'state' in data:
@@ -33,7 +32,6 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
                 data['data'] = {
                     'club_id':club_id,
                     'user_id':user_id,
-                    'club_name':club_name,
                     'member_id':member_id
 
                     # Добавьте другие необходимые данные

@@ -14,7 +14,7 @@ from middlewares import LoggingAndErrorHandlingMiddleware, SafeEditMiddleware, S
 from handlers import (
     admin_handlers, candidate_handlers, member_handlers, delegate_handlers, owner_handlers,
     new_user_handlers, registrator_handlers, oll_users_handlers, reg_process_handlers,
-    last_handlers
+    chat_member_handlers, last_handlers
 )
 from data_base import data_base
 from filters import filters
@@ -75,6 +75,7 @@ routers = [
     candidate_handlers.router,
     reg_process_handlers.router,
     oll_users_handlers.router,
+    chat_member_handlers.router,
     last_handlers.router
 ]
 

@@ -81,6 +81,16 @@ LEXICON_RU = {
 'reopen':'Возобновить',
 'Vote for this variant':'Проголосовать за этот вариант',
 
+
+# Кнопки меню администрирования бота
+"edit_club_name":"Изменить имя группы",
+"edit_club_description":"Изменить описание",
+"edit_club_conditions":"Изменить условия участия",
+"add_channel":"Добавить канал или чат",
+"remove_channel":"Удалить канал",
+"set_main_channel":"Установить основной канал",
+
+
 #Названия и тексты
 "Don't make any decision":"Не принимать никакого решения",
 'greetings':"""

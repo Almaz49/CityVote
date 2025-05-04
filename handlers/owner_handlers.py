@@ -372,8 +372,8 @@ async def warning_new_status(message: Message):
 АДМИНИСТРИРОВАНИЕ БОТА
 """
 # Обрабатывает нажатие кнопик "admin_bot", присылает клавиатуру администрирования
-@log_handler_call
 @router.callback_query(F.data == "admin_bot")
+@log_handler_call
 async def admin_menu(callback: CallbackQuery):
     markup = get_admin_menu_keyboard()
     await callback.message.edit_text("Выберите действие:", reply_markup=markup)
@@ -381,14 +381,14 @@ async def admin_menu(callback: CallbackQuery):
 
 # Изменение имени группы
 
-@log_handler_call
 @router.callback_query(F.data == "edit_club_name")
+@log_handler_call
 async def edit_club_name_start(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Введите новое имя группы:")
     await state.set_state(AdminStates.entering_club_name)
 
-@log_handler_call
 @router.message(AdminStates.entering_club_name)
+@log_handler_call
 async def process_club_name(message: Message, state: FSMContext, club_id: int):
     new_name = message.text.strip()
     if not new_name:
@@ -407,11 +407,13 @@ async def process_club_name(message: Message, state: FSMContext, club_id: int):
 # Изменение описания группы
 
 @router.callback_query(F.data == "edit_club_description")
+@log_handler_call
 async def edit_club_description_start(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Введите новое описание группы:")
     await state.set_state(AdminStates.entering_club_description)
 
 @router.message(AdminStates.entering_club_description)
+@log_handler_call
 async def process_club_description(message: Message, state: FSMContext, club_id: int):
     new_description = message.text.strip()
     if not new_description:
@@ -430,11 +432,13 @@ async def process_club_description(message: Message, state: FSMContext, club_id:
 # Изменение условий участия
 
 @router.callback_query(F.data == "edit_club_conditions")
+@log_handler_call
 async def edit_club_conditions_start(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Введите новые условия участия в группе:")
     await state.set_state(AdminStates.entering_club_conditions)
 
 @router.message(AdminStates.entering_club_conditions)
+@log_handler_call
 async def process_club_conditions(message: Message, state: FSMContext, club_id: int):
     new_conditions = message.text.strip()
     if not new_conditions:
@@ -453,11 +457,13 @@ async def process_club_conditions(message: Message, state: FSMContext, club_id: 
 # Добавление телеграм-канала
 
 @router.callback_query(F.data == "add_channel")
+@log_handler_call
 async def add_channel_start(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Введите ID или ссылку на канал/чат для рассылок:")
     await state.set_state(AdminStates.adding_telegram_channel)
 
 @router.message(AdminStates.adding_telegram_channel)
+@log_handler_call
 async def process_add_channel(message: Message, state: FSMContext, club_id: int):
     channel_info = message.text.strip()
     if not channel_info:
@@ -472,11 +478,13 @@ async def process_add_channel(message: Message, state: FSMContext, club_id: int)
 # Удаление телеграм-канала
 
 @router.callback_query(F.data == "remove_channel")
+@log_handler_call
 async def remove_channel_start(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Введите ID или ссылку на канал/чат для удаления из рассылок:")
     await state.set_state(AdminStates.removing_telegram_channel)
 
 @router.message(AdminStates.removing_telegram_channel)
+@log_handler_call
 async def process_remove_channel(message: Message, state: FSMContext, club_id: int):
     channel_info = message.text.strip()
     if not channel_info:
@@ -491,11 +499,13 @@ async def process_remove_channel(message: Message, state: FSMContext, club_id: i
 # Установка основного канала
 
 @router.callback_query(F.data == "set_main_channel")
+@log_handler_call
 async def set_main_channel_start(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Введите ID или ссылку на основной канал/чат:")
     await state.set_state(AdminStates.setting_main_channel)
 
 @router.message(AdminStates.setting_main_channel)
+@log_handler_call
 async def process_set_main_channel(message: Message, state: FSMContext, club_id: int):
     channel_info = message.text.strip()
     if not channel_info:
@@ -503,5 +513,12 @@ async def process_set_main_channel(message: Message, state: FSMContext, club_id:
         return
 
     result = await process_channel_info(channel_info, club_id, "set_main")
-    await message.answer(result["message"])
+    # Логирование результата
+    logger.debug(f"Результат операции: {result}")
+
+    if isinstance(result, dict) and "message" in result:
+        await message.answer(result["message"])
+    else:
+        await message.answer("Произошла ошибка при обработке запроса.")
+
     await state.clear()

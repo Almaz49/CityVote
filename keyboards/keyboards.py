@@ -175,6 +175,35 @@ async def user_menu(tg_id: int = None, status:list[str] = None) -> InlineKeyboar
         logger.error(f"Ошибка при создании меню для пользователя {tg_id}: {e}")
         raise
 
+# Функция для создания клавиатуры администрирования бот
+@log_function_call
+def get_admin_menu_keyboard():
+    builder = InlineKeyboardBuilder()
+    # Основные кнопки администрирования
+    builder.button(text="Изменить имя группы", callback_data="edit_club_name")
+    builder.button(text="Изменить описание", callback_data="edit_club_description")
+    builder.button(text="Изменить условия участия", callback_data="edit_club_conditions")
+    builder.button(text="Добавить канал", callback_data="add_channel")
+    builder.button(text="Удалить канал", callback_data="remove_channel")
+    builder.button(text="Установить основной канал", callback_data="set_main_channel")
+    builder.button(
+        text=LEXICON.get('return_to_main_menu', 'Назад в главное меню'),
+        callback_data='main_menu'
+    )
+
+    # # Создаем кнопку "Назад" отдельно
+    # back_button = InlineKeyboardButton(
+    #     text=LEXICON.get('return_to_main_menu', 'Назад в главное меню'),
+    #     callback_data='main_menu'
+    # )
+
+    # # Добавляем кнопку в отдельный ряд
+    # builder.row(back_button)
+
+    # Настройка расположения кнопок (6 кнопок в 3 ряда по 2, 1 кнопка в последнем ряду)
+    builder.adjust(2, 2, 2, 1)
+
+    return builder.as_markup()
 
 
 """
@@ -250,21 +279,21 @@ contact_markup = ReplyKeyboardMarkup(
 # Клавиатура для удаления предыдущей клавиатуры
 remove_markup = ReplyKeyboardRemove()
 
-# Функция для создания клавиатуры администрирования бот
-def get_admin_menu_keyboard():
-    builder = InlineKeyboardBuilder()
-    builder.button(text="Изменить имя группы", callback_data="edit_club_name")
-    builder.button(text="Изменить описание", callback_data="edit_club_description")
-    builder.button(text="Изменить условия участия", callback_data="edit_club_conditions")
-    builder.button(text="Добавить канал", callback_data="add_channel")
-    builder.button(text="Удалить канал", callback_data="remove_channel")
-    builder.button(text="Установить основной канал", callback_data="set_main_channel")
-    builder.adjust(2)
-    return builder.as_markup()
+# # Функция для создания клавиатуры администрирования бот
+# def get_admin_menu_keyboard():
+#     builder = InlineKeyboardBuilder()
+#     builder.button(text="Изменить имя группы", callback_data="edit_club_name")
+#     builder.button(text="Изменить описание", callback_data="edit_club_description")
+#     builder.button(text="Изменить условия участия", callback_data="edit_club_conditions")
+#     builder.button(text="Добавить канал", callback_data="add_channel")
+#     builder.button(text="Удалить канал", callback_data="remove_channel")
+#     builder.button(text="Установить основной канал", callback_data="set_main_channel")
+#     builder.adjust(2)
+#     return builder.as_markup()
 
-"""
-ДОПОЛНИТЕЛЬНЫЕ КОММЕНТАРИИ
-"""
+# """
+# ДОПОЛНИТЕЛЬНЫЕ КОММЕНТАРИИ
+# """
 
 # Если нужно добавить новые клавиатуры или кнопки, можно расширить словарь `status_keyboards`
 # или добавить новые функции для их создания.
