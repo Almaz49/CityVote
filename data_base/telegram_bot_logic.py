@@ -67,17 +67,17 @@ async def extract_user_data_tg(tg_id, *c):
     else:
         return None
 
-# Функция создания нового голосования
-@log_function_call
-async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voting_status='add_variants'):
-    creatot_user_id, creator = await extract_user_member_id(creator_tg_id)
-    if creator:
-        result = await new_voting(club_id, creator, title, text, vote_type, voting_status)
-        logger.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
-        return result
-    else:
-        logger.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы.")
-        return False, 'Вы не являетесь участником группы'
+# # Функция создания нового голосования
+# @log_function_call
+# async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voting_status='add_variants'):
+#     creatot_user_id, creator = await extract_user_member_id(creator_tg_id)
+#     if creator:
+#         result = await voting_create(club_id, creator, title, text, vote_type, voting_status)
+#         logger.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
+#         return result
+#     else:
+#         logger.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы.")
+#         return False, 'Вы не являетесь участником группы'
 
 # Функция извлечения user_id и member_id по tg_id
 @log_function_call
@@ -170,22 +170,22 @@ async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
         ans_str += f"Ошибка при присвоении статуса: {str(e)}"
         return False, ans_str
 
-# Создание нового голосования
-@log_function_call
-async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voting_status='add_variants'):
-    creator_user_id = await extract_user_id(creator_tg_id)
-    if not creator_user_id:
-        logger.warning(f"Не найден пользователь с tg_id={creator_tg_id}")
-        return False, 'Вы не являетесь участником группы'
+# # Создание нового голосования
+# @log_function_call
+# async def new_voting_tg(creator_tg_id, title, text=None, vote_type='usual', voting_status='add_variants'):
+#     creator_user_id = await extract_user_id(creator_tg_id)
+#     if not creator_user_id:
+#         logger.warning(f"Не найден пользователь с tg_id={creator_tg_id}")
+#         return False, 'Вы не являетесь участником группы'
 
-    creator = await extract_member_id(club_id, creator_user_id)
-    if not creator:
-        logger.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы")
-        return False, 'Вы не являетесь участником группы'
+#     creator = await extract_member_id(club_id, creator_user_id)
+#     if not creator:
+#         logger.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы")
+#         return False, 'Вы не являетесь участником группы'
 
-    result = await new_voting(club_id, creator, title, text=text, voting_type=vote_type, voting_status=voting_status)
-    logger.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
-    return result
+#     result = await voting_create(club_id, creator, title, text=text, voting_type=vote_type, voting_status=voting_status)
+#     logger.info(f"Создано новое голосование с creator_tg_id={creator_tg_id}: {result}")
+#     return result
 
 # Создание варианта для голосования. Добавляется в голосования со статусом ожидания вариантов.
 # В БД вносится автор, заголовок варианта, текст варианта, если есть и мб - ссылка
@@ -201,7 +201,7 @@ async def new_variant_tg(voting_id, creator_tg_id, title, text=None):
         logger.warning(f"Пользователь с tg_id={creator_tg_id} не является участником группы")
         return False, 'Вы не являетесь участником группы'
 
-    result = await new_variant(voting_id, author, title, text=text)
+    result = await variant_create(voting_id, author, title, text=text)
     logger.info(f"Добавлен новый вариант для голосования voting_id={voting_id} от tg_id={creator_tg_id}: {result}")
     return result
 

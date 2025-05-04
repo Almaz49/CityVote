@@ -143,5 +143,8 @@ CREATE TABLE TgChats (
     `club_id` INTEGER REFERENCES `Clubs` (`id`),
     `tg_id`   INTEGER,
     `name`    TEXT,
+	`channel_type` TEXT,
+    `invite_link` TEXT,
+	`available`    TEXT,
 	UNIQUE (`club_id`, `tg_id`)
 );

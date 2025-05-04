@@ -110,9 +110,9 @@ async def extract_user_id(tg_id):
 @log_function_call
 async def extract_club_info(club_id):
     """
-    Извлекает имя группы пользователя по её ID.
+    Извлекает информацию о группе по её ID.
     :param club_id: ID группы.
-    :return: Имя группы в базе данных или None, если имя не найдено.
+    :return: Информация группы в базе данных или None, если имя не найдено.
     """
     logger.info(f"Извлечение club_name для club_id={club_id}")
     async with AsyncDatabase(path_db) as cursor:
@@ -447,12 +447,14 @@ async def update_club_conditions(club_id: int, new_conditions: str):
             return "Произошла ошибка при изменении условий участия."
 
 @log_function_call
-async def add_telegram_channel(club_id: int, tg_id: int, name: str):
+async def add_telegram_channel(club_id: int, tg_id: int, name: str, type: str, invite_link:str = None):
     """
     Добавляет телеграм-канал или чат в таблицу TgChats.
     :param club_id: ID группы.
     :param tg_id: Telegram ID канала/чата.
     :param name: Название канала/чата.
+    :param type: Тип (канал или чат)
+    :param invite_link: Ссылка на канал или чат
     :return: Сообщение об успешности или неудачности операции.
     """
     logger.info(f"Добавление телеграм-канала/чата с tg_id={tg_id} для club_id={club_id}")
@@ -460,8 +462,8 @@ async def add_telegram_channel(club_id: int, tg_id: int, name: str):
         try:
             await cursor.execute(
                 '''
-                INSERT OR IGNORE INTO TgChats (club_id, tg_id, name) VALUES (?, ?, ?)
-                ''', (club_id, tg_id, name)
+                INSERT OR IGNORE INTO TgChats (club_id, tg_id, name, channel_type, invite_link) VALUES (?, ?, ?)
+                ''', (club_id, tg_id, name, type, invite_link)
             )
             logger.info(f"Телеграм-канал/чат с tg_id={tg_id} успешно добавлен для club_id={club_id}")
             return {
@@ -543,3 +545,31 @@ async def set_main_channel(club_id: int, channel_link: str):
                 "success": False,
                 "message":"Произошла ошибка при установке основного канала."
             }
+
+@log_function_call
+async def list_of_channel(club_id: int):
+    """
+    Извлекает список телеграм-каналов и чатов из таблицы ТgChats.
+    :param club_id: ID группы.
+    :return:
+    """
+
+    query = '''
+    SELECT tg_id, name, chаnnel_type, invite_link, available  FROM Users
+    WHERE club_id = ?
+    '''
+    params = (club_id,)
+
+    logger.info(f"Выполняется запрос: {query}")
+    logger.info(f"Параметры для запроса: {params}")
+
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(query, params)
+            result = await cursor.fetchall()
+            logger.debug(f"Извлечение списка каналов и чатов, связанных с группой club_id={club_id}: {result}")
+            logger.info("Запрос успешно выполнен.")
+            return result
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при выполнении запроса: {e}")
+            raise

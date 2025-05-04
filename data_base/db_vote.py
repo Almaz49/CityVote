@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Создание нового голосования. Создается название голосования и описание,
 # также может быть введен тип голосования и ссылка. Варианты добавляются позже.
 @log_function_call
-async def new_voting(club_id, creator, title, text=None, voting_type='usual', voting_status='add_variants'):
+async def voting_create(club_id, creator, title, text=None, voting_type='usual', voting_status='add_variants'):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if len(title) > 40:
         flag = False
@@ -56,7 +56,7 @@ async def new_voting(club_id, creator, title, text=None, voting_type='usual', vo
 # если есть - ссылка.
 # Возвращает комментарий по итогам добавления.
 @log_function_call
-async def new_variant(voting_id, author, title, text=None, variant_status='valid'):
+async def variant_create(voting_id, author, title, text=None, variant_status='valid'):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if len(title) > 40:
         flag, answ_str = False, 'Название не должно быть длиннее 40 символов.'

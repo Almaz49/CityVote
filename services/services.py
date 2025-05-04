@@ -490,32 +490,50 @@ async def validate_and_get_channel_info(channel_info: str) -> dict:
             # Это username
             chat = await bot.get_chat(chat_id=channel_info)
             channel_id = chat.id
-            channel_type = 'username'
+
         else:
             # Это ID
             channel_id = int(channel_info)
             chat = await bot.get_chat(chat_id=channel_id)
-            channel_type = 'id'
 
         # Проверяем права бота
+        chat = await bot.get_chat(chat_id=channel_id)
         member = await bot.get_chat_member(chat_id=channel_id, user_id=bot.id)
 
-        # Исправленная проверка прав
-        is_admin = member.status in ['administrator', 'creator']
-        can_send = False
+        # Определяем тип чата
+        is_channel = chat.type == 'channel'
+        is_group = chat.type in ['group', 'supergroup']
 
-        if is_admin:
-            # Для админов/создателей права неявно включают отправку сообщений
-            can_send = True
+        # Проверяем права в зависимости от типа
+        if is_channel:
+            # Для каналов
+            can_send = member.can_post_messages if hasattr(member, 'can_post_messages') else False
+            required_admin = True  # В каналах бот должен быть админом
+            channel_type = 'channel'
+        elif is_group:
+            # Для чатов (групп/супергрупп)
+            can_send = member.can_send_messages if hasattr(member, 'can_send_messages') else False
+            required_admin = False  # В чатах можно быть обычным участником
+            channel_type = 'chat'
         else:
-            # Для обычных пользователей проверяем явное разрешение
-            can_send = member.can_post_messages if hasattr(member, 'can_send_messages') else False
+            return {
+                "success": False,
+                "message": "Тип чата не определен."
+            }
 
+        # Проверяем статус админа (для каналов обязательно)
+        is_admin = member.status in ['administrator', 'creator']
+        if required_admin and not is_admin:
+            return {
+                "success": False,
+                "message": "Бот должен быть администратором канала."
+            }
+
+        # Проверяем права на отправку
         if not can_send:
             return {
                 "success": False,
-                "message": ("Бот не имеет прав на отправку сообщений. "
-                            "Добавьте его в администраторы с правом публикации.")
+                "message": "Бот не имеет прав на отправку сообщений. Настройте права доступа."
             }
 
         logger.debug(f"Статус бота: {member.status}, can_send_messages: {hasattr(member, 'can_send_messages')}")
@@ -537,7 +555,7 @@ async def validate_and_get_channel_info(channel_info: str) -> dict:
             "channel_id": channel_id,
             "channel_title": chat.title,
             "invite_link": invite_link,
-            "input_type": channel_type
+            "channel_type": channel_type
         }
 
     except TelegramBadRequest as e:
@@ -567,14 +585,15 @@ async def process_channel_info(channel_info: str, club_id: int, action: str) -> 
     channel_id = validation_result["channel_id"]
     channel_title = validation_result["channel_title"]
     invite_link = validation_result["invite_link"]
+    channel_type =  validation_result["channel_type"]
 
     if action == "add":
-        result = await add_telegram_channel(club_id, channel_id, channel_title)
+        result = await add_telegram_channel(club_id, channel_id, channel_title, channel_type, invite_link)
     elif action == "remove":
         result = await remove_telegram_channel(club_id, channel_id)
     elif action == "set_main":
-        add_result = await add_telegram_channel(club_id, channel_id, channel_title)
-        logger.info(f"Результат добавления канала при его установке, как основного:{result}")
+        add_result = await add_telegram_channel(club_id, channel_id, channel_title, channel_type, invite_link)
+        logger.info(f"Результат добавления канала в список рассылки при его установке, как основного:{result}")
         result = await set_main_channel(club_id, invite_link)
         result["add_channel"] = add_result
     else:

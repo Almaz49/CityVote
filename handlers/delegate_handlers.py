@@ -119,7 +119,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
         tg_id = callback.from_user.id
 
         # Создаем новое голосование
-        flag, comment = await new_voting(club_id = data['club_id'], creator= data['member_id'],
+        flag, comment = await voting_create(club_id = data['club_id'], creator= data['member_id'],
                                          title=title, text=description, voting_status='add_variants')
 
         if flag:
