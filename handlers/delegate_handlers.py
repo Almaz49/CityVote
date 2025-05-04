@@ -12,6 +12,7 @@ from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import *
 import logging
 from utils import log_handler_call
+from manager.manager import voting_create_manager
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -114,12 +115,13 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
     logger.info(f"Пользователь {callback.from_user.id} подтвердил создание голосования.")
     try:
         fsm_data = await state.get_data()
+        logger.debug(f'Получена FSM data:{fsm_data}')
         title = fsm_data['title']
         description = fsm_data['description']
         tg_id = callback.from_user.id
 
         # Создаем новое голосование
-        flag, comment = await voting_create(club_id = data['club_id'], creator= data['member_id'],
+        flag, comment = await voting_create_manager(club_id = data['club_id'], creator= data['member_id'],
                                          title=title, text=description, voting_status='add_variants')
 
         if flag:
@@ -127,7 +129,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
 
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'Спасибо! Голосование создано! Вы вышли из машины состояний.'
-            data['reply_markup'] = await user_menu(data['user_status'])  # Если клавиатура не нужна
+            data['reply_markup'] = await user_menu(status=data['user_status'])
 
             # Пытаемся отредактировать сообщение
             await callback.message.edit_text(

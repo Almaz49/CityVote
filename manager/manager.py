@@ -49,10 +49,10 @@ async def voting_create_manager(club_id, creator, title, text=None, voting_type=
         return result
 
     # Делаем рассылку пользователям бота
-    for item in chats:
-        response = await send_notification_to_user(members[2],notify_text)
-        # if response:
-        #     logger.debug(f'{response}')
+    for item in members:
+        response = await send_notification_to_user(item[2],notify_text)
+        if response:
+            logger.debug(f'{response}')
 
     logger.info("Рассылка пользователям произведена")
 
@@ -67,3 +67,5 @@ async def voting_create_manager(club_id, creator, title, text=None, voting_type=
         response = await send_notification_to_chat_or_channel(item[0], notify_text)
         if response:
             logger.info(f'{response}')
+
+    return True, message + "\nВсе рассылки удачно произведены"

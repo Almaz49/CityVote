@@ -166,7 +166,7 @@ async def extract_member_id(club_id, user_id):
 # Функция извлечения списка участников с определенным статусом, или всех,
 # если статус указан 'all'
 @log_function_call
-async def list_of_members(club_id, status):
+async def list_of_members(club_id, status = 'all'):
     # Получаем список имен участников из БД
     query = '''
     SELECT first_name, last_name, tg_id, tg_first_name, tg_last_name, username FROM Users
@@ -462,7 +462,7 @@ async def add_telegram_channel(club_id: int, tg_id: int, name: str, type: str, i
         try:
             await cursor.execute(
                 '''
-                INSERT OR IGNORE INTO TgChats (club_id, tg_id, name, channel_type, invite_link) VALUES (?, ?, ?)
+                INSERT OR IGNORE INTO TgChats (club_id, tg_id, name, channel_type, invite_link) VALUES (?, ?, ?, ?, ?)
                 ''', (club_id, tg_id, name, type, invite_link)
             )
             logger.info(f"Телеграм-канал/чат с tg_id={tg_id} успешно добавлен для club_id={club_id}")
@@ -555,7 +555,7 @@ async def list_of_channel(club_id: int):
     """
 
     query = '''
-    SELECT tg_id, name, chаnnel_type, invite_link, available  FROM Users
+    SELECT tg_id, name, channel_type, invite_link, available  FROM TgChats
     WHERE club_id = ?
     '''
     params = (club_id,)

@@ -593,7 +593,7 @@ async def process_channel_info(channel_info: str, club_id: int, action: str) -> 
         result = await remove_telegram_channel(club_id, channel_id)
     elif action == "set_main":
         add_result = await add_telegram_channel(club_id, channel_id, channel_title, channel_type, invite_link)
-        logger.info(f"Результат добавления канала в список рассылки при его установке, как основного:{result}")
+        logger.info(f"Результат добавления канала в список рассылки при его установке, как основного:{add_result}")
         result = await set_main_channel(club_id, invite_link)
         result["add_channel"] = add_result
     else:
