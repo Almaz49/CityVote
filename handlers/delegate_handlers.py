@@ -11,7 +11,7 @@ from keyboards.keyboards import confirm_markup, variant_markup, create_inline_kb
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import *
 import logging
-from utils import log_handler_call
+from utils import log_handler_call, check_fsm_data
 from manager.manager import voting_create_manager
 
 # Настройка логирования
@@ -83,6 +83,7 @@ async def process_new_voting_title_sent(message: Message, state: FSMContext):
 # и переводить в состояние ожидания подтверждения
 @router.message(StateFilter(FSMNewVoting.fill_voting_description))
 @log_handler_call
+@check_fsm_data
 async def process_new_voting_description_sent(message: Message, state: FSMContext):
     """
     Обработчик ввода описания голосования.
@@ -107,12 +108,17 @@ async def process_new_voting_description_sent(message: Message, state: FSMContex
 # Этот хэндлер будет срабатывать на нажатие кнопки "ВСЁ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewVoting.fill_OK), F.data == 'ConfirmOK')
 @log_handler_call
+@check_fsm_data
 async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик подтверждения создания голосования.
     Создает новое голосование в базе данных.
     """
     logger.info(f"Пользователь {callback.from_user.id} подтвердил создание голосования.")
+    # fsm_data = await state.get_data()
+    # if not fsm_data:
+    #     await callback.message.answer("Сессия устарела. Пожалуйста, начните заново.")
+    #     return
     try:
         fsm_data = await state.get_data()
         logger.debug(f'Получена FSM data:{fsm_data}')

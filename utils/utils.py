@@ -3,6 +3,8 @@
 
 import logging  # Добавляем импорт модуля logging
 from functools import wraps
+from aiogram.types import CallbackQuery, Message
+from aiogram.fsm.context import FSMContext
 from LEXICON.LEXICON import LEXICON
 
 
@@ -54,10 +56,64 @@ def log_handler_call(func):
             raise
     return wrapper
 
-# def help_message(status_list:list):
-#     status = set(status_list) - set(['votist'])
-#     text = ''
-#     for item in status:
-#         text += LEXICON.get(item+'_help', f'Для статуса {item} нет справки\n\n')
-#     logger.debug(f'Сформирована справка:\n{text}')
-#     return text
+# Декоратор, который проверяет наличие FSM data. При ее отсуствии отправляет сообщение, что сессия устарела.
+# Пример использования:
+# @router.callback_query(F.data == "ConfirmOK")
+# @check_fsm_data
+# async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: FSMContext):
+#     fsm_data = await state.get_data()
+#     title = fsm_data['title']
+#     description = fsm_data['description']
+#     # ... остальная логика ...
+
+def check_fsm_data(func):
+    """
+    Универсальный декоратор проверяет, есть ли FSM data и для Mtssage и для Callback,
+    если нет - отправляет сообщение, что сессия устарела
+    """
+    @wraps(func)
+    async def wrapper(event: Message | CallbackQuery, state: FSMContext, *args, **kwargs):
+        # Определяем, как получить объект сообщения
+        if isinstance(event, Message):
+            message = event
+        elif isinstance(event, CallbackQuery):
+            message = event.message
+        else:
+            logger.warning(f"Неизвестный тип события: {type(event)}")
+            return await func(event, state, *args, **kwargs)
+
+        # Проверяем наличие FSM-данных
+        fsm_data = await state.get_data()
+        if not fsm_data:
+            await message.answer("Сессия устарела. Пожалуйста, начните заново.")
+            return
+
+        return await func(event, state, *args, **kwargs)
+    return wrapper
+
+
+def check_fsm_data_callback(func):
+    """
+    Декоратор для Callback, проверяет, есть ли FSM data, если нет - отправляет сообщение, что сессия устарела
+    """
+    @wraps(func)
+    async def wrapper(callback: CallbackQuery, state: FSMContext, *args, **kwargs):
+        fsm_data = await state.get_data()
+        if not fsm_data:
+            await callback.message.answer("Сессия устарела. Пожалуйста, начните заново.")
+            return
+        return await func(callback, state, *args, **kwargs)
+    return wrapper
+
+def check_fsm_data_message(func):
+    """
+    Декоратор для Message, проверяет, есть ли FSM data, если нет - отправляет сообщение, что сессия устарела
+    """
+    @wraps(func)
+    async def wrapper(message: Message, state: FSMContext, *args, **kwargs):
+        fsm_data = await state.get_data()
+        if not fsm_data:
+            await message.answer("Сессия устарела. Пожалуйста, начните заново.")
+            return
+        return await func(message, state, *args, **kwargs)
+    return wrapper

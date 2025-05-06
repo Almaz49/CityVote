@@ -64,17 +64,17 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
             try:
                 user = data['event_from_user']
                 tg_id = user.id
-                marcup = await user_menu(tg_id)
+                markup = await user_menu(tg_id)
             except:
-                marcup = None
+                markup = None
 
             if hasattr(event, "message") and event.message:
                 await event.message.answer(
                     text="Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.",
-                    reply_markup=marcup
+                    reply_markup=markup
                 )
             elif hasattr(event, "callback_query") and event.callback_query:
                 await event.callback_query.message.answer(
                     text="Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.",
-                    reply_markup=marcup
+                    reply_markup=markup
                 )

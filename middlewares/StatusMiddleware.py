@@ -9,7 +9,16 @@ logger = logging.getLogger(__name__)
 class StatusMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
         logger.info('\nMiddleware StatusMiddleware начала работу\n')
+
+        # Инициализируем data['data'], если его нет
+        if 'data' not in data:
+            data['data'] = {}
         try:
+            # Проверяем наличие user в data
+
+            if 'event_from_user' not in data:
+                logger.error("event_from_user не найден в data")
+                return  # Прерываем обработку
             user = data['event_from_user']
             user_id = user.id
 
@@ -39,9 +48,10 @@ class StatusMiddleware(BaseMiddleware):
             data['data']['user_status'] = status
             logger.info(f'Создан список статусов в пользовательском словаре data: {status}')
 
-            # Продолжаем обработку события
+            # Передаём управление следующему middleware/хэндлеру
             return await handler(event, data)
+
         except Exception as e:
             logger.error(f"An error occurred in StatusMiddleware: {e}")
             logger.error(f"Event type: {type(event)}, Event data: {event}")
-            return await handler(event, data)
+            return

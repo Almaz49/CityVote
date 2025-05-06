@@ -36,3 +36,4 @@ class SafeEditMiddleware(BaseMiddleware):
             else:
                 logger.error(f"Ошибка при редактировании сообщения: {e}")
                 raise
+            return None  # Прекращаем дальнейшую обработку
