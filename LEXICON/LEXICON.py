@@ -71,7 +71,7 @@ LEXICON_RU = {
 'voting_complete':'Завершить голосование', # через : добавляется voting_id
 'select_variant':'Выбрать вариант для голосования', #f'ongoing_voting:{voting_id}'
 'delete variant':'Удалить вариант',
-'show_oll_variants':'Показать все варианты',
+'show_oll_variants':'Показать все варианты',  # через : добавляется voting_id
 'continue_voting':'Продолжить голосование', # через : добавляется voting_id
 'show_variants':'Посмотреть варианты',
 'back_to_votings':'Назад к списку голосований', #Через : статус голосований, к списку которых вернуться

@@ -5,10 +5,11 @@
 # the database.
 import sqlite3
 import aiosqlite
+import datetime
 import logging  # Добавляем импорт модуля logging
 from config_data.config import Config, load_config
 from functools import wraps
-from utils import log_function_call
+from utils import log_function_call, fetch_as_dict
 
 
 
@@ -114,25 +115,26 @@ async def extract_club_info(club_id):
     :param club_id: ID группы.
     :return: Информация группы в базе данных или None, если имя не найдено.
     """
-    logger.info(f"Извлечение club_name для club_id={club_id}")
+    logger.info(f"Извлечение информации о группе для club_id={club_id}")
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
                 '''
-                SELECT name, description, father_group, tg_bot, channel_link, conditions_of_entry
+                SELECT *
                 FROM Clubs WHERE id = ?
                 ''', (club_id,)
             )
-            result = await cursor.fetchone()
+            result = await fetch_as_dict(cursor)
             if result:
-                logger.info(f"Найдена информация {result} для club_id={club_id}")
-                return result
+                logger.info(f"Найдена информация {result[0]} для club_id={club_id}")
+                return result[0]
             else:
                 logger.info(f"Информация о группе club_id={club_id} не найдено.")
                 return None
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при извлечении информации о группе club_id={club_id}: {e}")
             raise
+
 
 @log_function_call
 async def extract_member_id(club_id, user_id):
@@ -163,22 +165,33 @@ async def extract_member_id(club_id, user_id):
             logger.error(f"Ошибка при извлечении member_id для club_id={club_id}, user_id={user_id}: {e}")
             raise
 
-# Функция извлечения списка участников с определенным статусом, или всех,
-# если статус указан 'all'
+# Функция извлечения информации об участниках группы.
+# Опционально можно указать статус участников, информация о которых требуется.
 @log_function_call
-async def list_of_members(club_id, status = 'all'):
-    # Получаем список имен участников из БД
+async def list_of_members(club_id, status='all'):
+    # Получаем список участников с дополнительным полем info_level из таблицы Members
     query = '''
-    SELECT first_name, last_name, tg_id, tg_first_name, tg_last_name, username FROM Users
-    WHERE id IN (SELECT user_id FROM Members
-    WHERE club_id = ?)
+    SELECT
+        Users.first_name,
+        Users.last_name,
+        Users.tg_id,
+        Users.tg_first_name,
+        Users.tg_last_name,
+        Users.username,
+        Members.info_level
+    FROM Users
+    INNER JOIN Members ON Users.id = Members.user_id
+    WHERE Members.club_id = ?
     '''
     params = (club_id,)
 
     if status != 'all':
         query += '''
-        AND id IN (SELECT member_id FROM Status
-        WHERE status = ?)
+        AND Users.id IN (
+            SELECT member_id
+            FROM Status
+            WHERE status = ?
+        )
         '''
         params += (status,)
 
@@ -188,12 +201,44 @@ async def list_of_members(club_id, status = 'all'):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(query, params)
-            answ = await cursor.fetchall()
+            result = await cursor.fetchall()
             logger.info("Запрос успешно выполнен.")
-            return answ
+            return result
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
+
+# # Функция извлечения списка участников с определенным статусом, или всех,
+# # если статус указан 'all'
+# @log_function_call
+# async def list_of_members(club_id, status = 'all'):
+#     # Получаем список имен участников из БД
+#     query = '''
+#     SELECT first_name, last_name, tg_id, tg_first_name, tg_last_name, username FROM Users
+#     WHERE id IN (SELECT user_id FROM Members
+#     WHERE club_id = ?)
+#     '''
+#     params = (club_id,)
+
+#     if status != 'all':
+#         query += '''
+#         AND id IN (SELECT member_id FROM Status
+#         WHERE status = ?)
+#         '''
+#         params += (status,)
+
+#     logger.info(f"Выполняется запрос: {query}")
+#     logger.info(f"Параметры для запроса: {params}")
+
+#     async with AsyncDatabase(path_db) as cursor:
+#         try:
+#             await cursor.execute(query, params)
+#             answ = await cursor.fetchall()
+#             logger.info("Запрос успешно выполнен.")
+#             return answ
+#         except aiosqlite.Error as e:
+#             logger.error(f"Ошибка при выполнении запроса: {e}")
+#             raise
 
 
 
@@ -551,11 +596,11 @@ async def list_of_channel(club_id: int):
     """
     Извлекает список телеграм-каналов и чатов из таблицы ТgChats.
     :param club_id: ID группы.
-    :return:
+    :return: список словарей с информацией о каналах
     """
 
     query = '''
-    SELECT tg_id, name, channel_type, invite_link, available  FROM TgChats
+    SELECT *  FROM TgChats
     WHERE club_id = ?
     '''
     params = (club_id,)
@@ -566,10 +611,36 @@ async def list_of_channel(club_id: int):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(query, params)
-            result = await cursor.fetchall()
+            result = await fetch_as_dict(cursor)
             logger.debug(f"Извлечение списка каналов и чатов, связанных с группой club_id={club_id}: {result}")
             logger.info("Запрос успешно выполнен.")
             return result
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при выполнении запроса: {e}")
+            raise
+
+async def registration_entry(registrator, object_type, object_id, status, token_id=None):
+    """
+    Функция записи в журнал регистраций.
+    :param registrator: ID регистратора в таблице Members
+    :param object_type: тип объекта, над которым произведено действие
+    :param object_id: ID объекта в соответствующей таблице
+    :param status: присвоенный объекту статус
+    :param token_id: ID токена, если он использовался
+    """
+
+    time_reg = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            # Делаем запись в таблице регистраций
+            await cursor.execute(
+                '''INSERT INTO Registrations(registrator, object_type, object_id, status, token_id, time_reg)
+                VALUES (?, ?, ?, ?, ?, ?)''',
+                (registrator, object_type, object_id, status, token_id, time_reg)
+            )
+            return True
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при работе со статусом: {e}")
+            return False
             raise

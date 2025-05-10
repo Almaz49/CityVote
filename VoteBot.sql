@@ -146,5 +146,6 @@ CREATE TABLE TgChats (
 	`channel_type` TEXT,
     `invite_link` TEXT,
 	`available`    TEXT,
+	`info_level`   TEXT,
 	UNIQUE (`club_id`, `tg_id`)
 );

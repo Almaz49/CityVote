@@ -14,6 +14,7 @@ from utils import log_handler_call
 from services.services import send_notification_to_user
 from keyboards.keyboards import *
 from config_data.config import Config, load_config
+from manager.manager import *
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -422,13 +423,14 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
 
         voting_id = int(callback.data.split(':')[1])
         member_id = data['member_id']
+        club_id = data['club_id']
 
-        result = await voting_start(voting_id,starter=member_id)
+        result = await voting_manager(voting_id, club_id=club_id, admin=member_id, stage_type='start')
 
 
 
         if result:
-            flag, text = result
+            text = result.get('message')
             logger.info(text)
         else:
             text = 'Что-то пошло не так при запуске голосования'
@@ -467,7 +469,7 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
 @log_handler_call
 async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
     """
-    Обработчик выбора конкретного голосования.
+    Обработчик нажатия кнопки старта промежуточного этапа голосования.
     """
     try:
         logger.info(f"Пользователь {callback.from_user.id} запускает промежуточный этап голосования: {callback.data}")
@@ -477,12 +479,12 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
         member_id = data['member_id']
         club_id = data['club_id']
 
-        result = await voting_stage(voting_id, club_id=club_id, stager=member_id)
+        result = await voting_manager(voting_id, club_id=club_id, admin=member_id, stage_type='stage')
 
 
 
         if result:
-            flag, text = result
+            text = result.get("message")
             logger.info(text)
         else:
             text = 'Что-то пошло не так при подведении промежуточного итога голосования'
@@ -530,13 +532,13 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
         member_id = data['member_id']
         club_id = data['club_id']
 
-        result = await voting_final(voting_id, finaler=member_id)
+        result = await voting_manager(voting_id, club_id=club_id, admin=member_id, stage_type='final')
 
 
 
         if result:
-            flag, text,winners,losers = result
-            logger.info(text)
+            text = result.get('message')
+            logger.info(f'Сообщение о результате перехода в финал: {text}')
         else:
             text = 'Что-то пошло не так при подведении промежуточного итога голосования'
             logger.info(text+f':{voting_id}')
@@ -583,10 +585,10 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
         member_id = data['member_id']
         club_id = data['club_id']
 
-        result = await voting_complete(voting_id, finisher=member_id)
+        result = await voting_manager(voting_id, club_id=club_id, admin=member_id, stage_type='complete')
         if result:
-            text = result[0]
-            logger.info(text)
+            text = result.get('message')
+            logger.info(f'Сообщение о завершении голосования: {text}')
         else:
             text = 'Что-то пошло не так при завершении голосования'
             logger.info(text+f':{voting_id}')

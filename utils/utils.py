@@ -68,7 +68,7 @@ def log_handler_call(func):
 
 def check_fsm_data(func):
     """
-    Универсальный декоратор проверяет, есть ли FSM data и для Mtssage и для Callback,
+    Универсальный декоратор проверяет, есть ли FSM data и для Message и для Callback,
     если нет - отправляет сообщение, что сессия устарела
     """
     @wraps(func)
@@ -117,3 +117,29 @@ def check_fsm_data_message(func):
             return
         return await func(message, state, *args, **kwargs)
     return wrapper
+
+
+async def fetch_as_dict(cursor):
+    """
+    Преобразует результат запроса из списка кортежей в список словарей.
+    :param cursor: объект курсора после выполнения запроса
+    :return: список словарей
+    """
+    # Получаем названия столбцов из cursor.description
+    columns = [column[0] for column in cursor.description]
+    # Получаем все строки результата
+    rows = await cursor.fetchall()
+    # Возвращаем список словарей
+    return [dict(zip(columns, row)) for row in rows]
+
+# Пример использования:
+#     async with AsyncDatabase(path_db) as cursor:
+#         try:
+#             await cursor.execute(query, params)
+#             # Преобразуем результат в список словарей
+#             result = await fetch_as_dict(cursor)
+#             logger.info("Запрос успешно выполнен.")
+#             return result
+#         except aiosqlite.Error as e:
+#             logger.error(f"Ошибка при выполнении запроса: {e}")
+#             raise

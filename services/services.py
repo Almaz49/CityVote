@@ -102,19 +102,19 @@ async def send_notification_to_chat_or_channel(
     try:
         #Излекаем имя бота
         bot_username = await get_bot_username()
-        # Создаем inline-клавиатуру, если указаны текст и callback_data кнопки
-        reply_markup = None
-        if inline_button_text and inline_button_callback_data:
-            reply_markup = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        InlineKeyboardButton(
-                            text=inline_button_text,
-                            url=f"https://t.me/{bot_username}?start={inline_button_callback_data}"
-                        )
-                    ]
+        # Создаем inline-клавиатуру
+        reply_markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text=inline_button_text,
+                        url=f"https://t.me/{bot_username}?start={inline_button_callback_data or 'start'}"
+                    )
                 ]
-            )
+            ]
+        )
+
+        logger.debug(f'Ссылка для кнопки в канале:{f"https://t.me/ {bot_username}?start={inline_button_callback_data or 'start'}"}')
 
 # Хорошо бы еще добавить к message_text автора, если он есть
 
@@ -408,11 +408,11 @@ async def leave_club (member_id, status):
 async def greetings_message(club_id:int):
     result = await extract_club_info(club_id)
     if result:
-        name, description,father_group, tg_bot, channel_link, conditions_of_entry = result
-        response = f"<b>👋 Привет! Я — бот для голосований группы {name}.</b>" + LEXICON.get('greetings',
+        # name, description,father_group, tg_bot, channel_link, conditions_of_entry = result
+        response = f"<b>👋 Привет! Я — бот для голосований группы {result.get('name')}.</b>" + LEXICON.get('greetings',
         'Пройдите регистрацию, чтобы воспользоваться всеми моими возможностями')
-        if channel_link:
-            response = response + f"<a href='{channel_link}'>[Подпишитесь на наш канал, чтобы быть в курсе всех событий:]</a>"
+        if result.get('channel_link'):
+            response = response + f"<a href='{result.get('channel_link')}'>[Подпишитесь на наш канал, чтобы быть в курсе всех событий:]</a>"
         logger.debug('Текст приветствия успешно составлен')
     else:
         response = 'Привет! Произошла ошибка, информация о группе не найдена, сообщите об этом администрациии'

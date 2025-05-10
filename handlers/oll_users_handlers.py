@@ -397,7 +397,8 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         variants = await list_of_variants(voting_id)
         voting_info = await extract_voting_info(voting_id)
         if voting_info:
-            voting_status, voting_title = voting_info
+            voting_status = voting_info.get('voting_status')
+            voting_title = voting_info.get('title')
         else:
             voting_status = None
             voting_title = None
