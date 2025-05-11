@@ -13,6 +13,7 @@ from keyboards.keyboards import user_menu, remove_markup, create_inline_kb, conf
 from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned, leave_club, greetings_message, help_message
 from config_data.config import Config, load_config
 import logging
+import traceback
 from utils import log_handler_call
 from LEXICON.LEXICON import LEXICON
 from FSMs.FSMs import FSM_become_proxy, FSM_leave_club
@@ -444,17 +445,17 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
                 dir_votes = await count_directly_votes(variant_id)  # решающие голоса, поданные за вариант напрямую
                 proxy_votes = await count_proxy_votes(variant_id)   # решающие голоса, поданные через представителя
                 empty_votes = await count_directly_empty_votes(variant_id)  # нерешающие голоса
-                if variant_id in choise:
-                    choise_mark = '***ВАШ ВЫБОР***\n'
-                else:
-                    choise_mark = ''
+                choise_mark = ''
+                if choise:
+                    if variant_id in choise:
+                        choise_mark = '***ВАШ ВЫБОР***\n'
 
                 # Экранируем специальные символы в тексте
                 escaped_title = html.quote(title)
                 escaped_text_var = html.quote(text_var)
 
                 # Если это идущее голосование, а пользователь - участник группы, добавляем кнопку проголосовать за вариант
-                if voting_status == 'ongoing' and 'member' in data['user_status'] and variant_status == 'valid':
+                if voting_status in ['ongoing', 'confirmation'] and 'member' in data['user_status'] and variant_status == 'valid':
                     keyboard = {f'variant:{variant_id}': LEXICON.get('Vote for this variant', 'Vote for this variant')}
                     markup = create_inline_kb(1, **keyboard)
                 # Если это голосование в стадии добавления вариантов, а пользователь - админ, добавляем кнопку "удалить вариант"
@@ -523,7 +524,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         )
 
     except Exception as e:
-        logger.error(f"Ошибка при просмотре вариантов голосования: {e}")
+        logger.error(f"Ошибка при просмотре вариантов голосования: {e}\n{traceback.format_exc()}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'

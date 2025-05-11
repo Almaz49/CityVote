@@ -8,6 +8,7 @@ from data_base.db_func import *
 from utils import log_function_call, fetch_as_dict
 from LEXICON.LEXICON import LEXICON
 import logging
+import traceback
 
 
 # Настройка логирования
@@ -46,11 +47,37 @@ async def voting_create(club_id, creator, title, text=None, voting_type='usual',
                                 ' Придумайте другое название.')
                     flag = False
             except aiosqlite.Error as e:
-                logger.error(f"Ошибка при создании нового голосования: {e}")
+                logger.error(f"Ошибка при создании нового голосования: {e}\n{traceback.format_exc()}")
                 raise
     result = {'success':flag, 'message':answ_str}
     return result
 
+@log_function_call
+async def extract_voting_info(voting_id):
+    """
+    Извлекает информацию о голосовании по его ID.
+    :param voting_id: ID голосования.
+    :return: Информация группы в базе данных или None, если имя не найдено.
+    """
+    logger.info(f"Извлечение информации о голосовании для voting_id={voting_id}")
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(
+                '''
+                SELECT *
+                FROM Votings WHERE id = ?
+                ''', (voting_id,)
+            )
+            result = await fetch_as_dict(cursor)
+            if result:
+                logger.info(f"Найдена информация {result[0]} для voting_id={voting_id}")
+                return result[0]
+            else:
+                logger.info(f"Информация о группе voting_id={voting_id} не найдено.")
+                return None
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при извлечении информации о группе voting_id={voting_id}: {e}\n{traceback.format_exc()}")
+            raise
 
 # Создание варианта для голосования. Добавляется только в голосования
 # со статусом ожидания вариантов.
@@ -96,7 +123,7 @@ async def variant_create(voting_id, author, title, text=None, variant_status='va
                     answ_str = 'К этому голосованию нельзя добавить варианты.'
                     flag = False
             except aiosqlite.Error as e:
-                logger.error(f"Ошибка при добавлении нового варианта: {e}")
+                logger.error(f"Ошибка при добавлении нового варианта: {e}\n{traceback.format_exc()}")
                 raise
     return flag, answ_str
 
@@ -143,7 +170,7 @@ async def voting_start(voting_id, starter=None):
                 result = {'success':flag, 'message':response}
             return result
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при старте голосования: {e}")
+            logger.error(f"Ошибка при старте голосования: {e}\n{traceback.format_exc()}")
             raise
 
 
@@ -168,7 +195,7 @@ async def extract_voting_id(variant_id):
                 logger.info(f"Для variant_id={variant_id} не найдено голосования.")
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при получении ID голосования: {e}")
+            logger.error(f"Ошибка при получении ID голосования: {e}\n{traceback.format_exc()}")
             raise
 
 # Функция возвращает ID группы по ID голосования
@@ -190,7 +217,7 @@ async def extract_group_id(voting_id):
                 logger.info(f"Для voting_id={voting_id} не найдена группа.")
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при получении ID группы: {e}")
+            logger.error(f"Ошибка при получении ID группы: {e}\n{traceback.format_exc()}")
             raise
 
 # Функция выясняет, за какие варианты в данном голосовании голосовал (лично) пользователь
@@ -209,7 +236,7 @@ async def past_choise(member_id, voting_id):
             logger.info(f"Результат выборки для member_id={member_id}, voting_id={voting_id}: {result}")
             return result
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при проверке прошлых выборов: {e}")
+            logger.error(f"Ошибка при проверке прошлых выборов: {e}\n{traceback.format_exc()}")
             raise
 
 # Функция выясняет, за какие варианты в данном голосовании голосовал (лично) пользователь
@@ -232,7 +259,7 @@ async def variant_choise(member_id, voting_id):
             logger.info(f"Результат выборки вариантов для member_id={member_id}, voting_id={voting_id}: {result}")
             return choise
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при проверке прошлых выборов: {e}")
+            logger.error(f"Ошибка при проверке прошлых выборов: {e}\n{traceback.format_exc()}")
             raise
 
 # Функция подсчета числа членов группы, имеющих право голоса
@@ -255,7 +282,7 @@ async def count_votist(club_id):
                 logger.info(f"В группе {club_id} нет участников с правом голоса.")
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при подсчете количества участников с правом голоса: {e}")
+            logger.error(f"Ошибка при подсчете количества участников с правом голоса: {e}\n{traceback.format_exc()}")
             raise
 
 
@@ -290,7 +317,7 @@ async def count_directly_votes(variant_id):
                 logger.info(f"Для variant_id={variant_id} нет прямых голосов.")
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при подсчете прямых голосов: {e}")
+            logger.error(f"Ошибка при подсчете прямых голосов: {e}\n{traceback.format_exc()}")
             raise
 
 # Функция подсчета голосов, отданых за вариант лично теми, кто не имеет право голоса
@@ -313,7 +340,7 @@ async def count_directly_empty_votes(variant_id):
                 logger.info(f"Для variant_id={variant_id} нет прямых голосов без права голоса.")
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при подсчете прямых голосов без права голоса: {e}")
+            logger.error(f"Ошибка при подсчете прямых голосов без права голоса: {e}\n{traceback.format_exc()}")
             raise
 
 # Функция подсчета голосов, отданых за вариант через представителей
@@ -341,7 +368,7 @@ async def count_proxy_votes(variant_id):
                 logger.info(f"Для variant_id={variant_id} нет голосов через представителей.")
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при подсчете голосов через представителей: {e}")
+            logger.error(f"Ошибка при подсчете голосов через представителей: {e}\n{traceback.format_exc()}")
             raise
 
 # Функция выбора варианта при голосовании
@@ -362,7 +389,7 @@ async def election(member_id, variant_id):
                     answer = (False, 'Голосование ещё не началось')
                 elif voting_status == 'completed':
                     answer = (False, 'Голосование уже закончилось')
-                elif voting_status == 'ongoing':
+                elif voting_status in ['ongoing', 'confirmation']:
                     await cursor.execute('''
                         SELECT variant_status FROM Variants WHERE id = ?
                     ''', (variant_id,))
@@ -393,7 +420,7 @@ async def election(member_id, variant_id):
                 answer = (flag, str1)
             return answer
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при выборе варианта: {e}")
+            logger.error(f"Ошибка при выборе варианта: {e}\n{traceback.format_exc()}")
             raise
 
 # Функция перевода вариантов в статус "проигравший" (loser)
@@ -439,7 +466,7 @@ async def lose_variant(losers, voting_id=None, result=None, stager=None):
             flag = True
 
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при записи проигравшего варианта: {e}")
+            logger.error(f"Ошибка при записи проигравшего варианта: {e}\n{traceback.format_exc()}")
             raise
 
 
@@ -496,7 +523,7 @@ async def win_variant(winner_id, voting_id=None, result=None, stager=None):
 
 
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при записи про промежуточного этапа голосования: {e}")
+            logger.error(f"Ошибка при записи про промежуточного этапа голосования: {e}\n{traceback.format_exc()}")
             raise
 
 
@@ -532,7 +559,7 @@ async def delete_variant(variant_id, admin=None):
 
 
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при записи про промежуточного этапа голосования: {e}")
+            logger.error(f"Ошибка при записи про промежуточного этапа голосования: {e}\n{traceback.format_exc()}")
             raise
 
 # Функция завершения промежуточного этапа голосования. Переводит в статус "loser" наименее популярные варианты.
@@ -638,7 +665,7 @@ async def voting_stage(voting_id, club_id=None, stager=None):
 
 
             except aiosqlite.Error as e:
-                logger.error(f"Ошибка при завершении промежуточного этапа голосования: {e}")
+                logger.error(f"Ошибка при завершении промежуточного этапа голосования: {e}\n{traceback.format_exc()}")
                 flag = False
                 text = "Ошибка при завершении промежуточного этапа голосования: {e}"
                 raise
@@ -709,7 +736,7 @@ async def voting_final(voting_id, finaler=None):
 
 
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при создании финального этапа голосования: {e}")
+            logger.error(f"Ошибка при создании финального этапа голосования: {e}\n{traceback.format_exc()}")
             flag = False
             text = "Ошибка при создании финального этапа голосования: {e}"
             raise
@@ -727,11 +754,20 @@ async def voting_complete(voting_id, finisher=None):
     time_finish = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(voting_id, 'valid')
     club_id = await extract_group_id(voting_id)
+    voting_info = await extract_voting_info(voting_id)
     s_votist = await count_votist(club_id)
 
     if not variants:
         logger.info(f"Для voting_id={voting_id} нет действительных вариантов.")
-        return 'У голосования нет действительных вариантов', None, None, None
+        return {
+        'success': False,
+        'message': 'У голосования нет действительных вариантов',
+        'winner_id': None,
+        'winner_title':None,
+        'winner_res':None
+        }
+
+
 
     res = {}
     for item in variants:
@@ -775,8 +811,9 @@ async def voting_complete(voting_id, finisher=None):
 # Записываем в журнал регистрации
 # !!!!!!!!!!!!!!!!!!
 
-# Если вариант-победитель набрал менее половины действительных голосов, запускаем процедуру утверждения итогов голосования
-    if winner_res[0] * 2 < s_votist:
+# Если вариант-победитель набрал менее половины действительных голосов, запускаем процедуру утверждения итогов голосования/
+# Но не в случае, если статус голосования уже 'confirmation'. В этом случае голосвание завершается при любом результате
+    if (winner_res[0] * 2 < s_votist) and voting_info.get('voting_status') != 'confirmation':
         await confirmation_of_voting_results(voting_id, winner_id)
         text = f'''Победил вариант {winner_title}.\n
         Его результат:\n
@@ -789,7 +826,7 @@ async def voting_complete(voting_id, finisher=None):
     else:
         async with AsyncDatabase(path_db) as cursor:
             try:
-                await win_variant(winner_id, voting_id=voting_id, result=res, stager=finisher)
+                await win_variant(winner_id, voting_id=voting_id, result=res[winner_id], stager=finisher)
                 logger.info(f"Победивший вариант: {winner_id}, Проигравшие варианты: {losers}")
                 text = f'''Победил вариант {winner_title}.\n
                 Его результат:\n
@@ -801,7 +838,7 @@ async def voting_complete(voting_id, finisher=None):
                 success = True
 
             except aiosqlite.Error as e:
-                logger.error(f"Ошибка при завершении голосования: {e}")
+                logger.error(f"Ошибка при завершении голосования: {e}\n{traceback.format_exc()}")
                 success = False
                 raise
     return {
@@ -837,7 +874,7 @@ async def confirmation_of_voting_results(voting_id, winner_id):
 # Записываем в журнал регистрации
 # !!!!!!!!!!!!!!!!!!
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при запуске утверждения итогов голосования: {e}")
+            logger.error(f"Ошибка при запуске утверждения итогов голосования: {e}\n{traceback.format_exc()}")
             raise
 
 
@@ -913,7 +950,7 @@ async def confirmation_of_voting_results_stop(voting_id, finisher=None):
         success = True
 
     except aiosqlite.Error as e:
-        logger.error(f"Ошибка при завершении голосования: {e}")
+        logger.error(f"Ошибка при завершении голосования: {e}\n{traceback.format_exc()}")
         success = False
         raise
 
@@ -946,7 +983,7 @@ async def extract_voting_status(voting_id):
                 logger.info(f"Для voting_id={voting_id} не найдено статуса.")
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при получении статуса голосования: {e}")
+            logger.error(f"Ошибка при получении статуса голосования: {e}\n{traceback.format_exc()}")
             raise
 
 # Функция возвращает статус и название голосования по его ID
@@ -965,7 +1002,7 @@ async def extract_voting_info(voting_id):
             else:
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при получении статуса голосования: {e}")
+            logger.error(f"Ошибка при получении статуса голосования: {e}\n{traceback.format_exc()}")
             raise
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

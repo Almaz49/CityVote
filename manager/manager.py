@@ -99,6 +99,47 @@ async def voting_manager(voting_id, club_id=None, admin=None, stage_type='stage'
     :param admin: ID админа в таблице Members
     :param stage_type: тип этапа ("start", "stage", "final", "confirm", "complete")
     """
+    if not club_id:
+        club_id = extract_group_id(voting_id)
+
+    club_info = await extract_club_info(club_id)
+    if not club_info:
+        return {
+            'success':False,
+            'message':"Не найдена информация о группе"
+            }
+    club_name = club_info.get('name')
+
+    voting_info = await extract_voting_info(voting_id)
+    if not voting_info:
+        return {
+            'success':False,
+            'message':"Не найдена информация о голосовании"
+            }
+    title = voting_info.get('title')
+    voting_status = voting_info.get('voting_status')
+    # variants = await list_of_variants(voting_id, 'valid')
+
+    # Составляем словарь допустимых действий в зависимости от статуса голосования
+    accept = {
+        'add_variants':['start'],
+        'ongoing':['stage','final','complete'],
+        'confirmation':['complete']
+    }
+
+    flag = False
+    if voting_status in accept:
+        if stage_type in accept[voting_status]:
+            flag = True
+
+    if not flag:
+        return {
+            'success':False,
+            'message':"Недопустимое действие. Наверно, кнопка устарела. Обновите меню или обратитесь к администрации"
+            }
+
+
+
 
     # Запускаем этап в зависимости от типа
     if stage_type == 'stage':
@@ -124,24 +165,7 @@ async def voting_manager(voting_id, club_id=None, admin=None, stage_type='stage'
             'message':result.get('message','Этап голосования не дал результата')
             }
 
-    if not club_id:
-        club_id = extract_group_id(voting_id)
 
-    club_info = await extract_club_info(club_id)
-    if not club_info:
-        return {
-            'success':False,
-            'message':"Не найдена информация о группе"
-            }
-    club_name = club_info.get('name')
-
-    voting_info = await extract_voting_info(voting_id)
-    if not voting_info:
-        return {
-            'success':False,
-            'message':"Не найдена информация о голосовании"
-            }
-    title = voting_info.get('title')
 
     keyboard = {f'show_oll_variants:{voting_id}':'Голосовать'}
     markup = create_inline_kb(1,**keyboard)
