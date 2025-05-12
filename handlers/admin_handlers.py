@@ -7,6 +7,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+import traceback
 from filters.filters import StatusFilter
 from FSMs.FSMs import FSMNewRegistrator, FSMNewVoting, FSMNewStatus
 from data_base.telegram_bot_logic import *

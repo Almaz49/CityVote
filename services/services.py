@@ -40,7 +40,7 @@ async def get_bot_username():
 @log_function_call
 async def send_notification_to_user(tg_id: int, message_text: str, reply_markup = main_menu_markup):
     is_available = await is_user_available(tg_id)
-    logger.debug(f"Пользователь {tg_id} доступен: {is_available}")
+    # logger.debug(f"Пользователь {tg_id} доступен: {is_available}")
     if is_available:
         try:
             # Попытка отправить сообщение

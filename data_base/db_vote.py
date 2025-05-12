@@ -459,7 +459,7 @@ async def lose_variant(losers, voting_id=None, result=None, stager=None):
                 # Присваиваем голосам, отданным за проигравшиq вариант статус lose
                 await cursor.execute(
                     '''
-                    UPDATE Elections SET status = 'lose' WHERE variant_id = ?
+                    UPDATE Elections SET status = 'lose' WHERE variant_id = ? AND status = 'valid'
                     ''', (item,)
                 )
             logger.info(f"Проигравшие варианты {losers} записаны в БД")
@@ -499,7 +499,7 @@ async def win_variant(winner_id, voting_id=None, result=None, stager=None):
             # Присваиваем голосам, отданным за победивший вариант статус win
             await cursor.execute(
                 '''
-                UPDATE Elections SET status = 'win' WHERE variant_id = ?
+                UPDATE Elections SET status = 'win' WHERE variant_id = ? AND status = 'valid'
                 ''', (winner_id,)
             )
             #Присваиваем статус голосованию "Завершенное" и указываем вариант-победитель.
@@ -824,23 +824,22 @@ async def voting_complete(voting_id, finisher=None):
         Запущена процедура утверждения итогов голосования.'''
         success = True
     else:
-        async with AsyncDatabase(path_db) as cursor:
-            try:
-                await win_variant(winner_id, voting_id=voting_id, result=res[winner_id], stager=finisher)
-                logger.info(f"Победивший вариант: {winner_id}, Проигравшие варианты: {losers}")
-                text = f'''Победил вариант {winner_title}.\n
-                Его результат:\n
-                Всего голосов "за": {winner_res[0]}\n
-                Из них отдано напрямую: {winner_res[1]}\n
-                Отдано недействительных голосов: {winner_res[2]}\n
-                Oн набрал более 50% действительных голосов.\n
-                Голосование завершено.'''
-                success = True
+        try:
+            await win_variant(winner_id, voting_id=voting_id, result=res[winner_id], stager=finisher)
+            logger.info(f"Победивший вариант: {winner_id}, Проигравшие варианты: {losers}")
+            text = f'''Победил вариант {winner_title}.\n
+            Его результат:\n
+            Всего голосов "за": {winner_res[0]}\n
+            Из них отдано напрямую: {winner_res[1]}\n
+            Отдано недействительных голосов: {winner_res[2]}\n
+            {'Oн набрал более 50% действительных голосов.' if (winner_res[0] * 2 < s_votist) else 'Oн набрал менее 50% действительных голосов.'}\n
+            Голосование завершено.'''
+            success = True
 
-            except aiosqlite.Error as e:
-                logger.error(f"Ошибка при завершении голосования: {e}\n{traceback.format_exc()}")
-                success = False
-                raise
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при завершении голосования: {e}\n{traceback.format_exc()}")
+            success = False
+            raise
     return {
         'success': success,
         'message': text,

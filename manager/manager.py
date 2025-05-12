@@ -70,7 +70,8 @@ async def voting_create_manager(club_id, creator, title, text=None, voting_type=
         if item[6] in level_info_dict.get('create'):
             response = await send_notification_to_user(item[2],notify_text)
             if response:
-                logger.debug(f'{response}')
+                # logger.debug(f'{response}')
+                pass
 
     logger.info("Рассылка пользователям произведена")
 
@@ -203,7 +204,8 @@ async def voting_manager(voting_id, club_id=None, admin=None, stage_type='stage'
         if item[6] in level_info_dict.get(stage_type):
             response = await send_notification_to_user(item[2],notify_text, reply_markup=markup)
             if response:
-                logger.debug(f'{response}')
+                pass
+                # logger.debug(f'{response}')
 
     logger.info("Рассылка пользователям произведена")
 

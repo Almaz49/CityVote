@@ -53,6 +53,12 @@ async def process_start_command(message: Message, data: dict):
         logger.info(f"Пользователь {message.from_user.id} начал работу с ботом.")
     except Exception as e:
         logger.error(f"Ошибка при обработке команды /start: {e}")
+        error_info = traceback.extract_tb(e.__traceback__)
+        for frame in error_info:
+            logger.error(
+                f"Ошибка произошла в файле: {frame.filename}, строка: {frame.lineno}, "
+                f"функция: {frame.name}, код: {frame.line}"
+            )
         await message.answer(text="Произошла ошибка при загрузке главного меню.",
                              reply_markup=await user_menu(status=data['user_status']))
 
@@ -98,6 +104,12 @@ async def process_start_command(message: Message, command: CommandObject, data: 
 
     except Exception as e:
         logger.error(f"Ошибка при обработке команды /start: {e}")
+        error_info = traceback.extract_tb(e.__traceback__)
+        for frame in error_info:
+            logger.error(
+                f"Ошибка произошла в файле: {frame.filename}, строка: {frame.lineno}, "
+                f"функция: {frame.name}, код: {frame.line}"
+            )
         await message.answer(
             text="Произошла ошибка при загрузке главного меню.",
             reply_markup=await user_menu(status=data['user_status'])
@@ -366,7 +378,12 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
 
     except Exception as e:
         logger.error(f"Ошибка при обработке списка голосований ({callback.data}): {e}")
-
+        error_info = traceback.extract_tb(e.__traceback__)
+        for frame in error_info:
+            logger.error(
+                f"Ошибка произошла в файле: {frame.filename}, строка: {frame.lineno}, "
+                f"функция: {frame.name}, код: {frame.line}"
+            )
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка голосований.'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
@@ -432,7 +449,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
                 variants_with_votes.append((variant_id, title, variant_status, text_var, total_votes))
 
             # Разделяем варианты на действительные и проигравшие
-            valid_variants = [v for v in variants_with_votes if v[2] == 'valid']
+            valid_variants = [v for v in variants_with_votes if v[2] in ['valid', 'win']]
             loser_variants = [v for v in variants_with_votes if v[2] == 'loser']
 
             # Сортируем варианты по убыванию total_votes
@@ -525,7 +542,12 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
 
     except Exception as e:
         logger.error(f"Ошибка при просмотре вариантов голосования: {e}\n{traceback.format_exc()}")
-
+        error_info = traceback.extract_tb(e.__traceback__)
+        for frame in error_info:
+            logger.error(
+                f"Ошибка произошла в файле: {frame.filename}, строка: {frame.lineno}, "
+                f"функция: {frame.name}, код: {frame.line}"
+            )
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
@@ -705,7 +727,12 @@ async def process_leave_the_group(callback: CallbackQuery, state: FSMContext, da
 
     except Exception as e:
         logger.error(f"Ошибка при обработке кнопки 'list_of_votes': {e}")
-
+        error_info = traceback.extract_tb(e.__traceback__)
+        for frame in error_info:
+            logger.error(
+                f"Ошибка произошла в файле: {frame.filename}, строка: {frame.lineno}, "
+                f"функция: {frame.name}, код: {frame.line}"
+            )
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка голосований.'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
@@ -750,7 +777,12 @@ async def process_leave_club_entry(callback: CallbackQuery, state: FSMContext, d
 
     except Exception as e:
         logger.error(f"Ошибка при записи username: {e}")
-
+        error_info = traceback.extract_tb(e.__traceback__)
+        for frame in error_info:
+            logger.error(
+                f"Ошибка произошла в файле: {frame.filename}, строка: {frame.lineno}, "
+                f"функция: {frame.name}, код: {frame.line}"
+            )
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = f'Произошла ошибка: {str(e)}'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
