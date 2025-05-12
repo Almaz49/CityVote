@@ -319,6 +319,7 @@ async def recording_user_data_1(tg_id: int, member_id: int, tg_phone_number = No
             logger.info(f"Данные пользователя {tg_id} записаны в базу данных.")
         except Exception as e:
             logger.error(f"Ошибка при записи данных пользователя {tg_id}: {e}")
+            raise
 
 # Функция записи данных о пользователе в таблицу Users
 @log_function_call
@@ -334,6 +335,7 @@ async def recording_user_data(tg_id: int, **data):
         logger.info(f"Данные пользователя {tg_id} записаны в базу данных.")
     except Exception as e:
         logger.error(f"Ошибка при записи данных пользователя {tg_id}: {e}")
+        raise
 
 
 
@@ -351,3 +353,4 @@ async def recording_member_data(member_id: int, **data):
         logger.info(f"Данные пользователя {member_id} записаны в базу данных.")
     except Exception as e:
         logger.error(f"Ошибка при записи данных пользователя {member_id}: {e}")
+        raise
