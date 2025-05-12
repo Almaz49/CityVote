@@ -414,6 +414,8 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         voting_id = int(callback.data.split(':')[1])
         variants = await list_of_variants(voting_id)
         voting_info = await extract_voting_info(voting_id)
+        s_votist = await count_votist(data['club_id'])
+
         if voting_info:
             voting_status = voting_info.get('voting_status')
             voting_title = voting_info.get('title')
@@ -449,7 +451,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
                 variants_with_votes.append((variant_id, title, variant_status, text_var, total_votes))
 
             # Разделяем варианты на действительные и проигравшие
-            valid_variants = [v for v in variants_with_votes if v[2] in ['valid', 'win']]
+            valid_variants = [v for v in variants_with_votes if v[2] in ['valid', 'winner']]
             loser_variants = [v for v in variants_with_votes if v[2] == 'loser']
 
             # Сортируем варианты по убыванию total_votes
@@ -498,7 +500,8 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
                     parse_mode="HTML"
                 )
 
-            text = 'Выберите дальнейшее действие'
+            text = (f'Всего действительных голосов в группе: {s_votist}\n'
+            'Выберите дальнейшее действие')
 
         else:
             text = 'В настоящее время нет доступных вариантов.'

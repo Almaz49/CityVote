@@ -364,6 +364,13 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
 
         voting_id = int(callback.data.split(':')[1])
         voting_status = await extract_voting_status(voting_id)
+        variants = await list_of_variants(voting_id, 'valid')
+        if variants:
+            amount = len(variants)
+        else:
+            amount = 0
+        if amount == 2:
+            voting_status = 'final'
 
         dict_menu = {}
         if voting_status == 'add_variants':
@@ -375,6 +382,8 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
         elif voting_status == 'ongoing':
             dict_menu[f'voting_stage:{voting_id}'] = LEXICON.get('voting_stage', 'voting_stage')
             dict_menu[f'voting_final:{voting_id}'] = LEXICON.get('voting_final', 'voting_final')
+            dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+        elif voting_status == 'final':
             dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
         elif voting_status =='confirmation':
             dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
@@ -676,7 +685,7 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
 # Хэндлер для завершения утверждения голосования после нажатия соотвествующей кнопки в меню администратора
 @router.callback_query(F.data.regexp(r'^confirmation_of_voting_results_stop:\d+$'))
 @log_handler_call
-async def confirmation_of_voting_results_stop_cb(callback: CallbackQuery, data: dict):
+async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
     """
     Обработчик выбора конкретного голосования.
     """
