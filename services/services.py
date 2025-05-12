@@ -114,7 +114,7 @@ async def send_notification_to_chat_or_channel(
             ]
         )
 
-        logger.debug(f'Ссылка для кнопки в канале:{f"https://t.me/ {bot_username}?start={inline_button_callback_data or 'start'}"}')
+        logger.debug(f"Ссылка для кнопки в канале:{f'https://t.me/{bot_username}?start={inline_button_callback_data or 'start'}'}")
 
 # Хорошо бы еще добавить к message_text автора, если он есть
 
