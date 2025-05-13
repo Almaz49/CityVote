@@ -3,7 +3,7 @@
 import logging
 
 def setup_logger(
-    debug_log_path = 'debug.log',
+    debug_log_path='debug.log',
     info_log_path='info.log',
     warning_log_path='warning.log',
     console_level=logging.DEBUG,
@@ -17,9 +17,9 @@ def setup_logger(
     :param file_encoding: Кодировка файлов
     :return: logger объект
     """
-    # Создаем logger
-    logger = logging.getLogger('my_logger')
-    logger.setLevel(logging.DEBUG)
+    # Настройка корневого логгера
+    root_logger = logging.getLogger()  # Корневой логгер
+    root_logger.setLevel(logging.DEBUG)
 
     # Handler для записи DEBUG и выше в файл debug.log
     info_handler = logging.FileHandler(debug_log_path, encoding=file_encoding)
@@ -41,9 +41,9 @@ def setup_logger(
     console_handler.setLevel(console_level)
     console_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'))
 
-    # Добавляем handlers к logger
-    logger.addHandler(info_handler)
-    logger.addHandler(warning_handler)
-    logger.addHandler(console_handler)
+    # Добавляем handlers к корневому логгеру
+    root_logger.addHandler(info_handler)
+    root_logger.addHandler(warning_handler)
+    root_logger.addHandler(console_handler)
 
-    return logger
+    return root_logger
