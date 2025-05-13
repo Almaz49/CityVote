@@ -3,6 +3,7 @@
 import logging
 
 def setup_logger(
+    debug_log_path = 'debug.log',
     info_log_path='info.log',
     warning_log_path='warning.log',
     console_level=logging.DEBUG,
@@ -19,6 +20,11 @@ def setup_logger(
     # Создаем logger
     logger = logging.getLogger('my_logger')
     logger.setLevel(logging.DEBUG)
+
+    # Handler для записи DEBUG и выше в файл debug.log
+    info_handler = logging.FileHandler(debug_log_path, encoding=file_encoding)
+    info_handler.setLevel(logging.DEBUG)
+    info_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'))
 
     # Handler для записи INFO и выше в файл info.log
     info_handler = logging.FileHandler(info_log_path, encoding=file_encoding)
