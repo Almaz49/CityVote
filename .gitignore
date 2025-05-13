@@ -18,4 +18,4 @@ bot_error.log
 *logs.txt
 bot*.py
 .env_*
-db_migration.log
+*.log

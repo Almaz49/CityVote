@@ -30,8 +30,8 @@ bot = Bot(token=config.tg_bot.token)
 router = Router()
 
 # -------------------------------------------
-# Хэндлеры самой упрощенной регистрации участника
-# Не запрашивается даже контакт.
+#  Хэндлеры упрощенной регистрации участника
+#  Но с просьбой прислать телеграм-контакт
 # -------------------------------------------
 
 # Хэндлер для кнопки 'registration'
@@ -97,34 +97,80 @@ async def process_resume_sent(message: Message, state: FSMContext):
     # Сохраняем введенное имя в контексте состояния
     await state.update_data(resume=message.text)
 
-    # Создаем инлайн-кнопки для выбора регистратора
-    registrators = await list_of_members_tg('registrator')
-    buttons: list[list[InlineKeyboardButton]] = []
-    for item in registrators:
-        name = item[0] if item[0] else item[3] if item[3] else item[5]
-        last_name = item[1] if item [1] else item[4] if item[4] else ''
-        tg_id = item[2]
+    await message.answer(
+        text=('Отправьте ваш контакт(телефон). Для этого нажмите кнопку в самом низу (на ней надпись "Поделиться контактом").\n' \
+        'Не вводите свой номер телефона в текстовое поле!\n\n'
+              'Нажимая кнопку "Поделиться контактом", вы даете оператору данного чат-бота на сбор и обработку персональных данных.'
+        'Если согласны - нажмите кнопку в самом низу экрана'
+        'Если хотите прервать процесс регистрации - наберите или нажмите /cancel'
+        'Вы можете обратитьтся к администрации группы напрямую'
+             ),
+        reply_markup=contact_markup
+    )
+
+
+    # Устанавливаем состояние ожидания отправки контакта
+    await state.set_state(FSM_short_registration.fill_contact)
+
+# Этот хэндлер срабатывает на кнопку "Прислать контакт".
+@router.message(F.contact, StateFilter(FSM_short_registration.fill_contact))
+@log_handler_call
+async def process_get_contact_short(message: Message, state: FSMContext):
+    # Удаляем сообщение с кнопками, потому что следующий этап - отправка контакта
+    # чтобы у пользователя не было желания тыкать кнопки
+    await message.answer(
+        "Спасибо за контакт!",
+        reply_markup=remove_markup  # Удаляем клавиатуру с кнопкой "Отправить контакт"
+    )
+    try:
+        contact: Contact = message.contact
+        print('Контакт: ', contact)
+        logger.info(f"Контакт получен от пользователя {message.from_user.id}: {contact}")
+        tg_true = (message.contact.user_id == message.from_user.id)  # проверяем, действительно ли юзер прислал свой контакт - или чужой
+
+
+        # Добавляем в FSM дату контакт и сведения об его достоверности
+        # Сохраняем данные контакта в контексте состояния
+        await state.update_data(
+            tg_phone_number=contact.phone_number,
+            tg_first_name=contact.first_name,
+            tg_last_name=contact.last_name,
+            contact_true=tg_true  # флаг 0 в БД будет означать что перед нами хакер
+        )
+
+
+        await message.delete()
+
+        # Создаем инлайн-кнопки для выбора регистратора
+        registrators = await list_of_members_tg('registrator')
+        buttons: list[list[InlineKeyboardButton]] = []
+        for item in registrators:
+            name = item[0] if item[0] else item[3] if item[3] else item[5]
+            last_name = item[1] if item [1] else item[4] if item[4] else ''
+            tg_id = item[2]
+            buttons.append([InlineKeyboardButton(
+                text=f'{name} {last_name}',
+                callback_data=str(tg_id)
+            )])
+
         buttons.append([InlineKeyboardButton(
-            text=f'{name} {last_name}',
-            callback_data=str(tg_id)
+            text='Никого из регистраторов не знаю',
+            callback_data='stranger'
         )])
 
-    buttons.append([InlineKeyboardButton(
-        text='Никого из регистраторов не знаю',
-        callback_data='stranger'
-    )])
+        markup = InlineKeyboardMarkup(inline_keyboard=buttons)
 
-    markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+        # Отправляем пользователю клавиатуру для выбора регистратора
+        await message.answer(
+            text="Спасибо!\nВыберите регистратора, которого знаете,\nчтобы он смог подтвердить вашу личность\nЕсли никого не знаете,\nНажмите кнопку 'Никого не знаю'",
+            reply_markup=markup  # клавиатура подтверждения
+        )
+        # Устанавливаем состояние ожидания выбора регистратора
+        await state.set_state(FSM_short_registration.fill_registrator)
 
-    # Отправляем пользователю клавиатуру для выбора регистратора
-    await message.answer(
-        text="Спасибо!\nВыберите регистратора, которого знаете,\nчтобы он смог подтвердить вашу личность\nЕсли никого не знаете,\nНажмите кнопку 'Никого не знаю'",
-        reply_markup=markup  # клавиатура подтверждения
-    )
-    # Устанавливаем состояние ожидания выбора регистратора
-    await state.set_state(FSM_short_registration.fill_registrator)
-
-
+    except Exception as e:
+        logger.error(f"Ошибка при обработке получения контакта: {e}")
+        await message.answer(text=f'Произошла ошибка: {str(e)}')
 
 
 # Этот хэндлер срабатывает на всё, что пришлют вместо контакта в состоянии ожидания контакта

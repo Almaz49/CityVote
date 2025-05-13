@@ -62,6 +62,11 @@ CREATE TABLE IF NOT EXISTS `Clubs` (
 	`tg_bot` TEXT,
 	`channel_link`        TEXT,
     `conditions_of_entry` TEXT,
+    `questions_for_the_candidate` TEXT,
+    `duration_add_variants`       INTEGER DEFAULT (2),
+    `duration_first_stage`        INTEGER DEFAULT (2),
+    `duration_final`              INTEGER DEFAULT (1),
+    `duration_confirmation`       INTEGER DEFAULT (1),
 FOREIGN KEY(`father_group`) REFERENCES `Clubs`(`id`)
 );
 CREATE TABLE IF NOT EXISTS `Members` (

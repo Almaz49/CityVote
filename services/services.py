@@ -395,15 +395,7 @@ async def votist_because_proxy_returned(proxy:int):
                     logger.error(f"Ошибка при лишении статуса голосующего: {e}")
                     raise
 
-# Функция выхода из группы. Передается id участника.
-# Производится вызыв функии member_leave_club
-# Если участник был представителем вызывается функция not_votist_because_proxy_quit
-@log_function_call
-async def leave_club (member_id, status):
-    logger.info(f"Выход из группы member_id={member_id}")
-    await member_leave_club(member_id,status)
-    if 'proxy' in status:
-        await not_votist_because_proxy_quit(member_id)
+
 
 # Функция создания приветственного обращения. Использует информацию о группе
 @log_function_call

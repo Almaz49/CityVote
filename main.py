@@ -10,6 +10,7 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.methods import GetChatMember
 from aiogram.fsm.storage.memory import MemoryStorage
 from config_data.config import Config, load_config
+from utils import setup_logger
 from middlewares import LoggingAndErrorHandlingMiddleware, SafeEditMiddleware, StatusMiddleware
 from handlers import (
     admin_handlers, candidate_handlers, member_handlers, delegate_handlers, owner_handlers,
@@ -42,19 +43,21 @@ dp['club_id'] = club_id
 
 
 
-# Настраиваем базовую конфигурацию логирования
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s',
-    handlers=[logging.StreamHandler()]
+# Настройка логгирования
+logger = setup_logger(
+    info_log_path='info.log',
+    warning_log_path='warning.log',
+    console_level=logging.DEBUG,
+    file_encoding='utf-8'
 )
-
-# Инициализируем логгер модуля
-logger = logging.getLogger(__name__)
 
 # Тестовое сообщение
 logger.info("Логгирование настроено в main.py")
-
+# Пример использования
+logger.debug("Это debug-сообщение")  # Не будет выведено в консоль
+logger.info("Это info-сообщение")
+logger.warning("Это warning-сообщение")
+logger.error("Это error-сообщение")
 
 
 

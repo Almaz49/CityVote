@@ -492,6 +492,28 @@ async def update_club_conditions(club_id: int, new_conditions: str):
             return "Произошла ошибка при изменении условий участия."
 
 @log_function_call
+async def update_quenstios_for_the_candidate(club_id: int, new_questions: str):
+    """
+    Обновляет вопросы кандидатам в группе (conditions_of_entry) в таблице Clubs.
+    :param club_id: ID группы.
+    :param new_questions: Новые вопросы кандидатам.
+    :return: Сообщение об успешности или неудачности операции.
+    """
+    logger.info(f"Обновление условий участия для club_id={club_id}")
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(
+                '''
+                UPDATE Clubs SET quenstios_for_the_candidate = ? WHERE id = ?
+                ''', (new_questions, club_id)
+            )
+            logger.info(f"Вопросы для кандидатов успешно обновлены для club_id={club_id}")
+            return "Вопросы для кандидатов успешно изменены."
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при обновлении вопросов для кандидатов для club_id={club_id}: {e}")
+            return "Произошла ошибка при изменении вопросов для кандидатов."
+
+@log_function_call
 async def add_telegram_channel(club_id: int, tg_id: int, name: str, type: str, invite_link:str = None):
     """
     Добавляет телеграм-канал или чат в таблицу TgChats.

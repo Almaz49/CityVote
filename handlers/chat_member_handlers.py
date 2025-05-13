@@ -11,7 +11,6 @@ from aiogram.types import ChatMemberUpdated
 from aiogram.filters import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
 from data_base.data_base import *
 from keyboards.keyboards import user_menu, remove_markup, create_inline_kb, confirm_markup, return_to_main_menu_markup
-from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned, leave_club
 from config_data.config import Config, load_config
 import logging
 from utils import log_handler_call

@@ -8,7 +8,7 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from filters.filters import StatusFilter
 from LEXICON.LEXICON import LEXICON
 from FSMs.FSMs import FSM_become_proxy, FSM_appoint_deputy, FSM_leave_club, FSM_become_registrator
-from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned, leave_club
+from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned
 from keyboards.keyboards import (reg_markup, contact_markup, remove_markup, user_menu,
             create_inline_kb, confirm_markup, return_to_main_menu_markup)
 from config_data.config import Config, load_config
