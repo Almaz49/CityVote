@@ -5,12 +5,11 @@ import os
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
-    filename='db_migration.log',
     filemode='a',
     encoding='utf-8',  # Указываем кодировку UTF-8
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("db_migration.log"),  # Лог в файл
+        logging.FileHandler("db_migration.log", encoding='utf-8'),  # Лог в файл
         logging.StreamHandler()  # Лог в консоль
     ]
 )
