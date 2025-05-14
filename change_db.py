@@ -5,7 +5,6 @@ import os
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
-    filemode='a',
     encoding='utf-8',  # Указываем кодировку UTF-8
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
