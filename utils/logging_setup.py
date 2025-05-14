@@ -6,7 +6,7 @@ def setup_logger(
     debug_log_path='debug.log',
     info_log_path='info.log',
     warning_log_path='warning.log',
-    console_level=logging.DEBUG,
+    console_level=logging.DEBUG, #Здесь менять уровень вывода логов в консоль
     file_encoding='utf-8'
 ):
     """
@@ -22,9 +22,9 @@ def setup_logger(
     root_logger.setLevel(logging.DEBUG)
 
     # Handler для записи DEBUG и выше в файл debug.log
-    info_handler = logging.FileHandler(debug_log_path, encoding=file_encoding)
-    info_handler.setLevel(logging.DEBUG)
-    info_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'))
+    debug_handler = logging.FileHandler(debug_log_path, encoding=file_encoding)
+    debug_handler.setLevel(logging.DEBUG)
+    debug_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'))
 
     # Handler для записи INFO и выше в файл info.log
     info_handler = logging.FileHandler(info_log_path, encoding=file_encoding)
@@ -42,6 +42,8 @@ def setup_logger(
     console_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'))
 
     # Добавляем handlers к корневому логгеру
+    # При желании отключить тот или иной хэндлер логирования - заккоментить соответсвующую строку
+    root_logger.addHandler(debug_handler)
     root_logger.addHandler(info_handler)
     root_logger.addHandler(warning_handler)
     root_logger.addHandler(console_handler)

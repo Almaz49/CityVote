@@ -514,6 +514,33 @@ async def update_quenstios_for_the_candidate(club_id: int, new_questions: str):
             return "Произошла ошибка при изменении вопросов для кандидатов."
 
 @log_function_call
+async def update_stage_duration(club_id: int, duration_add_variants = 2,
+                                duration_first_stage = 2, duration_final = 1,
+                                duration_confirmation = 1):
+    """
+    Обновляет продолжительность этапов голосования (в сутках) в группе в таблице Clubs.
+    :param club_id: ID группы.
+    :param duration_add_variants: продолжительность этапа добавления вариантов
+    :param duration_first_st: продолжительность этапа голосования с несколькими вариантами
+    :param duration_final: продолжительность финала (этап с двумя вариантами)
+    :param duration_confirmation: продолжительность этапа утверждения итога голосования
+    :return: Сообщение об успешности или неудачности операции.
+    """
+    logger.info(f"Обновление условий участия для club_id={club_id}")
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(
+                '''
+                UPDATE Clubs SET duration_add_variants = ?, duration_first_stage = ?, duration_final = ?, duration_confirmation =? WHERE id = ?
+                ''', (duration_add_variants, duration_first_stage, duration_final, duration_confirmation, club_id)
+            )
+            logger.info(f"Продолжительность этапов успешно обновлена для club_id={club_id}")
+            return "Продолжительность этапов успешно изменена."
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при обновлении продолжительность этапов для club_id={club_id}: {e}")
+            return "Произошла ошибка при изменении продолжительности этапов."
+
+@log_function_call
 async def add_telegram_channel(club_id: int, tg_id: int, name: str, type: str, invite_link:str = None):
     """
     Добавляет телеграм-канал или чат в таблицу TgChats.
