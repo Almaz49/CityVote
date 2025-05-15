@@ -541,6 +541,35 @@ async def update_stage_duration(club_id: int, duration_add_variants = 2,
             return "Произошла ошибка при изменении продолжительности этапов."
 
 @log_function_call
+async def update_thresholds(club_id: int, threshold_in_voices: float = None, threshold_in_percent: float = None):
+    """
+    Обновляет пороги доверенных голосов для группы в таблице Clubs.
+    :param club_id: ID группы.
+    :param threshold_in_voices: Порог в абсолютных голосах (REAL).
+    :param threshold_in_percent: Порог в процентах от общего числа голосов (REAL).
+    :return: Сообщение об успешности или неудачности операции.
+    """
+    logger.info(f"Обновление порогов доверенных голосов для club_id={club_id}")
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            if threshold_in_voices is not None and threshold_in_percent is not None:
+                await cursor.execute(
+                    '''
+                    UPDATE Clubs
+                    SET threshold_in_voices = ?, threshold_in_percent = ?
+                    WHERE id = ?
+                    ''', (threshold_in_voices, threshold_in_percent, club_id)
+                )
+                logger.info(f"Пороги успешно обновлены для club_id={club_id}")
+                return "Пороги доверенных голосов успешно изменены."
+            else:
+                logger.error(f"Ошибка: Необходимо указать оба параметра для club_id={club_id}")
+                return "Произошла ошибка: Необходимо указать оба порога."
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при обновлении порогов для club_id={club_id}: {e}")
+            return "Произошла ошибка при изменении порогов."
+
+@log_function_call
 async def add_telegram_channel(club_id: int, tg_id: int, name: str, type: str, invite_link:str = None):
     """
     Добавляет телеграм-канал или чат в таблицу TgChats.

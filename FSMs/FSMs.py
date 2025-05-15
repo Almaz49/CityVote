@@ -142,3 +142,5 @@ class AdminStates(StatesGroup):
     adding_telegram_channel = State()
     removing_telegram_channel = State()
     setting_main_channel = State()
+    setting_stage_durations = State()  # Состояние для ввода продолжительности этапов
+    setting_thresholds = State()  # Новое состояние для установки порогов

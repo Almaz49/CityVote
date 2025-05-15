@@ -187,6 +187,14 @@ def get_admin_menu_keyboard():
     builder.button(text="Удалить канал", callback_data="remove_channel")
     builder.button(text="Установить основной канал", callback_data="set_main_channel")
     builder.button(
+    text=LEXICON.get("set_stage_durations", "Установить продолжительность этапов"),
+    callback_data="set_stage_durations"
+    )
+    builder.button(
+    text=LEXICON.get("set_threshold", "Установить порог для делегатов"),
+    callback_data="set_threshold"
+    )
+    builder.button(
         text=LEXICON.get('return_to_main_menu', 'Назад в главное меню'),
         callback_data='main_menu'
     )
@@ -201,7 +209,7 @@ def get_admin_menu_keyboard():
     # builder.row(back_button)
 
     # Настройка расположения кнопок (6 кнопок в 3 ряда по 2, 1 кнопка в последнем ряду)
-    builder.adjust(2, 2, 2, 1)
+    builder.adjust(2, 2, 2, 2, 1)
 
     return builder.as_markup()
 

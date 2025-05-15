@@ -522,3 +522,269 @@ async def process_set_main_channel(message: Message, state: FSMContext, club_id:
         await message.answer("Произошла ошибка при обработке запроса.")
 
     await state.clear()
+
+# Установка продолжительности этапов голосования
+
+# 1. Команда для запуска процесса
+@router.message(Command(commands='set_stage_durations'), StateFilter(default_state))
+@log_handler_call
+async def start_setting_stage_durations(message: Message, state: FSMContext):
+    logger.info(f"Команда /set_stage_durations сработала для пользователя {message.from_user.id}")
+    await message.answer(
+        text="Введите продолжительность этапов голосования (в сутках) в следующем формате:\n"
+             "1. Продолжительность этапа добавления вариантов\n"
+             "2. Продолжительность основного этапа\n"
+             "3. Продолжительность финального этапа\n"
+             "4. Продолжительность этапа утверждения итогов\n"
+             "Пример: `2 3 1 1` (через пробел)."
+    )
+    await state.set_state(AdminStates.setting_stage_durations)
+
+# Тоже самое при обработке кнопки 'set_stage_durations'
+@router.callback_query(StateFilter(default_state), F.data == 'set_stage_durations')
+@log_handler_call
+async def process_set_stage_durations_cb(callback: CallbackQuery, state: FSMContext, data: dict):
+    """
+    Обработчик нажатия кнопки "Установить продолжительность этапов голосования" в меню администрирования.
+    """
+    logger.info(f"Кнопка 'set_stage_durations' нажата пользователем {callback.from_user.id}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Формируем текст и клавиатуру для ответа
+    response_text = (
+        "Введите продолжительность этапов голосования (в сутках) в следующем формате:\n"
+        "1. Продолжительность этапа добавления вариантов\n"
+        "2. Продолжительность основного этапа\n"
+        "3. Продолжительность финального этапа\n"
+        "4. Продолжительность этапа утверждения итогов\n"
+        "Пример: `2 3 1 1` (через пробел)."
+    )
+    reply_markup = None  # Клавиатура не нужна
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = response_text
+    data['reply_markup'] = reply_markup
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+    # Устанавливаем состояние ожидания ввода продолжительности этапов
+    await state.set_state(AdminStates.setting_stage_durations)
+
+# 2. Хэндлер для обработки ввода значений
+
+@router.message(StateFilter(AdminStates.setting_stage_durations), F.text)
+@log_handler_call
+async def process_stage_durations_input(message: Message, state: FSMContext):
+    logger.info(f"Пользователь {message.from_user.id} ввел продолжительность этапов: {message.text}")
+    try:
+        # Разбиваем введенные данные на список чисел
+        durations = list(map(int, message.text.split()))
+        if len(durations) != 4:
+            raise ValueError("Неверное количество значений")
+
+        # Проверяем, что все значения положительные
+        if any(d <= 0 for d in durations):
+            raise ValueError("Значения должны быть положительными числами")
+
+        # Сохраняем данные в FSM
+        await state.update_data(
+            duration_add_variants=durations[0],
+            duration_first_stage=durations[1],
+            duration_final=durations[2],
+            duration_confirmation=durations[3]
+        )
+
+        # Формируем текст для подтверждения
+        confirmation_text = (
+            f"Подтвердите продолжительность этапов голосования (в сутках):\n"
+            f"1. Этап добавления вариантов: {durations[0]} суток\n"
+            f"2. Основной этап: {durations[1]} суток\n"
+            f"3. Финальный этап: {durations[2]} суток\n"
+            f"4. Этап утверждения итогов: {durations[3]} суток\n"
+            "Всё верно?"
+        )
+
+        # Отправляем сообщение с подтверждением
+        markup = confirm_markup
+        await message.answer(text=confirmation_text, reply_markup=markup)
+        await state.set_state(AdminStates.setting_stage_durations)
+
+    except ValueError as e:
+        logger.warning(f"Ошибка ввода длительности этапов от пользователя {message.from_user.id}: {e}")
+        await message.answer(
+            text=f"Некорректный ввод: {e}\nПожалуйста, введите четыре положительных числа через пробел."
+        )
+
+# 3. Хэндлер для подтверждения ввода
+@router.callback_query(StateFilter(AdminStates.setting_stage_durations), F.data == 'ConfirmOK')
+@log_handler_call
+async def confirm_stage_durations(callback: CallbackQuery, state: FSMContext, data: dict):
+    logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    await callback.answer()
+
+    # Получаем данные из FSM
+    fsm_data = await state.get_data()
+    club_id = data['club_id']
+    result = await update_stage_duration(
+        club_id=club_id,
+        duration_add_variants=fsm_data['duration_add_variants'],
+        duration_first_stage=fsm_data['duration_first_stage'],
+        duration_final=fsm_data['duration_final'],
+        duration_confirmation=fsm_data['duration_confirmation']
+    )
+
+    # Формируем ответ
+    response_text = result if isinstance(result, str) else "Произошла ошибка при сохранении данных."
+    markup = await user_menu(callback.from_user.id, data['user_status'])
+
+    # Отправляем ответ и завершаем машину состояний
+    await callback.message.edit_text(text=response_text, reply_markup=markup)
+    await state.clear()
+
+# 4. Хэндлер для отмены подтверждения
+@router.callback_query(StateFilter(AdminStates.setting_stage_durations), F.data == 'ConfirmNotOK')
+@log_handler_call
+async def cancel_stage_durations(callback: CallbackQuery, state: FSMContext, data: dict):
+    logger.info(f"Кнопка 'НЕВЕРНО' нажата пользователем {callback.from_user.id}")
+    await callback.answer()
+
+    # Завершаем машину состояний
+    await state.clear()
+
+    # Отправляем сообщение об отмене
+    response_text = "Установка продолжительности этапов отменена."
+    markup = await user_menu(callback.from_user.id, data['user_status'])
+    await callback.message.edit_text(text=response_text, reply_markup=markup)
+
+# Установка электоральных порогов для делегатов.
+# Один порог - в голосах, другой - в процентах. Работать будет тот, который больше.
+
+# 1. Хэндлер для обработки нажатия кнопки с callback_data='set_threshold'
+@router.callback_query(StateFilter(default_state), F.data == 'set_threshold')
+@log_handler_call
+async def process_set_threshold_cb(callback: CallbackQuery, state: FSMContext, data: dict):
+    """
+    Обработчик нажатия кнопки "Установить пороги доверенных голосов" в меню администрирования.
+    """
+    logger.info(f"Кнопка 'set_threshold' нажата пользователем {callback.from_user.id}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Формируем текст для инструкции
+    response_text = (
+        "Введите пороги доверенных голосов в следующем формате:\n"
+        "1. Минимальное количество голосов (число с плавающей точкой)\n"
+        "2. Минимальный процент от общего числа голосов (число с плавающей точкой)\n"
+        "Пример: `10.5 5.0` (через пробел)."
+    )
+    response_text = (
+        "Введите пороги доверенных голосов в следующем формате:\n"
+        "1. Минимальное количество голосов (число с плавающей точкой или запятой)\n"
+        "2. Минимальный процент от общего числа голосов (число с плавающей точкой или запятой)\n"
+        "Примеры:\n"
+        "- `10.5 5`\n"
+        "- `10,5 1,5`\n"
+        "- `10 15`\n"
+        "Через пробел."
+    )
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = response_text
+    data['reply_markup'] = None  # Клавиатура не нужна
+
+    # Редактируем сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+    # Устанавливаем состояние ожидания ввода порогов
+    await state.set_state(AdminStates.setting_thresholds)
+
+
+# 2. Хэндлер для обработки ввода значений порогов
+@router.message(StateFilter(AdminStates.setting_thresholds), F.text)
+@log_handler_call
+async def process_thresholds_input(message: Message, state: FSMContext, data:dict):
+    logger.info(f"Пользователь {message.from_user.id} ввел пороги: {message.text}")
+    try:
+        # Заменяем запятую на точку для единообразия
+        input_text = message.text.replace(',', '.')
+
+        # Разбиваем введенные данные на список чисел
+        thresholds = list(map(float, input_text.split()))
+
+        # Проверяем, что введено ровно два значения
+        if len(thresholds) != 2:
+            raise ValueError("Неверное количество значений. Введите ровно два числа.")
+
+        # Сохраняем данные в FSM
+        await state.update_data(
+            threshold_in_voices=thresholds[0],
+            threshold_in_percent=thresholds[1]
+        )
+
+        # Формируем текст для подтверждения
+        confirmation_text = (
+            f"Подтвердите пороги доверенных голосов:\n"
+            f"1. Минимальное количество голосов: {thresholds[0]}\n"
+            f"2. Минимальный процент от общего числа голосов: {thresholds[1]}\n"
+            "Всё верно?"
+        )
+
+        # Отправляем сообщение с подтверждением
+        markup = confirm_markup
+        await message.answer(text=confirmation_text, reply_markup=markup)
+        await state.set_state(AdminStates.setting_thresholds)
+
+    except ValueError as e:
+        logger.warning(f"Ошибка ввода порогов от пользователя {message.from_user.id}: {e}")
+        await message.answer(
+            text=f"Некорректный ввод: {e}\n"
+                 "Пожалуйста, введите два числа через пробел.\n"
+                 "Разделителем между целой и дробной частью может быть точка или запятая."
+        )
+
+
+# 3. Хэндлер для подтверждения ввода
+@router.callback_query(StateFilter(AdminStates.setting_thresholds), F.data == 'ConfirmOK')
+@log_handler_call
+async def confirm_thresholds(callback: CallbackQuery, state: FSMContext, data: dict):
+    logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    await callback.answer()
+
+    # Получаем данные из FSM
+    fsm_data = await state.get_data()
+    club_id = data['club_id']
+    result = await update_thresholds(
+        club_id=club_id,
+        threshold_in_voices=fsm_data['threshold_in_voices'],
+        threshold_in_percent=fsm_data['threshold_in_percent']
+    )
+
+    # Формируем ответ
+    response_text = result if isinstance(result, str) else "Произошла ошибка при сохранении данных."
+    markup = await user_menu(callback.from_user.id, data['user_status'])
+
+    # Отправляем ответ и завершаем машину состояний
+    await callback.message.edit_text(text=response_text, reply_markup=markup)
+    await state.clear()
+
+
+# 4. Хэндлер для отмены подтверждения
+@router.callback_query(StateFilter(AdminStates.setting_thresholds), F.data == 'ConfirmNotOK')
+@log_handler_call
+async def cancel_thresholds(callback: CallbackQuery, state: FSMContext, data: dict):
+    logger.info(f"Кнопка 'НЕВЕРНО' нажата пользователем {callback.from_user.id}")
+    await callback.answer()
+
+    # Завершаем машину состояний
+    await state.clear()
+
+    # Отправляем сообщение об отмене
+    response_text = "Установка порогов доверенных голосов отменена."
+    markup = await user_menu(callback.from_user.id, data['user_status'])
+    await callback.message.edit_text(text=response_text, reply_markup=markup)
