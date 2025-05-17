@@ -56,10 +56,10 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         text = ('Напишите пожалуйста, кто вы и почему хотите вступить в группу.'
                 'Эта информация будет переслана выбранному вами регистратору, чтобы он смог принять решение, подтверждать ли ваше вступление в группу.'
                 'Если вы согласны продолжать процесс регистрации - пришлите в ответ сообщение.'
-                'Если хотите прервать - наберите или нажмите /cancel либо нажмите кнопку "Вернуться в главное меню"'
+                'Если хотите прервать - наберите или нажмите /cancel '
 
                 )
-        markup = return_to_main_menu_markup
+        markup = None # Не нужна клавиатура
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = text
@@ -95,7 +95,8 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 async def process_resume_sent(message: Message, state: FSMContext):
     logger.info(f"Введено резюме кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем введенное имя в контексте состояния
-    await state.update_data(resume=message.text)
+    await state.update_data(resume=message.text, tg_id = message.from_user.id,
+                            tg_first_name = message.from_user.first_name, tg_last_name = message.from_user.last_name)
 
     # Создаем инлайн-кнопки для выбора регистратора
     registrators = await list_of_members_tg('registrator')
@@ -124,17 +125,6 @@ async def process_resume_sent(message: Message, state: FSMContext):
     # Устанавливаем состояние ожидания выбора регистратора
     await state.set_state(FSM_short_registration.fill_registrator)
 
-
-
-
-# Этот хэндлер срабатывает на всё, что пришлют вместо контакта в состоянии ожидания контакта
-@router.message(StateFilter(FSM_short_registration.fill_contact))
-@log_handler_call
-async def warning_get_contact_short_reg(message: Message):
-    logger.warning(f"Некорректный ввод вместо контакта от пользователя {message.from_user.id}")
-    await message.answer(
-        text='Пожалуйста, пользуйтесь кнопкой "Отправить контакт"\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel'
-    )
 
 # Этот хэндлер будет срабатывать на выбор регистратора
 @router.callback_query(StateFilter(FSM_short_registration

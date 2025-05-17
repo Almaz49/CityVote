@@ -239,8 +239,8 @@ async def past_choise(member_id, voting_id):
             logger.error(f"Ошибка при проверке прошлых выборов: {e}\n{traceback.format_exc()}")
             raise
 
-# Функция выясняет, за какие варианты в данном голосовании голосовал (лично) пользователь
-# Возвращает ID вариантов (список кортежей с одним членом) или None
+# Функция выясняет, за какой вариант в данном голосовании голосовал (лично) пользователь и который пока действителен
+# Возвращает список ID вариантов или None (по идее из одного максимум члена)
 @log_function_call
 async def variant_choise(member_id, voting_id):
     async with AsyncDatabase(path_db) as cursor:
@@ -262,14 +262,15 @@ async def variant_choise(member_id, voting_id):
             logger.error(f"Ошибка при проверке прошлых выборов: {e}\n{traceback.format_exc()}")
             raise
 
+
+
 # Функция подсчета числа членов группы, имеющих право голоса
 @log_function_call
 async def count_votist(club_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute('''
-                SELECT COUNT(*) FROM Members WHERE id IN
-                (SELECT id FROM Members WHERE club_id = ?)
+                SELECT COUNT(*) FROM Members WHERE club_id = ?
                 AND id IN
                 (SELECT member_id FROM Status WHERE status = 'votist')
             ''', (club_id,))
@@ -345,7 +346,7 @@ async def count_directly_empty_votes(variant_id):
 
 # Функция подсчета голосов, отданых за вариант через представителей
 @log_function_call
-async def count_proxy_votes(variant_id):
+async def count_proxy_votes_old(variant_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute('''
@@ -367,6 +368,58 @@ async def count_proxy_votes(variant_id):
             else:
                 logger.info(f"Для variant_id={variant_id} нет голосов через представителей.")
                 return None
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при подсчете голосов через представителей: {e}\n{traceback.format_exc()}")
+            raise
+
+@log_function_call
+async def count_proxy_votes(variant_id):
+    """
+    Подсчитывает количество голосов, отданных за вариант через представителей.
+
+    :param variant_id: ID варианта, для которого подсчитываются голоса.
+    :return: Количество голосов через представителей или None, если их нет.
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            # Подсчет голосов через представителей
+            await cursor.execute('''
+                SELECT COUNT(*)
+                FROM Members m
+                INNER JOIN Status s ON m.id = s.member_id
+                LEFT JOIN Elections e ON m.id = e.member_id
+                WHERE s.status = 'votist'
+                  AND m.proxy IS NOT NULL
+                  AND m.proxy IN (
+                      SELECT member_id
+                      FROM Elections
+                      WHERE variant_id = ?
+                        AND status IN ('valid', 'lose', 'winner')
+                  )
+                  AND m.id NOT IN (
+                      SELECT member_id
+                      FROM Elections
+                      WHERE variant_id IN (
+                          SELECT id
+                          FROM Variants
+                          WHERE voting_id = (
+                              SELECT voting_id
+                              FROM Variants
+                              WHERE id = ?
+                          )
+                      )
+                  )
+            ''', (variant_id, variant_id))
+
+            result = await cursor.fetchone()
+            if result:
+                amount, = result
+                logger.info(f"Количество голосов через представителей за variant_id={variant_id}: {amount}")
+                return int(amount)
+            else:
+                logger.info(f"Для variant_id={variant_id} нет голосов через представителей.")
+                return None
+
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при подсчете голосов через представителей: {e}\n{traceback.format_exc()}")
             raise

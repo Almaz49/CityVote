@@ -181,10 +181,9 @@ async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict
         # Формируем сообщение для регистратора
         message_text = (
             f"Пользователь с данными:\n"
-            f'Имя: {user_dict["tg_first_name"]}\n'
-            f'Фамилия: {user_dict["tg_last_name"]}\n'
-            f'Истинность контакта: {user_dict["contact_true"]}\n'
-            f'Номер телефона: {user_dict["tg_phone_number"]}\n'
+            f'Имя: {user_dict.get("tg_first_name")}\n'
+            f'Фамилия: {user_dict.get("tg_last_name")}\n'
+            f'Резюме: {user_dict.get("resume")}\n'
             f"Просит вас подтвердить его право\n"
             f"стать членом клуба.\n"
             f"Подтверждаете?"
@@ -226,12 +225,11 @@ async def notify_super_registrator_short(candidate_tg_id, user_dict):
         # Формируем сообщение для регистратора
         message_text = (
             f"Пользователь с данными:\n"
-            f'Контакт: {user_dict["contact"]}\n'
-            f'Истинность контакта: {user_dict["tg_true"]}\n'
-            f'Резюме: {user_dict["resume"]}\n'
+            f'Имя: {user_dict.get("tg_first_name")}\n'
+            f'Фамилия: {user_dict.get("tg_last_name")}\n'
+            f'Резюме: {user_dict.get("resume")}\n'
             f"Просит вас подтвердить его право\n"
             f"стать членом клуба.\n"
-            f"Никого из регистраторов он не знает."
             f"Подтверждаете?"
         )
 

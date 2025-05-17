@@ -354,3 +354,106 @@ async def recording_member_data(member_id: int, **data):
     except Exception as e:
         logger.error(f"Ошибка при записи данных пользователя {member_id}: {e}")
         raise
+
+@log_function_call
+async def is_appointed_delegate(member_id):
+    """
+    Проверяет, является ли пользователь с указанным member_id назначенным делегатом (delegate),
+    учитывая, что статус не был удалён и registrator не равен None или 0.
+
+    :param member_id: ID пользователя, которого нужно проверить.
+    :return: True, если пользователь является назначенным делегатом, иначе False.
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            # Получаем все записи о назначении/удалении статуса delegate для данного member_id
+            await cursor.execute(
+                '''
+                SELECT status, registrator, time_reg
+                FROM Registrations
+                WHERE object_id = ? AND (status = 'delegate' OR status = 'not_delegate')
+                AND (registrator IS NOT NULL AND registrator != 0 AND registrator != '')
+                ORDER BY time_reg ASC
+                ''',
+                (member_id,)
+            )
+            records = await cursor.fetchall()
+
+            if not records:
+                # Если записей нет, пользователь никогда не был делегатом
+                logger.info(f"Пользователь с member_id={member_id} никогда не был делегатом.")
+                return False
+
+            # Определяем последний статус
+            last_status = None
+            for record in records:
+                status, registrator, time_reg = record
+                if status == 'delegate':
+                    last_status = 'delegate'
+                elif status == 'not_delegate':
+                    last_status = 'not_delegate'
+
+            # Если последний статус - 'delegate', значит пользователь является текущим делегатом
+            if last_status == 'delegate':
+                logger.info(f"Пользователь с member_id={member_id} является назначенным делегатом.")
+                return True
+            else:
+                logger.info(f"Пользователь с member_id={member_id} не является назначенным делегатом.")
+                return False
+
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при проверке статуса делегата: {e}")
+            raise
+
+
+@log_function_call
+async def count_trust(club_id, member_id):
+    """
+    Подсчитывает число голосов, доверенных данному представителю
+    :param club_id: ID группы
+    :param memeber_id: ID участника
+    :return: число голосов
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        # Подсчитывам количество участников группы, которые имеют данного участника представителем и чей статус member
+        try:
+            await cursor.execute('''
+                SELECT COUNT(*) FROM Members WHERE club_id = ? AND proxy = ? AND
+                id IN (SELECT member_id FROM Status WHERE status = 'member')
+            ''', (club_id, member_id))
+            result, = await cursor.fetchone()
+            return result
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при подсчете голосов, доверенных представителю: {e}")
+            raise
+
+@log_function_call
+async def is_delegate(club_id, member_id):
+    """
+    Выясняет, имеет ли право пользователь иметь статус `делегат` по количеству доверенных голосов
+    или потому что его назначили делегатом
+    :param club_id: ID группы
+    :param memeber_id: ID участника
+    :return: False or True
+    """
+    coefficient = 0.8 # Коэффициент, на который отличается порог потери статуса делегата
+    # от порога получения. Например, если делегатом становятся, получив 5 голосов,
+    # то теряют этот статус, опустившись ниже чем 5 * coefficient голосов.
+
+    threshold = await threshold_in_voices(club_id)
+    trust_voice = await count_trust(club_id, member_id)
+    if trust_voice >= threshold:
+        logger.debug(f"Пользователь {member_id} имеет право быть делегатом по числу голосов")
+        return True
+    status = extract_status(member_id)
+    if 'delegate' in status and trust_voice >= threshold * coefficient:
+        logger.debug(f"""Пользователь {member_id} имеет право быть делегатом,
+                     потому что пока число его голосов не опустилось ниже порога потери статуса""")
+        return True
+    appointed = await is_appointed_delegate(member_id)
+    if appointed:
+        logger.debug(f"""Пользователь {member_id} имеет право быть делегатом,
+                     потому что он был назначен и не был лишен своего статуса""")
+        return True
+    logger.debug(f"""Пользователь {member_id} не имеет право быть делегатом""")
+    return False

@@ -722,3 +722,56 @@ async def registration_entry(registrator, object_type, object_id, status, token_
             logger.error(f"Ошибка при работе со статусом: {e}")
             return False
             raise
+
+# Функция подсчета числа членов группы
+@log_function_call
+async def count_member(club_id):
+    """
+    Подсчитывает число участников группы.
+    :param club_id: ID группы
+    :return: число участников группы
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute('''
+                SELECT COUNT(*) FROM Members WHERE club_id = ?
+            ''', (club_id,))
+            result = await cursor.fetchone()
+            if result:
+                amount, = result
+                logger.info(f"Количество участников в группе {club_id}: {amount}")
+                return int(amount)
+            else:
+                logger.info(f"В группе {club_id} нет участников.")
+                return None
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при подсчете количества участников с правом голоса: {e}")
+            raise
+
+@log_function_call
+async def threshold_in_voices(club_id):
+    """
+    Определяет текущий электоральный порог для присвоения статуса делегата в голосах
+    :param club_id: ID группы
+    :return: число доверенных голосов, необходимых для получения статуса делегата
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute('''
+                SELECT threshold_in_voices, threshold_in_percent FROM Clubs WHERE id = ?
+            ''', (club_id,))
+            result = await cursor.fetchone()
+            if result:
+                threshold_in_voices, threshold_in_percent = result
+            else:
+                logger.info(f"Не определен электоральный порог для делегатов в группе {club_id}")
+                return 0
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при извлечении электорального порога: {e}")
+            raise
+        amount = await count_member(club_id)
+        if not amount:
+            return threshold_in_voices
+        result = max(threshold_in_voices, threshold_in_percent * amount / 100)
+        logger.debug(f"Электоральный порог для группы {club_id}: {result}")
+        return result
