@@ -10,7 +10,7 @@ from aiogram.types import ChatMemberUpdated
 from aiogram.filters import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
 from data_base.data_base import *
 from keyboards.keyboards import user_menu, remove_markup, create_inline_kb, confirm_markup, return_to_main_menu_markup
-from services.services import greetings_message, help_message
+from services.services import greetings_message, help_message, club_info
 from manager.manager import leave_club
 from config_data.config import Config, load_config
 import logging
@@ -833,3 +833,42 @@ async def warning_leave_club(message: Message):
              'Если вы хотите прервать изменение статуса - '
              'отправьте команду /cancel'
     )
+
+# Хэндлер для команды /club_info
+@router.message(Command(commands=['club_info']))
+@log_handler_call
+async def process_club_info(message: Message, data: dict):
+    """
+    Обработчик команды /club_info.
+    Отправляет справочную информацию о группе.
+    """
+    logger.info(f"Пользователь {message.from_user.id} запросил справку о группе.")
+    await message.answer(
+        text=await club_info(data['club_id']),
+        reply_markup=await user_menu(message.from_user.id, status = data['user_status']),
+        parse_mode="HTML"  # Указываем режим разметки
+    )
+
+# Хэндлер для кнопки 'club_info'
+@router.callback_query(F.data=='club_info')
+@log_handler_call
+async def process_club_info(callback: CallbackQuery, data: dict):
+    """
+    Обработчик команды /club_info.
+    Отправляет справочную информацию о группе.
+    """
+    logger.info(f"Пользователь {callback.from_user.id} запросил справку о группе.")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = await club_info(data['club_id'])
+    data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup'],
+        parse_mode="HTML"  # Указываем режим разметки
+    )
+
+    raise  # Передаем исключение middleware для обработки

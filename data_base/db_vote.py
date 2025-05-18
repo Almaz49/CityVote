@@ -1039,7 +1039,7 @@ async def extract_voting_status(voting_id):
             logger.error(f"Ошибка при получении статуса голосования: {e}\n{traceback.format_exc()}")
             raise
 
-# Функция возвращает статус и название голосования по его ID
+# Функция возвращает информацию о голосовании по его ID
 @log_function_call
 async def extract_voting_info(voting_id):
     async with AsyncDatabase(path_db) as cursor:

@@ -167,6 +167,10 @@ async def user_menu(tg_id: int = None, status:list[str] = None) -> InlineKeyboar
         help_button = InlineKeyboardButton(text=LEXICON.get('help', 'Помощь'), callback_data='help')
         keyboard.append([help_button])
 
+        # Добавляем кнопку "Информация о группе"
+        help_button = InlineKeyboardButton(text=LEXICON.get('club_info', 'О группе'), callback_data='club_info')
+        keyboard.append([help_button])
+
         kb_builder = InlineKeyboardBuilder()
         for row in keyboard:
             kb_builder.row(*row)

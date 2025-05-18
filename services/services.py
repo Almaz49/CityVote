@@ -424,6 +424,20 @@ def help_message(status_list: list):
     logger.debug(f'Сформирована справка:\n{text}')
     return text
 
+# Функция создания справки о группе
+@log_function_call
+async def club_info(club_id:int):
+    info = await extract_club_info(club_id)
+    amount = await count_member(club_id)
+    text = (
+        f'Название группы: {info.get("name","Отсутствует")}\n\n'
+        f"Описание группы:\n{info.get('description','Отсутсвует')}\n\n"
+        f"Условия участия в группе (кто может быть участником):\n{info.get('conditions_of_entry', 'Отсутствуют')}\n\n"
+        f"Количество участников: {amount}"
+    )
+    logger.debug(f'Сформирована справка о группе:\n{text}')
+    return text
+
 # Функция создания ссылки на публичный канал по его ID
 async def get_channel_link(channel_id):
     try:
