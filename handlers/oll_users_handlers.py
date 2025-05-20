@@ -870,5 +870,3 @@ async def process_club_info(callback: CallbackQuery, data: dict):
         reply_markup=data['reply_markup'],
         parse_mode="HTML"  # Указываем режим разметки
     )
-
-    raise  # Передаем исключение middleware для обработки

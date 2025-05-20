@@ -6,6 +6,7 @@ def setup_logger(
     debug_log_path='debug.log',
     info_log_path='info.log',
     warning_log_path='warning.log',
+    error_log_path='error.log',
     console_level=logging.DEBUG, #Здесь менять уровень вывода логов в консоль
     file_encoding='utf-8'
 ):
@@ -35,6 +36,11 @@ def setup_logger(
     warning_handler = logging.FileHandler(warning_log_path, encoding=file_encoding)
     warning_handler.setLevel(logging.WARNING)
     warning_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'))
+
+    # Handler для записи WARNING и выше в файл warning.log
+    error_handler = logging.FileHandler(error_log_path, encoding=file_encoding)
+    error_handler.setLevel(logging.ERROR)
+    error_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'))
 
     # Handler для вывода в консоль
     console_handler = logging.StreamHandler()
