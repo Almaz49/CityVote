@@ -13,7 +13,7 @@ class DatabaseConfig:
 @dataclass
 class TgBot:
     token: str            # Токен для доступа к телеграм-боту
-    club_id: int # id группы, которую администрирует бот (групп в БД, а не в телеграм)
+    club_id: int # id группы, которую администрирует бот (группа в БД, а не в телеграм)
     admin_ids: list  # Список id администраторов бота
 
 
@@ -29,7 +29,7 @@ def load_config(path: str) -> Config:
     env = Env()
     env.read_env(path)
     path_db=env('path_db')
-    club_id=env('CLUB_ID')
+    club_id=int(env('CLUB_ID'))
     return Config(
         tg_bot=TgBot(
         token=env('BOT_TOKEN'),

@@ -341,7 +341,7 @@ async def recording_user_data(tg_id: int, **data):
 
 # Функция записи данных о пользователе в таблицу Members
 @log_function_call
-async def recording_member_data(member_id: int, **data):
+async def update_member_data(member_id: int, **data):
 
     """
     Записывает в БД данные пользователя.

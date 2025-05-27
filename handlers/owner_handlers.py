@@ -12,6 +12,7 @@ from services.services import process_channel_info
 from utils import log_handler_call
 from keyboards.keyboards import *
 from config_data.config import Config, load_config
+from LEXICON.LEXICON import LEXICON
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -267,6 +268,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
     logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
+    # Присваиваем переменной st значение статуса без приставки, чтобы проверить существует ли вообще такой статус
     fsm_data = await state.get_data()
     status = fsm_data['status']
     st = status

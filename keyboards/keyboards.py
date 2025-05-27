@@ -89,13 +89,9 @@ buttons = {
     },
     'actions': {  # Категория: Действия
         'user':['registration'],                                      #Для статуса 'user'
-        'candidate':['leave_the_group'],                             #Для статуса 'candidate'
-        'registrator':['resign_from_registrator'],
-        'pre-registrator':['become_registrator','resign_from_registrator'],
-        'member': ['select_proxy', 'become_proxy','leave_the_group'],      # Для статуса 'member'
-        'proxy': ['resign_from_proxy'],                  # Для статуса 'proxy'
+        'candidate':['profile'],                             #Для статуса 'candidate'
+        'member': ['profile'],      # Для статуса 'member'
         'delegate': ['new_voting'],          # Для статуса 'delegate'
-        'admin': ['resign_from_admin']      # Для статуса 'admin'
     },
     'settings': {  # Категория: Настройки
         'admin': ['new_registrator'],                         # Для статуса 'admin'
@@ -163,12 +159,12 @@ async def user_menu(tg_id: int = None, status:list[str] = None) -> InlineKeyboar
         #     keyboard = get_keyboard_for_status(status)
         keyboard = get_keyboard_for_status(status)
 
+        # Добавляем кнопку "Информация"
+        info_button = InlineKeyboardButton(text=LEXICON.get('info', 'Информация'), callback_data='info')
+        keyboard.append([info_button])
+
         # Добавляем кнопку "помощь"
         help_button = InlineKeyboardButton(text=LEXICON.get('help', 'Помощь'), callback_data='help')
-        keyboard.append([help_button])
-
-        # Добавляем кнопку "Информация о группе"
-        help_button = InlineKeyboardButton(text=LEXICON.get('club_info', 'О группе'), callback_data='club_info')
         keyboard.append([help_button])
 
         kb_builder = InlineKeyboardBuilder()
@@ -179,7 +175,7 @@ async def user_menu(tg_id: int = None, status:list[str] = None) -> InlineKeyboar
         logger.error(f"Ошибка при создании меню для пользователя {tg_id}: {e}")
         raise
 
-# Функция для создания клавиатуры администрирования бот
+# Функция для создания клавиатуры администрирования бота
 @log_function_call
 def get_admin_menu_keyboard():
     builder = InlineKeyboardBuilder()
@@ -217,6 +213,115 @@ def get_admin_menu_keyboard():
 
     return builder.as_markup()
 
+# Функция для создания клавиатуры профиля пользователя
+@log_function_call
+def get_profile_menu_keyboard(status:list):
+    builder = InlineKeyboardBuilder()
+    # Основные кнопки профиля
+    builder.button(
+    text=LEXICON.get("edit_username", "Изменить псевдоним"),
+    callback_data="edit_username"
+    )
+    builder.button(
+    text=LEXICON.get("edit_description", "О себе"),
+    callback_data="edit_description"
+    )
+    builder.button(
+    text=LEXICON.get("change_info_level", "Изменить уровень информирования"),
+    callback_data="change_info_level"
+    )
+    # Кнопки в зависимости от статуса
+    # Представитель
+    if 'proxy' in status:
+        builder.button(
+    text=LEXICON.get("resign_from_proxy", "Уйти из представителей"),
+    callback_data="resign_from_proxy"
+    )
+        builder.button(
+    text=LEXICON.get("select_subproxy", "Выбрать заместителя"),
+    callback_data="select_subproxy"
+    )
+    else:
+        builder.button(
+    text=LEXICON.get("select_proxy", "Выбрать представителя"),
+    callback_data="select_proxy"
+    )
+        builder.button(
+    text=LEXICON.get("become_proxy", "Стать представителем"),
+    callback_data="become_proxy"
+    )
+
+    # Админ
+    if 'admin' in status:
+        builder.button(
+    text=LEXICON.get("resign_from_admin", "Отказаться от роли администратора"),
+    callback_data="resign_from_admin"
+    )
+
+    # Регистратор
+    if 'registrator' in status:
+        builder.button(
+    text=LEXICON.get("resign_from_registrator", "Отказаться от роли регистратора"),
+    callback_data="resign_from_registrator"
+    )
+
+    # Кандидат в регистраторы
+    if 'pre-registrator' in status:
+        builder.button(
+    text=LEXICON.get("become_registrator", "Стать регистратором"),
+    callback_data="become_registrator"
+    )
+        builder.button(
+    text=LEXICON.get("resign_from_registrator", "Отказаться от роли регистратора"),
+    callback_data="resign_from_registrator"
+    )
+
+    # Кандидат в участники
+    if 'candidate' in status:
+        builder.button(
+    text=LEXICON.get("registration", "Повторить регистрацию"),
+    callback_data="registration"
+    )
+
+    builder.button(
+        text=LEXICON.get('leave_the_group', 'Покинуть группу'),
+        callback_data='leave_the_group'
+    )
+
+    builder.button(
+        text=LEXICON.get('main_menu', 'Назад в главное меню'),
+        callback_data='main_menu'
+    )
+
+    # Настройка расположения кнопок ( по 2)
+    builder.adjust(2)
+
+    return builder.as_markup()
+
+
+# Функция для создания клавиатуры справочной информации
+@log_function_call
+def get_info_menu_keyboard(exc: str = None):
+    builder = InlineKeyboardBuilder()
+
+    # Список кнопок с их текстами и callback_data
+    buttons = [
+        ("club_info", LEXICON.get("club_info", "О группе")),
+        ("bot_info", LEXICON.get("bot_info", "О боте")),
+        # ("status_info", LEXICON.get("status_info", "Статусы")),
+        ("about", LEXICON.get("about", "Общие принципы")),
+        ("main_menu", LEXICON.get('main_menu', 'Назад в главное меню')),
+    ]
+
+    # Добавляем кнопки, если их callback_data не совпадает с exc
+    for callback_data, text in buttons:
+        if callback_data != exc:
+            builder.button(text=text, callback_data=callback_data)
+
+    # Настройка расположения кнопок (по 1)
+    builder.adjust(1)
+
+    return builder.as_markup()
 
 """
 ИНЛАЙН-КЛАВИАТУРЫ
@@ -239,7 +344,7 @@ no_mod_button = InlineKeyboardButton(
     callback_data='ConfirmNotOK'
 )
 back_to_menu_button = InlineKeyboardButton(
-    text = LEXICON.get('return_to_main_menu','Назад в главное меню'),
+    text = LEXICON.get('main_menu','Назад в главное меню'),
     callback_data='main_menu'
     )
 

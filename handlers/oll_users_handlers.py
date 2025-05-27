@@ -9,7 +9,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import ChatMemberUpdated
 from aiogram.filters import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
 from data_base.data_base import *
-from keyboards.keyboards import user_menu, remove_markup, create_inline_kb, confirm_markup, return_to_main_menu_markup
+from keyboards.keyboards import (
+    user_menu, remove_markup, create_inline_kb, confirm_markup, return_to_main_menu_markup,
+    get_admin_menu_keyboard, get_profile_menu_keyboard, get_info_menu_keyboard
+    )
 from services.services import greetings_message, help_message, club_info
 from manager.manager import leave_club
 from config_data.config import Config, load_config
@@ -17,7 +20,7 @@ import logging
 import traceback
 from utils import log_handler_call
 from LEXICON.LEXICON import LEXICON
-from FSMs.FSMs import FSM_become_proxy, FSM_leave_club
+from FSMs.FSMs import FSM_become_proxy, FSM_leave_club, FSM_profile
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -45,7 +48,7 @@ async def process_start_command(message: Message, data: dict):
         text = await greetings_message(club_id=data['club_id'])
         text = text + '\nВаш статус в группе:'
         for status in data['user_status']:
-            text += f'\n   -{LEXICON.get(status, status)}'
+            text += f'\n   -{LEXICON.get('user_status',{}).get(status, status)}'
         await message.answer(
             text=text,
             reply_markup=markup,
@@ -90,7 +93,7 @@ async def process_start_command(message: Message, command: CommandObject, data: 
                 + '\nВаш статус в группе:'
             )
             for status in data['user_status']:
-                text += f'\n   - {LEXICON.get(status, status)}'
+                text += f'\n   - {LEXICON.get('user_status',{}).get(status, status)}'
 
         # Создаем клавиатуру
         markup = await user_menu(message.from_user.id, status=data['user_status'])
@@ -234,17 +237,6 @@ async def process_main_menu_button_state(callback: CallbackQuery, state: FSMCont
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
-
-# Хэндлер будет обрабатывать ввод username представителя
-# и переводить в состояние ожидания подтверждения
-@router.message(StateFilter(FSM_become_proxy.fill_username))
-@log_handler_call
-async def process_username_sent(message: Message, state: FSMContext):
-    """
-    Обработчик ввода имени/псевдонима.
-    Запрашивает подтверждение.
-    """
-    logger.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
 
 
 # # Универсальный хэндлер вызова списка голосований (в зависимости от их типа). Работает !!!
@@ -489,7 +481,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
                     text=(
                         f"{choise_mark}"
                         f"🗳️ <b>{escaped_title}</b>\n"
-                        f"📌 Статус: {LEXICON.get(variant_status, variant_status)}\n\n"
+                        f"📌 Статус: {LEXICON.get('variant_status',{}).get(variant_status, variant_status)}\n\n"
                         f"📝 <b>Описание:</b>\n{escaped_text_var}\n\n"
                         "📊 <b>Статистика голосов:</b>\n"
                         f"• Решающих голосов: <b>{total_votes}</b>\n"
@@ -507,7 +499,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         else:
             text = 'В настоящее время нет доступных вариантов.'
 
-        # Формируем меню в зависимости от статуса голосования
+        # Формируем меню в зависимости от статуса голосования и статуса пользователя
         dict_menu = {}
         if voting_status == 'add_variants':
             dict_menu['future_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
@@ -563,146 +555,6 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         )
 
         raise  # Передаем исключение middleware для обработки
-
-
-# # Хэндлер для просмотра всех вариантов (обрабатывает кнопку "посмотреть все варианты")
-# # Присылает по сообщению на каждый вариант, к последнему прикладывает клавиатуру из меню.
-# # Для членов группы - кнопка "выбрать вариант для голосвания" 'ongoing_voting:{voting_id}'
-# @router.callback_query(F.data.regexp(r'^show_oll_variants:\d+$'))
-# @log_handler_call
-# async def process_show_oll_variants(callback: CallbackQuery, data: dict):
-#     """
-#     Обработчик просмотра вариантов.
-#     """
-#     try:
-#         logger.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
-#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-#         voting_id = int(callback.data.split(':')[1])
-#         variants = await list_of_variants(voting_id)
-#         voting_info = await extract_voting_info(voting_id)
-#         if voting_info:
-#             voting_status, voting_title = voting_info
-#         else:
-#             variant_status = None
-#             voting_title = None
-
-#         choise = await variant_choise(data['member_id'], voting_id)
-
-#         # Экранируем специальные символы в тексте
-#         escaped_voting_title = html.quote(voting_title)
-
-#         await callback.message.answer(
-#             text=(
-#                 f"Список вариантов к голосованию"
-#                 f"<b>{escaped_voting_title}</b>\n"
-#             ),
-#             parse_mode="HTML"
-#         )
-
-#         if variants:
-#             for variant in variants:
-#                 variant_id, title, variant_status, text_var = variant
-#                 dir_votes = await count_directly_votes(variant_id) # решающие голоса, поданные за вариант напрямую
-#                 proxy_votes = await count_proxy_votes(variant_id)   #решающие голоса, поданные через представителя
-#                 empty_votes = await count_directly_empty_votes(variant_id)   # нерешающие голоса
-#                 oll_votes = dir_votes + proxy_votes
-#                 if variant_id in choise:
-#                     choise_mark = '***ВАШ ВЫБОР***\n'
-#                 else:
-#                     choise_mark = ''
-
-#                 # Экранируем специальные символы в тексте
-#                 escaped_title = html.quote(title)
-#                 escaped_text_var = html.quote(text_var)
-
-#                 # Если это идущее голосвание, а пользователь - участник группы, добавляем
-#                 # кнопку проголосовать за вариант
-#                 if voting_status == 'ongoing' and 'member' in data['user_status'] and variant[2] == 'valid':
-#                     keyboard = {f'variant:{variant[0]}':LEXICON.get('Vote for this variant','Vote for this variant')}
-#                     markup = create_inline_kb(1, **keyboard)
-#                 else:
-#                     markup = None
-
-
-
-#                 await callback.message.answer(
-#                     text=(
-#                         f"{choise_mark}"
-#                         f"🗳️ <b>{escaped_title}</b>\n"
-#                         f"📌 Статус: {LEXICON.get(variant_status, variant_status)}\n\n"
-#                         f"📝 <b>Описание:</b>\n{escaped_text_var}\n\n"
-#                         "📊 <b>Статистика голосов:</b>\n"
-#                         f"• Решающих голосов: <b>{oll_votes}</b>\n"
-#                         f"  - Напрямую: {dir_votes}\n"
-#                         f"  - Через представителей: {proxy_votes}\n"
-#                         f"• Нерешающих голосов: {empty_votes}"
-#                     ),
-#                     reply_markup=markup,
-#                     parse_mode="HTML"
-#                 )
-
-#             text = 'Выберите дальнейшее действие'
-
-#         else:
-#             text = 'В настоящее время нет доступных вариантов.'
-
-#         dict_menu = {}
-#         if voting_status == 'add_variants':
-#             dict_menu['future_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
-#             # Если пользователь - делегат, добавляем кнопку "Добавить вариант"
-#             if 'delegate' in data["user_status"]:
-#                 dict_menu[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
-#             if 'admin' in data["user_status"]:
-#                 dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'admin_voting')
-#         elif voting_status == 'completed':
-#             dict_menu['completed_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
-#             # Если пользователь - админ, добавляем кнопку "Возобновить голосование"
-#             if 'admin' in data["user_status"]:
-#                 dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'admin_voting')
-#         elif voting_status == 'ongoing':
-#             # Если пользователь - админ, добавляем кнопки "Завершить этап","Перейти в финал","Завершить голосование"
-#             if 'admin' in data["user_status"]:
-#                 dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'admin_voting')
-
-#             dict_menu['ongoing_votings'] = LEXICON.get('back_to_votings', 'Назад к списку голосований')
-
-#         elif voting_status =='confirmation':
-#             if 'admin' in data["user_status"]:
-#                 dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'admin_voting')
-
-
-#         dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
-
-#         logger.info(f'словарь меню при показе вариантов: {dict_menu}')
-#         markup = create_inline_kb(1, **dict_menu)
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = text
-#         data['reply_markup'] = markup
-
-#         # Отправляем сообщение
-#         await callback.message.answer(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#     except Exception as e:
-#         logger.error(f"Ошибка при просмотре вариантов голосования: {e}")
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
-#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-#         # Отправляем сообщение в случае ошибки
-#         await callback.message.answer(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#         raise  # Передаем исключение middleware для обработки
-
-
 
 
 
@@ -862,11 +714,385 @@ async def process_club_info(callback: CallbackQuery, data: dict):
 
     # Добавляем данные для SafeEditMiddleware
     data['response_text'] = await club_info(data['club_id'])
-    data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+    data['reply_markup'] = get_info_menu_keyboard(exc='club_info')
 
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
         text=data['response_text'],
         reply_markup=data['reply_markup'],
         parse_mode="HTML"  # Указываем режим разметки
+    )
+
+# Хэндлер для кнопки 'info'
+@router.callback_query(F.data=='info')
+@log_handler_call
+async def process_info(callback: CallbackQuery, data: dict):
+    """
+    Обработчик команды /info.
+    Отправляет меню с кнопками информации.
+    """
+    logger.info(f"Пользователь {callback.from_user.id} запросил информацию.")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = LEXICON.get('info_menu','Выберите интересующую информацию')
+    data['reply_markup'] = get_info_menu_keyboard()
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup'],
+        parse_mode="HTML"  # Указываем режим разметки
+    )
+
+# Хэндлер для кнопки 'profile'
+@router.callback_query(F.data=='profile')
+@log_handler_call
+async def process_profile(callback: CallbackQuery, data: dict):
+    """
+    Обработчик команды /profile.
+    Отправляет меню с кнопками информации.
+    """
+    logger.info(f"Пользователь {callback.from_user.id} запросил профиль.")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = LEXICON.get('profile_menu','Выберите, что хотите поменять в профиле') # Сюда вставить функцию создания текста
+    data['reply_markup'] = get_profile_menu_keyboard(data['user_status'])
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup'],
+        parse_mode="HTML"  # Указываем режим разметки
+    )
+
+# Хэндлер для кнопки 'bot_info'
+@router.callback_query(F.data=='bot_info')
+@log_handler_call
+async def process_bot_info(callback: CallbackQuery, data: dict):
+    """
+    Обработчик команды /bot_info.
+    Отправляет справочную информацию о группе.
+    """
+    logger.info(f"Пользователь {callback.from_user.id} запросил справку о группе.")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = LEXICON.get("bot_info_text","Здесь должна была быть информаия о боте")
+    data['reply_markup'] = get_info_menu_keyboard(exc='bot_info')
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup'],
+        parse_mode="HTML"  # Указываем режим разметки
+    )
+
+@router.callback_query(F.data == 'about')
+@log_handler_call
+async def process_bot_info(callback: CallbackQuery, data: dict):
+    """
+    Обработчик команды /about.
+    Отправляет теорию о боте.
+    """
+    logger.info(f"Пользователь {callback.from_user.id} запросил зачем нужен этот бот.")
+
+    # Отвечаем на callback, чтобы избежать "крутки часов"
+    await callback.answer()
+
+    # Получаем текст из LEXICON
+    response_text = LEXICON.get("about_text", "Здесь должна была быть теория о ньюдеме")
+
+    # Создаем клавиатуру, исключая кнопку 'about'
+    reply_markup = get_info_menu_keyboard(exc='about')
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(
+        text=response_text,
+        reply_markup=reply_markup,
+        parse_mode="HTML"  # Указываем режим разметки
+    )
+
+
+# ХЭНДЛЕРЫ ИЗМЕНЕНИЯ ПСЕВДОНИМА
+
+@router.callback_query(F.data == 'edit_username', StateFilter(default_state))
+@log_handler_call
+async def press_edit_username(callback: CallbackQuery, state: FSMContext, data: dict):
+    """
+    Обработчик команды /edit_username.
+    Редактирует псевдоним пользователя.
+    """
+    logger.info(f"Пользователь {callback.from_user.id} начал редактирование псевдонима.")
+
+    # Отвечаем на callback, чтобы избежать "крутки часов"
+    await callback.answer()
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = (
+        'Введите уникальное имя или псевдоним.'
+        'Это может быть ваше собственное имя (фамилия).'
+        'Важно, чтобы оно было уникальным для этой группы, чтобы пользователи различали представителей.'
+        'И желательно не длиннее 40 символов'
+    )
+    data['reply_markup'] = return_to_main_menu_markup
+
+    # Редактируем сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+    await state.set_state(FSM_profile.fill_username)
+
+
+@router.message(StateFilter(FSM_profile.fill_username))
+@log_handler_call
+async def process_username_sent(message: Message, state: FSMContext):
+    """
+    Обработчик ввода имени/псевдонима.
+    Проверяет уникальность псевдонима.
+    Запрашивает подтверждение.
+    """
+    logger.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
+    flag = await is_username_uniq(message.text)
+    if flag:
+        await state.update_data(username = message.text)
+        # Отправляем сообщение с подтверждением
+        await message.answer(
+            text=f'''Пожалуйста, подтвердите, правильно ли введено ваше имя/псевдоним?
+    {message.text}''',
+            reply_markup=confirm_markup
+        )
+        await state.set_state(FSM_profile.fill_OK)
+    else:
+        await message.answer(
+            text='Такое имя/псевдоним уже есть. Попрбуйте придумать другой псевдоним или добавьте что-нибудь, что выделяло бы вас',
+            reply_markup=return_to_main_menu_markup
+        )
+
+@router.callback_query(StateFilter(FSM_profile.fill_OK), F.data == 'ConfirmOK')
+@log_handler_call
+async def press_username_entry(callback: CallbackQuery, state: FSMContext, data: dict):
+    """
+    Обработчик нажатия кнопки согласия.
+    Записывает в БД новый певдоним
+    """
+    logger.info(f"Кнопка 'ВСЁ ВЕРНО' при подтверждении username нажата пользователем {callback.from_user.id}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    fsm_data = await state.get_data()
+    username = fsm_data['username']
+    user_id = data['user_id']
+    status = data['user_status']
+
+    # Записываем username в базу данных
+    await db_update('Users', 'id', user_id, username=username)
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Ваш псевдоним изменен!'
+    data['reply_markup'] = get_profile_menu_keyboard(status)
+
+    # Редактируем сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+
+    # Завершаем машину состояний
+    await state.clear()
+
+
+@router.callback_query(StateFilter(FSM_profile.fill_OK), F.data == 'ConfirmNotOK')
+@log_handler_call
+async def process_no_confirm_proxy_press(callback: CallbackQuery, state: FSMContext, data: dict):
+    """
+    Обработчик нажатия кнопки несогласия.
+    Предлагает повторить
+    """
+    logger.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Спасибо! Псевдоним не изменен\nПопробуйте еще раз, или нажмите кнопку для прерывания процедуры'
+    data['reply_markup'] = return_to_main_menu_markup
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+    await state.set_state(FSM_profile.fill_username)
+
+
+@router.message(StateFilter(FSM_profile.fill_OK))
+@log_handler_call
+async def warning_new_status(message: Message):
+    """
+    Обработчик ввода текста когда ожидается нажатие кнопки
+    """
+
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
+    await message.answer(
+        text='Пожалуйста, воспользуйтесь кнопками!\n\n'
+             'Если вы хотите прервать изменение статуса - '
+             'нажмите кнопку или отправьте команду /cancel',
+        reply_markup=return_to_main_menu_markup
+    )
+
+
+
+# ХЭНДЛЕРЫ ИЗМЕНЕНИЯ ОПИСАНИЯ ПОЛЬЗОВАТЕЛЯ
+
+@router.callback_query(F.data == 'edit_description', StateFilter(default_state))
+@log_handler_call
+async def press_edit_description(callback: CallbackQuery, state: FSMContext, data: dict):
+    """
+    Обработчик команды /edit_description.
+    Редактирует радел О СЕБЕ.
+    """
+    logger.info(f"Пользователь {callback.from_user.id} начал редактирование раздела О СЕБЕ.")
+
+    # Отвечаем на callback, чтобы избежать "крутки часов"
+    await callback.answer()
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = (
+        'Напишите, что бы вы хотели рассказать о себе другим участникам группы.\n'
+        'Если вы станете представителем - этот раздел смогут прочитать потенциальные подписчики\n'
+        'Если хотите прервать процедуру - нажмите кнопку или наберите /cancel'
+    )
+    data['reply_markup'] = return_to_main_menu_markup
+
+    # Редактируем сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+    await state.set_state(FSM_profile.fill_description)
+
+
+@router.message(StateFilter(FSM_profile.fill_description))
+@log_handler_call
+async def process_description_sent(message: Message, state: FSMContext, data:dict):
+    """
+    Обработчик ввода О СЕБЕ.
+    """
+    logger.info(f"Пользователь {message.from_user.id} ввел О СЕБЕ: {message.text}.")
+    # member_data = {'description': message.text}
+    member_id = data['member_id']
+    status = data['user_status']
+
+    # Записываем username в базу данных
+    await update_member_data(member_id=member_id, description=message.text)
+
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = 'Раздел "О себе" изменен!'
+    data['reply_markup'] = get_profile_menu_keyboard(status)
+
+    # Редактируем сообщение
+    await message.answer(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+    # Завершаем машину состояний
+    await state.clear()
+
+
+# ХЭНДЛЕРЫ ВЫБОРА УРОВНЯ ИНФОРМИРОВАНИЯ
+@router.callback_query(F.data == 'change_info_level', StateFilter(default_state))
+@log_handler_call
+async def press_edit_info_level(callback: CallbackQuery, state: FSMContext, data: dict):
+    """
+    Обработчик команды /change_info_level.
+    Редактирует уровень информирования.
+    """
+    logger.info(f"Пользователь {callback.from_user.id} начал выбор уровня информирования.")
+
+    # Отвечаем на callback, чтобы избежать "крутки часов"
+    await callback.answer()
+    menu_list = ['max_info','average_info','min_info']
+
+    data['response_text'] = (
+        'Выберите уровень информирования.\n'
+        'Максимальный: бот будет присылать все сообщения о создании голосований и их ходе.\n'
+        'Средний: бот будет присылать сообщения о начале голосвания и его финальных этапах.\n'
+        'Минимальный: вы не будете получать сообщений от бота о ходе голосований.\n'
+        'При любом уровне информирования вы будете получать важные сообщения от администрации и своего представителя'
+    )
+    data['reply_markup'] = create_inline_kb(1,*menu_list)
+
+    # Редактируем сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+    await state.set_state(FSM_profile.fill_info_level)
+
+
+@router.callback_query(F.data.in_({'max_info', 'average_info', 'min_info'}), StateFilter(FSM_profile.fill_info_level))
+@log_handler_call
+async def process_info_level_selection(callback: CallbackQuery, state: FSMContext, data:dict):
+    """
+    Обработчик выбора уровня информирования.
+    Сохраняет выбранный уровень информирования в БД.
+    """
+    # Получаем ID пользователя
+    member_id = data['member_id']
+
+    # Определяем выбранный уровень информирования
+    selected_level = callback.data  # 'max_info', 'average_info' или 'min_info'
+
+    # Формируем текст подтверждения
+    level_description = {
+        'max_info': 'Максимальный уровень информирования',
+        'average_info': 'Средний уровень информирования',
+        'min_info': 'Минимальный уровень информирования'
+    }
+    confirmation_text = f"Вы выбрали: {level_description[selected_level]}."
+    info_level = selected_level.split('_')[0]
+
+    try:
+        # Обновляем данные пользователя в БД
+        await update_member_data(member_id=member_id, info_level=info_level)
+        logger.info(f"Пользователь {member_id} установил уровень информирования: {selected_level}")
+
+        data['response_text']=confirmation_text
+        data['reply_markup']=get_profile_menu_keyboard(data['user_status'])  # Меняем клавиатуру после выбора
+
+        # Редактируем сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+    except Exception as e:
+        # Логируем ошибку и уведомляем пользователя
+        logger.error(f"Ошибка при обновлении уровня информирования для пользователя {member_id}: {e}")
+        await callback.message.edit_text(
+            text="Произошла ошибка при сохранении уровня информирования. Попробуйте позже.",
+            reply_markup=None
+        )
+
+    # Отвечаем на callback, чтобы избежать "крутки часов"
+    await callback.answer()
+    # Завершаем машину состояний
+    await state.clear()
+
+
+@router.message(StateFilter(FSM_profile.fill_info_level))
+@log_handler_call
+async def warning_level_selection(message: Message):
+    """
+    Обработчик ввода текста когда ожидается нажатие кнопки
+    """
+
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_profile.fill_info_level}")
+    await message.answer(
+        text='Пожалуйста, воспользуйтесь кнопками выше!\n\n'
+             'Если вы хотите прервать процедуру - '
+             'нажмите кнопку под этим сообщением или отправьте команду /cancel',
+        reply_markup=return_to_main_menu_markup
     )

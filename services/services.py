@@ -438,6 +438,7 @@ async def club_info(club_id:int):
     logger.debug(f'Сформирована справка о группе:\n{text}')
     return text
 
+
 # Функция создания ссылки на публичный канал по его ID
 async def get_channel_link(channel_id):
     try:

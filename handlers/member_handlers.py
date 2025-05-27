@@ -480,57 +480,44 @@ async def warning_new_status(message: Message):
 @router.callback_query(F.data == 'resign_from_proxy')
 @log_handler_call
 async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
-    try:
-        logger.info(f"Пользователь {callback.from_user.id} отказывается от статуса 'proxy'.")
-        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        member_id = data['member_id']
-        if not member_id:
-            # Добавляем данные для SafeEditMiddleware
-            data['response_text'] = 'Вы не являетесь участником группы.'
-            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+    logger.info(f"Пользователь {callback.from_user.id} отказывается от статуса 'proxy'.")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-            # Редактируем сообщение
-            await callback.message.edit_text(
-                text=data['response_text'],
-                reply_markup=data['reply_markup']
-            )
-            return
-
-        # Убираем статус 'proxy'
-        await new_status(member_id, member_id, 'not_proxy')
-        await not_votist_because_proxy_quit(member_id)
-        flag = await is_votist(member_id)
-        text = 'Вы перестали быть представителем!'
-        if not flag:
-            text = '\nВам требуется выбрать себе представителя, чтобы иметь право голосовать'
-
-
-
+    member_id = data['member_id']
+    if not member_id:
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = await user_menu(callback.from_user.id)
+        data['response_text'] = 'Вы не являетесь участником группы.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение
         await callback.message.edit_text(
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
+        return
 
-    except Exception as e:
-        logger.error(f"Ошибка при обработке кнопки 'resign_from_proxy': {e}")
+    # Убираем статус 'proxy'
+    await new_status(member_id, member_id, 'not_proxy')
+    await not_votist_because_proxy_quit(member_id)
+    flag = await is_votist(member_id)
+    text = 'Вы перестали быть представителем!'
+    if not flag:
+        text = '\nВам требуется выбрать себе представителя, чтобы иметь право голосовать'
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при удалении статуса представителя.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
-        # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
 
-        raise  # Передаем исключение middleware для обработки
+    # Добавляем данные для SafeEditMiddleware
+    data['response_text'] = text
+    data['reply_markup'] = await user_menu(callback.from_user.id)
+
+    # Редактируем сообщение
+    await callback.message.edit_text(
+        text=data['response_text'],
+        reply_markup=data['reply_markup']
+    )
+
+
 
 
 # Хэндлер для кнопки 'resign_from_registrator'

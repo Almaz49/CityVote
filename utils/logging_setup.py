@@ -7,7 +7,7 @@ def setup_logger(
     info_log_path='info.log',
     warning_log_path='warning.log',
     error_log_path='error.log',
-    console_level=logging.DEBUG, #Здесь менять уровень вывода логов в консоль
+    console_level=logging.DEBUG,
     file_encoding='utf-8'
 ):
     """
@@ -37,7 +37,7 @@ def setup_logger(
     warning_handler.setLevel(logging.WARNING)
     warning_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'))
 
-    # Handler для записи WARNING и выше в файл warning.log
+    # Handler для записи ERRROR и выше в файл error.log
     error_handler = logging.FileHandler(error_log_path, encoding=file_encoding)
     error_handler.setLevel(logging.ERROR)
     error_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s'))
@@ -52,6 +52,7 @@ def setup_logger(
     root_logger.addHandler(debug_handler)
     root_logger.addHandler(info_handler)
     root_logger.addHandler(warning_handler)
+    root_logger.addHandler(error_handler)
     root_logger.addHandler(console_handler)
 
     return root_logger

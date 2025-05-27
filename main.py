@@ -47,17 +47,18 @@ dp['club_id'] = club_id
 logger = setup_logger(
     info_log_path='info.log',
     warning_log_path='warning.log',
-    console_level=logging.DEBUG,
+    console_level=logging.WARNING, #Здесь менять уровень вывода логов в консоль
     file_encoding='utf-8'
 )
 
-# Тестовое сообщение
-logger.info("Логгирование настроено в main.py")
-# Пример использования
-logger.debug("Это debug-сообщение")  # Не будет выведено в консоль
-logger.info("Это info-сообщение")
-logger.warning("Это warning-сообщение")
-logger.error("Это error-сообщение")
+# # Тестовое сообщение
+# logger.info("Логгирование настроено в main.py")
+# # Пример использования
+# logger.debug("Это debug-сообщение")  # Не будет выведено в консоль
+# logger.info("Это info-сообщение")
+# logger.warning("Это warning-сообщение")
+# logger.error("Это error-сообщение")
+logger.warning("Бот начал работу")
 
 
 

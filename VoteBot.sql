@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS `Members` (
 	`user_id` INTEGER NOT NULL,
 	`proxy` INTEGER,
 	`number_of_votes` REAL,
-	`desciption` TEXT,
+	`description` TEXT,
 	`resume`     TEXT,
 FOREIGN KEY(`club_id`) REFERENCES `Clubs`(`id`),
 FOREIGN KEY(`user_id`) REFERENCES `Users`(`id`),

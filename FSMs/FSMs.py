@@ -144,3 +144,10 @@ class AdminStates(StatesGroup):
     setting_main_channel = State()
     setting_stage_durations = State()  # Состояние для ввода продолжительности этапов
     setting_thresholds = State()  # Новое состояние для установки порогов
+
+# FSM администрирования профиля
+class FSM_profile(StatesGroup):
+    fill_username = State() # Состояние ожидания ввода псевдонима
+    fill_description = State() # Состояние ожидания ввода описания пользователя
+    fill_OK = State()         # Состояние ожидания подтверждения
+    fill_info_level = State() # Состояние ожидания уровня информирования

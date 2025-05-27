@@ -734,7 +734,10 @@ async def count_member(club_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute('''
-                SELECT COUNT(*) FROM Members WHERE club_id = ?
+                SELECT COUNT(*)
+                FROM Members m
+                INNER JOIN Status s ON m.id = s.member_id
+                WHERE m.club_id = ? AND s.status = 'member'
             ''', (club_id,))
             result = await cursor.fetchone()
             if result:
