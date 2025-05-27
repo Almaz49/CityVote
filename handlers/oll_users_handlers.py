@@ -93,7 +93,7 @@ async def process_start_command(message: Message, command: CommandObject, data: 
                 + '\nВаш статус в группе:'
             )
             for status in data['user_status']:
-                text += f'\n   - {LEXICON.get('user_status',{}).get(status, status)}'
+                text += f"\n   - {LEXICON.get('user_status',{}).get(status, status)}"
 
         # Создаем клавиатуру
         markup = await user_menu(message.from_user.id, status=data['user_status'])
