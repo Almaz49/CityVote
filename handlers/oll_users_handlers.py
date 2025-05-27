@@ -35,36 +35,36 @@ router = Router()
 ХЭНДЛЕРЫ
 """
 
-# Хэндлер для команды /start
-@router.message(Command(commands=["start"]))
-@log_handler_call
-async def process_start_command(message: Message, data: dict):
-    """
-    Обработчик команды /start.
-    Отправляет приветственное сообщение и главное меню.
-    """
-    try:
-        markup = await user_menu(message.from_user.id, status=data['user_status'])
-        text = await greetings_message(club_id=data['club_id'])
-        text = text + '\nВаш статус в группе:'
-        for status in data['user_status']:
-            text += f'\n   -{LEXICON.get('user_status',{}).get(status, status)}'
-        await message.answer(
-            text=text,
-            reply_markup=markup,
-            parse_mode="HTML"
-        )
-        logger.info(f"Пользователь {message.from_user.id} начал работу с ботом.")
-    except Exception as e:
-        logger.error(f"Ошибка при обработке команды /start: {e}")
-        error_info = traceback.extract_tb(e.__traceback__)
-        for frame in error_info:
-            logger.error(
-                f"Ошибка произошла в файле: {frame.filename}, строка: {frame.lineno}, "
-                f"функция: {frame.name}, код: {frame.line}"
-            )
-        await message.answer(text="Произошла ошибка при загрузке главного меню.",
-                             reply_markup=await user_menu(status=data['user_status']))
+# # Хэндлер для команды /start
+# @router.message(Command(commands=["start"]))
+# @log_handler_call
+# async def process_start_command(message: Message, data: dict):
+#     """
+#     Обработчик команды /start.
+#     Отправляет приветственное сообщение и главное меню.
+#     """
+#     try:
+#         markup = await user_menu(message.from_user.id, status=data['user_status'])
+#         text = await greetings_message(club_id=data['club_id'])
+#         text = text + '\nВаш статус в группе:'
+#         for status in data['user_status']:
+#             text += f"\n   -{LEXICON.get('user_status',{}).get(status, status)}"
+#         await message.answer(
+#             text=text,
+#             reply_markup=markup,
+#             parse_mode="HTML"
+#         )
+#         logger.info(f"Пользователь {message.from_user.id} начал работу с ботом.")
+#     except Exception as e:
+#         logger.error(f"Ошибка при обработке команды /start: {e}")
+#         error_info = traceback.extract_tb(e.__traceback__)
+#         for frame in error_info:
+#             logger.error(
+#                 f"Ошибка произошла в файле: {frame.filename}, строка: {frame.lineno}, "
+#                 f"функция: {frame.name}, код: {frame.line}"
+#             )
+#         await message.answer(text="Произошла ошибка при загрузке главного меню.",
+#                              reply_markup=await user_menu(status=data['user_status']))
 
 
 @router.message(Command(commands=["start"]))
@@ -101,7 +101,8 @@ async def process_start_command(message: Message, command: CommandObject, data: 
         # Отправляем сообщение
         await message.answer(
             text=text,
-            reply_markup=markup
+            reply_markup=markup,
+            parse_mode="HTML"
         )
 
         logger.info(f"Пользователь {message.from_user.id} начал работу с ботом. Параметр: {args}")
