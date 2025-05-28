@@ -751,7 +751,7 @@ async def process_info(callback: CallbackQuery, data: dict):
 async def process_profile(callback: CallbackQuery, data: dict):
     """
     Обработчик команды /profile.
-    Отправляет меню с кнопками информации.
+    Отправляет меню с кнопками опций профиля.
     """
     logger.info(f"Пользователь {callback.from_user.id} запросил профиль.")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -790,7 +790,7 @@ async def process_bot_info(callback: CallbackQuery, data: dict):
 
 @router.callback_query(F.data == 'about')
 @log_handler_call
-async def process_bot_info(callback: CallbackQuery, data: dict):
+async def process_aboute(callback: CallbackQuery, data: dict):
     """
     Обработчик команды /about.
     Отправляет теорию о боте.

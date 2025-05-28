@@ -154,8 +154,8 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
 
         raise  # Передаем исключение middleware для обработки
 
-# Хэндлер для кнопки 'select_proxy' представителем (выбор заместителя)
-@router.callback_query(F.data == 'select_proxy', StatusFilter(required_status = ['proxy']), StateFilter(default_state))
+# Хэндлер для кнопки 'select_subproxy' представителем (выбор заместителя)
+@router.callback_query(F.data == 'select_subproxy', StatusFilter(required_status = ['proxy']), StateFilter(default_state))
 @log_handler_call
 async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMContext):
     try:
@@ -177,7 +177,7 @@ async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMC
         logger.info(f"Установлено состояние: {await state.get_state()}")
 
     except Exception as e:
-        logger.error(f"Ошибка при обработке кнопки 'select_proxy': {e}")
+        logger.error(f"Ошибка при обработке кнопки 'select_subproxy': {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка представителей.'
