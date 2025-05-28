@@ -249,15 +249,34 @@ async def list_of_members_tg(status):
 @log_function_call
 async def trust_tg(tg_id, proxy_tg_id):
     try:
+        if not isinstance(tg_id, int) or not isinstance(proxy_tg_id, int):
+            raise ValueError("tg_id and proxy_tg_id must be integers")
+
         logger.info(f"Вызвана функция trust_tg")
         user_id, member_id = await extract_user_member_id(tg_id)
         proxy_user_id, proxy_member_id = await extract_user_member_id(proxy_tg_id)
-        result =  await trust(member_id,proxy_member_id)
+
+        if member_id is None or proxy_member_id is None:
+            logger.error("Invalid member_id or proxy_member_id")
+            return False, "Invalid member or proxy ID"
+
+        try:
+            result = await trust(member_id, proxy_member_id)
+        except Exception as e:
+            logger.error(f"Ошибка при назначении представителя: {e}")
+            return False, f"Ошибка при назначении представителя: {str(e)}"
+
         logger.info(f"Пользователь  с tg_id {tg_id} выбрал представителем учатника с tg_id {proxy_tg_id}")
         return True, result
+    except aiosqlite.Error as db_error:
+        logger.error(f"Ошибка базы данных при выборе представителя пользователем {tg_id}: {db_error}")
+        return False, f"Ошибка базы данных: {str(db_error)}"
+    except ValueError as value_error:
+        logger.error(f"Ошибка значения при выборе представителя пользователем {tg_id}: {value_error}")
+        return False, f"Ошибка значения: {str(value_error)}"
     except Exception as e:
-        logger.error(f"Произошла ошибка при выборе представителя пользователем {tg_id}: {e}")
-        return False, f"Произошла ошибка: {str(e)}"
+        logger.error(f"Произошла неизвестная ошибка при выборе представителя пользователем {tg_id}: {e}")
+        return False, f"Произошла неизвестная ошибка: {str(e)}"
 
 # Функция выбора варианта при голосовании (от ТГ-id)
 @log_function_call
