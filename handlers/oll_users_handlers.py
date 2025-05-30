@@ -886,7 +886,7 @@ async def press_username_entry(callback: CallbackQuery, state: FSMContext, data:
     status = data['user_status']
 
     # Записываем username в базу данных
-    await db_update('Users', 'id', user_id, username=username)
+    await update_user_data(user_id=user_id, username=username)
 
     # Добавляем данные для SafeEditMiddleware
     data['response_text'] = 'Ваш псевдоним изменен!'

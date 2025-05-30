@@ -263,6 +263,29 @@ async def variant_choise(member_id, voting_id):
             raise
 
 
+@log_function_call
+async def number_of_trusted_votes(club_id,proxy):
+    """
+    Вычисляет число голосов, доверенных представителю
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute('''
+                SELECT COUNT(*) FROM Members
+                WHERE club_id = ? AND proxy = ?
+            ''', (club_id, proxy))
+            result = await cursor.fetchone()
+            if result:
+                amount, = result
+                logger.info(f"Количество голосов, доверенных представителю {proxy}: {amount}")
+                return int(amount)
+            else:
+                logger.info(f"У представителя {proxy} нет доверенных голосов.")
+                return None
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при подсчете числа доверенных голосов: {e}\n{traceback.format_exc()}")
+            raise
+
 
 # Функция подсчета числа членов группы, имеющих право голоса
 @log_function_call

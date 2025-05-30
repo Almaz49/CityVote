@@ -67,8 +67,8 @@ async def voting_create_manager(club_id, creator, title, text=None, voting_type=
 
     # Делаем рассылку пользователям бота в зависимость от их уровня информирования
     for item in members:
-        if item[6] in level_info_dict.get('create'):
-            response = await send_notification_to_user(item[2],notify_text)
+        if item.get('info_level') in level_info_dict.get('create'):
+            response = await send_notification_to_user(item['tg_id'],notify_text)
             if response:
                 # logger.debug(f'{response}')
                 pass
@@ -201,8 +201,8 @@ async def voting_manager(voting_id, club_id=None, admin=None, stage_type='stage'
 
     # Делаем рассылку пользователям бота
     for item in members:
-        if item[6] in level_info_dict.get(stage_type):
-            response = await send_notification_to_user(item[2],notify_text, reply_markup=markup)
+        if item.get('info_level') in level_info_dict.get(stage_type):
+            response = await send_notification_to_user(item['tg_id'],notify_text, reply_markup=markup)
             if response:
                 pass
                 # logger.debug(f'{response}')

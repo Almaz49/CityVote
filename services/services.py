@@ -240,7 +240,7 @@ async def notify_super_registrator_short(candidate_tg_id, user_dict):
 
         # Отправляем сообщение суперрегистраторам (а если их нет - регистраторам)
         for registrator in super_registrators:
-            registrator_tg_id = registrator[2]
+            registrator_tg_id = registrator['tg_id']
             await send_notification_to_user(
                 registrator_tg_id,
                 message_text,

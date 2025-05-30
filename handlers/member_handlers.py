@@ -14,7 +14,7 @@ from keyboards.keyboards import (reg_markup, contact_markup, remove_markup, user
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import *
 import logging
-from utils import log_handler_call
+from utils import log_handler_call, paginate
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -81,16 +81,22 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
 
 
 # Хэндлер для кнопки 'select_proxy' обычным участником
-@router.callback_query(F.data == 'select_proxy', ~StatusFilter(required_status = ['proxy']))
+@router.callback_query(F.data.startswith('select_proxy'), ~StatusFilter(required_status = ['proxy']))
 @log_handler_call
 async def process_select_proxy(callback: CallbackQuery, data: dict):
     try:
         logger.info(f"Пользователь {callback.from_user.id} запросил список представителей.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        members = await list_of_members_tg('proxy')
+        try:
+            _, page = callback.data.split(':')
+            page = int(page) if page.isdigit() else 1
+        except ValueError:
+            page = 1
 
-        if not members:
+        proxies = await list_of_proxy(data['club_id'])
+
+        if not proxies:
             # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'В данный момент нет доступных представителей.'
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
@@ -102,38 +108,27 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
             )
             return
 
+        # Разделяем на страницы
+        paginated_proxies, total_pages = paginate(proxies, page)
 
-        # Создаем кнопки для каждого представителя, текст - его username в группе (не телеграм) или Имя Фамилия, callback-data - телеграм ID
+        # Создаем кнопки для представителей
         proxy_buttons = {}
-        for member in members:
-            proxy_buttons[f'trust:{member[2]}'] = f'{member[5]}' if member[5] else  f"{member[0]} {member[1]}"
+        for proxy in paginated_proxies:
+            proxy_buttons[f'trust:{proxy["member_id"]}'] = f"{proxy['username']} ({proxy['trusted_votes']})"
 
-        # # Смотрим, нет ли дубликатов (полных тезок среди представителей)
-        # # Создаем словарь для подсчёта частоты встречаемости значений
-        # value_counts = {}
+        # Добавляем кнопки пагинации
+        pagination_buttons = {}
+        if page > 1:
+            pagination_buttons[f'select_proxy:{page - 1}'] = '⬅️ Назад'
+        if page < total_pages:
+            pagination_buttons[f'select_proxy:{page + 1}'] = '➡️ Вперед'
 
-        # # Подсчитываем частоту каждого значения
-        # for value in proxy_buttons.values():
-        #     if value in value_counts:
-        #         value_counts[value] += 1
-        #     else:
-        #         value_counts[value] = 1
-
-        # # Находим значения, которые встречаются более одного раза
-        # duplicates = [key for key, count in value_counts.items() if count > 1]
-
-
-
-
-
-        # Создаем инлайн-клавиатуру с кнопками
-        markup = create_inline_kb(1,**proxy_buttons)
-
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Выберите представителя, которому вы доверите свой голос:'
-        data['reply_markup'] = markup
+        # Создаем инлайн-клавиатуру
+        markup = create_inline_kb(1, **proxy_buttons, **pagination_buttons)
 
         # Редактируем сообщение
+        data['response_text'] = 'Выберите представителя, которому вы доверите свой голос:'
+        data['reply_markup'] = markup
         await callback.message.edit_text(
             text=data['response_text'],
             reply_markup=data['reply_markup']
@@ -196,11 +191,11 @@ async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMC
 @log_handler_call
 async def process_trust(callback: CallbackQuery, data: dict):
     try:
-        proxy_tg_id = int(callback.data.split(':')[1])
-        logger.info(f"Пользователь {callback.from_user.id} доверил свой голос пользователю с tg_id {proxy_tg_id}.")
+        proxy = int(callback.data.split(':')[1])
+        logger.info(f"Пользователь {callback.from_user.id} доверил свой голос пользователю с tg_id {proxy}.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        flag, ans_str = await trust_tg(callback.from_user.id, proxy_tg_id)
+        ans_str = await trust(data['member_id'], proxy)
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = ans_str
@@ -403,7 +398,7 @@ async def process_username_entry(callback: CallbackQuery, state: FSMContext, dat
 
     try:
         # Записываем username в базу данных
-        await db_update('Users', 'id', user_id, username=username)
+        await update_user_data(user_id,username=username)
         # Присваиваем статус 'proxy'
         await new_status(member_id, member_id, 'proxy')
         # Присваиваем статус 'votist' (если его не было)
@@ -965,7 +960,7 @@ async def process_reg_username_entry(callback: CallbackQuery, state: FSMContext,
 
     try:
         # Записываем username в базу данных
-        await db_update('Users', 'id', user_id, username=username)
+        await update_user_data(user_id=user_id, username=username)
         # Присваиваем статус 'registrator'
         await new_status(member_id, member_id, 'registrator')
         # Удаляем статус 'pre-registrator'

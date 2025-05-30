@@ -11,7 +11,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration, FSMRereg, FSM_short_registration
 from data_base.telegram_bot_logic import (status_member, extract_user_data_tg, new_status_tg, list_of_members_tg,
-update_address, recording_user_data_1, recording_user_data, update_member_data)
+update_address, recording_user_data_1, update_user_data, update_member_data)
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
 from filters.filters import ContactFilter
 from config_data.config import Config, load_config
@@ -206,7 +206,7 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         user_param['tg_phone_number'] = user_dict.get('tg_phone_number')
         user_param['tg_first_name'] = user_dict.get('tg_first_name')
         user_param['tg_last_name'] = user_dict.get('tg_last_name')
-        await recording_user_data(tg_id, **user_param )
+        await update_user_data(tg_id, **user_param )
 
         member_id = data['member_id']
         member_param = {}

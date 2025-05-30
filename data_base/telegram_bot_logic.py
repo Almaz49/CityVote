@@ -382,7 +382,7 @@ async def update_address(tg_id, city, street, house):
 
         # Здесь должна быть функция для обновления адреса в базе данных
         # Например, используем функцию db_update из db_func.py
-        result = await db_update('Users','tg_id', tg_id, city=city, street=street, house=house)
+        result = await update_user_data(user_id=user_id, city=city, street=street, house=house)
         if result:
             return True, 'Адрес успешно обновлен.'
         else:

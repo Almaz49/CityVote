@@ -178,16 +178,18 @@ async def list_of_members(club_id, status='all'):
         Users.tg_first_name,
         Users.tg_last_name,
         Users.username,
+        Users.id AS user_id,
+        Members.id AS member_id,
         Members.info_level
     FROM Users
     INNER JOIN Members ON Users.id = Members.user_id
     WHERE Members.club_id = ?
     '''
     params = (club_id,)
-
+    # Подзапрос проверяет, есть ли у участника указанный статус в таблице Status
     if status != 'all':
         query += '''
-        AND Users.id IN (
+        AND Members.id IN (
             SELECT member_id
             FROM Status
             WHERE status = ?
@@ -201,46 +203,40 @@ async def list_of_members(club_id, status='all'):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(query, params)
-            result = await cursor.fetchall()
+            result = await fetch_as_dict(cursor)
             logger.info("Запрос успешно выполнен.")
             return result
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
-# # Функция извлечения списка участников с определенным статусом, или всех,
-# # если статус указан 'all'
-# @log_function_call
-# async def list_of_members(club_id, status = 'all'):
-#     # Получаем список имен участников из БД
-#     query = '''
-#     SELECT first_name, last_name, tg_id, tg_first_name, tg_last_name, username FROM Users
-#     WHERE id IN (SELECT user_id FROM Members
-#     WHERE club_id = ?)
-#     '''
-#     params = (club_id,)
+@log_function_call
+async def list_of_proxy(club_id: int):
+    """
+    Возвращает список представителей (участников со статусом 'proxy') с их username и числом доверенных голосов,
+    отсортированных по убыванию числа доверенных голосов.
+    """
+    if not club_id:
+        raise ValueError("club_id не может быть пустым")
 
-#     if status != 'all':
-#         query += '''
-#         AND id IN (SELECT member_id FROM Status
-#         WHERE status = ?)
-#         '''
-#         params += (status,)
-
-#     logger.info(f"Выполняется запрос: {query}")
-#     logger.info(f"Параметры для запроса: {params}")
-
-#     async with AsyncDatabase(path_db) as cursor:
-#         try:
-#             await cursor.execute(query, params)
-#             answ = await cursor.fetchall()
-#             logger.info("Запрос успешно выполнен.")
-#             return answ
-#         except aiosqlite.Error as e:
-#             logger.error(f"Ошибка при выполнении запроса: {e}")
-#             raise
-
-
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            logger.info(f"Запрос списка представителей для club_id={club_id}")
+            await cursor.execute('''
+                SELECT u.username, m.id AS member_id, COUNT(p.proxy) AS trusted_votes
+                FROM Members m
+                INNER JOIN Users u ON m.user_id = u.id
+                LEFT JOIN Members p ON m.id = p.proxy
+                INNER JOIN Status s ON m.id = s.member_id
+                WHERE m.club_id = ? AND s.status = 'proxy'
+                GROUP BY m.id
+                ORDER BY trusted_votes DESC
+            ''', (club_id,))
+            proxies = await fetch_as_dict(cursor)
+            return proxies
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при получении списка представителей: {e}")
+            raise
 
 # Функция извлечения данных о пользователе. *c - список столбцов, данные из которых
 # извлекаются.

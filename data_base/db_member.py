@@ -323,7 +323,7 @@ async def recording_user_data_1(tg_id: int, member_id: int, tg_phone_number = No
 
 # Функция записи данных о пользователе в таблицу Users
 @log_function_call
-async def recording_user_data(tg_id: int, **data):
+async def update_user_data(user_id: int, **data):
 
     """
     Записывает в БД данные пользователя.
@@ -331,10 +331,10 @@ async def recording_user_data(tg_id: int, **data):
     """
 
     try:
-        await db_update('Users', 'tg_id', tg_id, **data)
-        logger.info(f"Данные пользователя {tg_id} записаны в базу данных.")
+        await db_update('Users', 'user_id', user_id, **data)
+        logger.info(f"Данные {data} пользователя {user_id} записаны в базу данных.")
     except Exception as e:
-        logger.error(f"Ошибка при записи данных пользователя {tg_id}: {e}")
+        logger.error(f"Ошибка при записи данных пользователя {user_id}: {e}")
         raise
 
 

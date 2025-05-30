@@ -8,7 +8,7 @@ import logging
 from filters.filters import StatusFilter
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu
 from config_data.config import Config, load_config
-from data_base.telegram_bot_logic import db_update, extract_user_data_tg, extract_user_member_id, new_status
+from data_base.telegram_bot_logic import db_update, extract_user_data_tg, extract_user_member_id, new_status, update_member_data
 from services.services import send_notification_to_user
 from utils import log_handler_call
 
@@ -115,7 +115,7 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
             return
 
         # Обновляем поле "familiar" пользователя в базе данных
-        await db_update('Members', 'id', member_id, familiar='stranger')
+        await update_member_data(member_id=member_id, familiar='stranger')
         await callback.message.delete_reply_markup()  # Удаляем кнопки
 
         # Отправляем уведомление об отказе

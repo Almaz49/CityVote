@@ -143,3 +143,9 @@ async def fetch_as_dict(cursor):
 #         except aiosqlite.Error as e:
 #             logger.error(f"Ошибка при выполнении запроса: {e}")
 #             raise
+
+# Функция для разделения списка на страницы
+def paginate(items, page, items_per_page=10):
+    start = (page - 1) * items_per_page
+    end = start + items_per_page
+    return items[start:end], len(items)
