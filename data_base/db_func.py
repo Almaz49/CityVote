@@ -223,7 +223,7 @@ async def list_of_proxy(club_id: int):
         try:
             logger.info(f"Запрос списка представителей для club_id={club_id}")
             await cursor.execute('''
-                SELECT u.username, m.id AS member_id, COUNT(p.proxy) AS trusted_votes
+                SELECT u.username, m.id AS member_id, m.description, COUNT(p.proxy) AS trusted_votes
                 FROM Members m
                 INNER JOIN Users u ON m.user_id = u.id
                 LEFT JOIN Members p ON m.id = p.proxy
@@ -236,6 +236,38 @@ async def list_of_proxy(club_id: int):
             return proxies
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при получении списка представителей: {e}")
+            raise
+@log_function_call
+async def extract_profile(member_id: int):
+    """
+    Возвращает информацию профиля участника по его member_id.
+    :param member_id: ID участника в таблице Members
+    """
+    if not member_id:
+        raise ValueError("member_id не может быть пустым")
+
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            logger.info(f"Запрос информации о профиле для member_id={member_id}")
+            await cursor.execute('''
+                SELECT
+                    u.id AS user_id,
+                    u.username AS username,
+                    u.email AS email,
+                    u.first_name AS first_name,
+                    u.last_name AS last_name,
+                    m.description,
+                    m.info_level,
+                    proxy_user.username AS proxy_username
+                FROM Members m
+                INNER JOIN Users u ON m.user_id = u.id
+                LEFT JOIN Users proxy_user ON m.proxy = proxy_user.id
+                WHERE m.id = ?
+            ''', (member_id,))
+            profile = await fetch_as_dict(cursor)
+            return profile[0] if profile else None
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при получении информации о профиле: {e}")
             raise
 
 # Функция извлечения данных о пользователе. *c - список столбцов, данные из которых

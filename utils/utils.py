@@ -148,4 +148,5 @@ async def fetch_as_dict(cursor):
 def paginate(items, page, items_per_page=10):
     start = (page - 1) * items_per_page
     end = start + items_per_page
-    return items[start:end], len(items)
+    total_pages = (len(items) + items_per_page - 1) // items_per_page
+    return items[start:end], total_pages

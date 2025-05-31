@@ -14,7 +14,7 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
 from FSMs.FSMs import FSMRegistration, FSMRereg
-from data_base.db_func import extract_club_info
+from data_base.db_func import extract_club_info, extract_profile
 # from data_base.telegram_bot_logic import AsyncDatabase, is_votist
 from data_base.data_base import *
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup, main_menu_markup
@@ -607,3 +607,20 @@ async def process_channel_info(channel_info: str, club_id: int, action: str) -> 
         return {"success": False, "message": "Неверное действие."}
 
     return result
+
+async def profile_message(member_id, status):
+    profile = await extract_profile(member_id)
+    text = 'Данные вашего профиля:\n'
+    if profile.get('username'):
+        text += f"Псевдоним: {profile.get('username')}\n"
+    if profile.get('description'):
+        text += f"Ваше описание:\n{profile.get('description')}\n"
+    if profile.get('info_level'):
+        text += f"Уровень информирования: {profile.get('info_level')}\n"
+    if profile.get('proxy_username'):
+        if 'proxy' in status:
+            text += f"Ваш заместитель: {profile.get('proxy_username')}\n"
+        else:
+            text += f"Ваш представитель: {profile.get('proxy_username')}\n"
+    text+=LEXICON.get('profile_menu','Выберите, что хотите поменять в профиле') # Сюда вставить функцию создания текста
+    return text

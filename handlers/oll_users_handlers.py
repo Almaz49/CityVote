@@ -13,7 +13,7 @@ from keyboards.keyboards import (
     user_menu, remove_markup, create_inline_kb, confirm_markup, return_to_main_menu_markup,
     get_admin_menu_keyboard, get_profile_menu_keyboard, get_info_menu_keyboard
     )
-from services.services import greetings_message, help_message, club_info
+from services.services import greetings_message, help_message, club_info, profile_message
 from manager.manager import leave_club
 from config_data.config import Config, load_config
 import logging
@@ -757,7 +757,7 @@ async def process_profile(callback: CallbackQuery, data: dict):
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Добавляем данные для SafeEditMiddleware
-    data['response_text'] = LEXICON.get('profile_menu','Выберите, что хотите поменять в профиле') # Сюда вставить функцию создания текста
+    data['response_text'] = await profile_message(data['member_id'],data['user_status'])
     data['reply_markup'] = get_profile_menu_keyboard(data['user_status'])
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(
