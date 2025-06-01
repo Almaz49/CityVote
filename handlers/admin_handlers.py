@@ -123,7 +123,7 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
     else:
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = ans_str
-        data['reply_markup'] = None  # Клавиатура не нужна
+        data['reply_markup'] = main_menu_markup
 
         # Отправляем сообщение об ошибке
         await message.answer(

@@ -10,7 +10,7 @@ from LEXICON.LEXICON import LEXICON
 from FSMs.FSMs import FSM_become_proxy, FSM_appoint_deputy, FSM_leave_club, FSM_become_registrator
 from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned
 from keyboards.keyboards import (reg_markup, contact_markup, remove_markup, user_menu,
-            create_inline_kb, confirm_markup, return_to_main_menu_markup)
+            create_inline_kb, confirm_markup, return_to_main_menu_markup, back_to_menu_button)
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import *
 import logging
@@ -112,19 +112,42 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
         paginated_proxies, total_pages = paginate(proxies, page)
 
         # Создаем кнопки для представителей
-        proxy_buttons = {}
+        proxy_buttons = []
         for proxy in paginated_proxies:
-            proxy_buttons[f'trust:{proxy["member_id"]}'] = f"{proxy['username']} ({proxy['trusted_votes']})"
+            # Кнопка для доверия голосов
+            trust_button = InlineKeyboardButton(
+                text=f"{proxy['username']} ({proxy['trusted_votes']})",
+                callback_data=f"trust:{proxy['member_id']}"
+            )
+            # Кнопка для получения подробной информации
+            details_button = InlineKeyboardButton(
+                text="Подробная информация",
+                callback_data=f"proxy_details:{proxy['member_id']}:{proxy['trusted_votes']}:{page}"
+            )
+            # Добавляем кнопки в список
+            proxy_buttons.append([trust_button, details_button])
 
         # Добавляем кнопки пагинации
-        pagination_buttons = {}
+        pagination_buttons = []
         if page > 1:
-            pagination_buttons[f'select_proxy:{page - 1}'] = '⬅️ Назад'
+            pagination_buttons.append(InlineKeyboardButton(
+                text='⬅️ Назад',
+                callback_data=f'select_proxy:{page - 1}'
+            ))
         if page < total_pages:
-            pagination_buttons[f'select_proxy:{page + 1}'] = '➡️ Вперед'
+            pagination_buttons.append(InlineKeyboardButton(
+                text='➡️ Вперед',
+                callback_data=f'select_proxy:{page + 1}'
+            ))
+
+        # Добавляем кнопку "Главное меню"
+        main_menu_button = InlineKeyboardButton(
+            text='Главное меню',
+            callback_data='main_menu'
+        )
 
         # Создаем инлайн-клавиатуру
-        markup = create_inline_kb(1, **proxy_buttons, **pagination_buttons)
+        markup = InlineKeyboardMarkup(inline_keyboard=proxy_buttons + [pagination_buttons, [main_menu_button]])
 
         # Редактируем сообщение
         data['response_text'] = 'Выберите представителя, которому вы доверите свой голос:'
@@ -148,6 +171,136 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
         )
 
         raise  # Передаем исключение middleware для обработки
+
+
+
+# Хэндлер для доверия голоса
+@router.callback_query(F.data.startswith('trust:'), ~StatusFilter(required_status = ['proxy']))
+@log_handler_call
+async def process_trust(callback: CallbackQuery, data: dict):
+    try:
+        proxy = int(callback.data.split(':')[1])
+        logger.info(f"Пользователь {callback.from_user.id} доверил свой голос пользователю с tg_id {proxy}.")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        ans_str = await trust(data['member_id'], proxy)
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = ans_str
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при доверии голоса: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при доверии голоса.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+# Хэндлер предоставления подробной информации
+@router.callback_query(F.data.startswith('proxy_details:'))
+@log_handler_call
+async def process_proxy_details(callback: CallbackQuery, data: dict):
+    try:
+        proxy_id = int(callback.data.split(':')[1])
+        trusted_votes = int(callback.data.split(':')[2])
+        logger.info(f"Пользователь {callback.from_user.id} запросил подробную информацию о представителе с ID {proxy_id}.")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        # Получаем информацию о представителе
+        proxy_info = await extract_profile(proxy_id)
+
+        # Формируем текст с подробной информацией
+        text = f"Username: {proxy_info['username']}\nОписание: {proxy_info['description']}\nЧисло доверенных голосов: {trusted_votes}"
+
+        try:
+            page = callback.data.split(':')[3]
+            page = int(page) if page.isdigit() else 1
+        except ValueError:
+            page = 1
+
+        proxies = await list_of_proxy(data['club_id'])
+
+        if not proxies:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'В данный момент нет доступных представителей.'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+        # Разделяем на страницы
+        paginated_proxies, total_pages = paginate(proxies, page)
+
+        # Создаем кнопки для представителей
+        proxy_buttons = []
+        for proxy in paginated_proxies:
+            # Кнопка для доверия голосов
+            trust_button = InlineKeyboardButton(
+                text=f"{proxy['username']} ({proxy['trusted_votes']})",
+                callback_data=f"trust:{proxy['member_id']}"
+            )
+            # Кнопка для получения подробной информации
+            details_button = InlineKeyboardButton(
+                text="Подробная информация",
+                callback_data=f"proxy_details:{proxy['member_id']}:{proxy['trusted_votes']}:{page}"
+            )
+            # Добавляем кнопки в список
+            proxy_buttons.append([trust_button, details_button])
+
+        # Добавляем кнопки пагинации
+        pagination_buttons = []
+        if page > 1:
+            pagination_buttons.append(InlineKeyboardButton(
+                text='⬅️ Назад',
+                callback_data=f'select_proxy:{page - 1}'
+            ))
+        if page < total_pages:
+            pagination_buttons.append(InlineKeyboardButton(
+                text='➡️ Вперед',
+                callback_data=f'select_proxy:{page + 1}'
+            ))
+
+        # Добавляем кнопку "Главное меню"
+        main_menu_button = InlineKeyboardButton(
+            text='Главное меню',
+            callback_data='main_menu'
+        )
+
+        # Создаем инлайн-клавиатуру
+        markup = InlineKeyboardMarkup(inline_keyboard=proxy_buttons + [pagination_buttons, [main_menu_button]])
+
+        # Редактируем сообщение
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+
+    except Exception as e:
+        logger.error(f"Ошибка при получении подробной информации о представителе: {e}")
+        await callback.message.answer('Произошла ошибка при получении информации о представителе.')
+
 
 # Хэндлер для кнопки 'select_subproxy' представителем (выбор заместителя)
 @router.callback_query(F.data == 'select_subproxy', StatusFilter(required_status = ['proxy']), StateFilter(default_state))
@@ -176,42 +329,6 @@ async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMC
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при загрузке списка представителей.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-        # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
-
-        raise  # Передаем исключение middleware для обработки
-
-# Хэндлер для доверия голоса
-@router.callback_query(F.data.startswith('trust:'), ~StatusFilter(required_status = ['proxy']))
-@log_handler_call
-async def process_trust(callback: CallbackQuery, data: dict):
-    try:
-        proxy = int(callback.data.split(':')[1])
-        logger.info(f"Пользователь {callback.from_user.id} доверил свой голос пользователю с tg_id {proxy}.")
-        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-        ans_str = await trust(data['member_id'], proxy)
-
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = ans_str
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-        # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
-
-    except Exception as e:
-        logger.error(f"Ошибка при доверии голоса: {e}")
-
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при доверии голоса.'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
