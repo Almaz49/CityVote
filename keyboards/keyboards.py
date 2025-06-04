@@ -94,7 +94,7 @@ buttons = {
         'delegate': ['new_voting'],          # Для статуса 'delegate'
     },
     'settings': {  # Категория: Настройки
-        'admin': ['new_registrator'],                         # Для статуса 'admin'
+        'admin': ['new_registrator','registrators_list'],                         # Для статуса 'admin'
         'owner': ['new_status', 'admin_bot']                          # Для статуса 'owner'
     }
 }

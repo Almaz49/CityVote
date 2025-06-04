@@ -56,6 +56,7 @@ LEXICON_RU = {
 'new_variant':'Добавить вариант',
 'new_status':'Изменить статус участника',
 'new_registrator':'Добавить регистратора',
+'registrators_list':'Список регистраторов',
 'new_member':'Принять в группу новичка',
 'select_proxy':'Выбрать представителя',
 'select_subproxy':'Выбрать заместителя',

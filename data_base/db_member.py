@@ -66,6 +66,9 @@ async def new_status(registrator, member_id, status, token_id=None):
                     (member_id, status2)
                 )
                 logger.info(f"Статус '{status2}' удален для member_id: {member_id}")
+                success = True
+                message = f"Статус '{status2}' удален для member_id: {member_id}"
+                return success,message
             else:
                 if status1[0] == 'AppointAs':
                     new_st = status[10:]
@@ -76,6 +79,10 @@ async def new_status(registrator, member_id, status, token_id=None):
                     '''INSERT OR IGNORE INTO Status(member_id, status) VALUES (?, ?)''',
                     (member_id, new_st)
                 )
+
+                success = True
+                message = f"Статус '{new_st}' добавлен для member_id: {member_id}"
+
                 # Если присваевается статус member, удаляем статус candidate
                 if new_st == 'member':
                     await cursor.execute(
@@ -91,6 +98,7 @@ async def new_status(registrator, member_id, status, token_id=None):
                 )
                     logger.info(f"Статус '{'member'}' удален для member_id: {member_id}")
                 logger.info(f"Добавлен новый статус '{status}' для member_id: {member_id}")
+                return success,message
 
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при работе со статусом: {e}")

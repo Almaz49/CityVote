@@ -271,87 +271,255 @@ async def warning_registrator(message: Message):
     )
 
 
+"""
+Хэндлеры создани списка регистраторов (суперрегистраторов) и редактирования и статусов
+"""
+
+# Добавляем обработку нажатия кнопки "список регистраторов" в меню администратора
+@router.callback_query(F.data == 'registrators_list')
+@log_handler_call
+async def process_registrators_list(callback: CallbackQuery, data: dict):
+    logger.info(f"Пользователь {callback.from_user.id} запросил список регистраторов")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Здесь будет логика получения и отображения списка регистраторов и суперрегистраторов
+    registrators = await list_of_members(data['club_id'],status='registrator')  # Функция для получения списка регистраторов
+    super_registrators = await list_of_members(data['club_id'], status='superregistrator')  # Функция для получения списка суперhегистраторов
+
+    if not registrators and not super_registrators:
+            # Добавляем данные для SafeEditMiddleware
+            data['response_text'] = 'В данный момент нет регистраторов.'
+            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+            return
+
+    for registrator in registrators:
+        # Отправляем сообщение про каждого регистратора
+        await callback.message.answer(
+            text=(f"Регистратор: {registrator['username']} {registrator['first_name'] if registrator['first_name'] else ''} "
+                  f"{registrator['last_name'] if registrator['last_name'] else ''}"),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="Удалить из регистраторов", callback_data=f"remove_registrator:{registrator['member_id']}")],
+                [InlineKeyboardButton(text="Сделать суперрегистратором", callback_data=f"promote_to_super:{registrator['member_id']}")]
+            ])
+        )
+
+    for super_registrator in super_registrators:
+        # Отправляем сообщение про каждого суперрегистратора
+        await callback.message.answer(
+            text=(f"Суперегистратор: {super_registrator['username']} \n{super_registrator['first_name'] if super_registrator['first_name'] else ''} "
+                  f"{super_registrator['last_name'] if super_registrator['last_name'] else ''}"),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="Удалить из суперрегистраторов", callback_data=f"remove_superregistrator:{super_registrator['member_id']}")],
+                [InlineKeyboardButton(text="Разжаловать в простые регистраторы", callback_data=f"demote_to_registrator:{super_registrator['member_id']}")]
+            ])
+        )
+    await callback.message.answer(
+        text="Вернуться в основное меню",
+        reply_markup=return_to_main_menu_markup
+        )
 
 
-# # Хэндлер для администрирования конкретного голосования
-# @router.callback_query(F.data.regexp(r'^admin_voting:\d+$'))
-# @log_handler_call
-# async def process_admin_voting(callback: CallbackQuery, data: dict):
-#     """
-#     Обработчик вызова меню администрирования конкретного голосования.
-#     """
-#     try:
-#         logger.info(f"Пользователь {callback.from_user.id} выбрал голосование для администрирования: {callback.data}")
-#         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+@router.callback_query(F.data.regexp(r'^remove_registrator:\d+$'))
+@log_handler_call
+async def process_remove_registrator(callback: CallbackQuery, data: dict):
+    """
+    Обработчик удаления регистратора
+    """
+    try:
+        logger.info(f"Пользователь {callback.from_user.id} удалаяет регистратора: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-#         voting_id = int(callback.data.split(':')[1])
-#         variants = await list_of_variants(voting_id, 'valid')
-#         voting_status = await extract_voting_status(voting_id)
-#         dict_keyboard = {f'back_to_votings:{voting_status}':LEXICON.get('back_to_votings','back_to_votings')}
+        member_id = int(callback.data.split(':')[1])
+        registrator = callback.from_user.id
 
-# # Добавляю кнопки в зависимости от статуса голосования и числа вариантов
-#         if voting_status == 'add_variants':
-#             if len(variants) < 2:
-#                 text = 'Это голосование в стадии добавления вариантов. У него пока менее двух вариантов. Вы можете добавить еще варианты либо завершить его'
-#                 if 'delegate' in data['user_status']:
-#                     dict_keyboard[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
-#                     dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
-#             else:
-#                 text = 'Это голосование в стадии добавления вариантов. Вы можете добавить вариант или запустить его'
-#                 dict_keyboard[f'create_variant:{voting_id}'] = LEXICON.get('create_variant', 'create variant')
-#                 dict_keyboard[f'voting_start:{voting_id}'] = LEXICON.get('voting_start','voting_start')
-#                 dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
-#         elif voting_status == 'ongoing':
-#             if len(variants) > 2:
-#                 text = 'Это идущее голосование. Можете перевести его в финал, оставив два варианта'
-#                 dict_keyboard[f'voting_final:{voting_id}'] = LEXICON.get('voting_final','voting_final')
-#                 if len(variants) > 3:
-#                     text = 'Это идущее голосование. Можете подвести промежуточный итог, либо сразу запустить финальный этап, оставив два варианта'
-#                     dict_keyboard[f'voting_stage:{voting_id}'] = LEXICON.get('voting_stage','voting_stage')
-#                 dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
-#             else:
-#                 text = 'это голосование в финальной стадии. Можете завершить его'
-#                 dict_keyboard[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+        result1 = await new_status(registrator=registrator,member_id=member_id,status='not_registrator')
+
+        if result1:
+            success1,text = result1
 
 
-#         elif voting_status == 'confirmation':
-#             text = 'Это голосование в стадии утверждения результата. Вы можете завершить его'
-#             dict_keyboard[f'confirmation_of_voting_results_stop:{voting_id}'] = LEXICON.get('confirmation_of_voting_results_stop',
-#                                                                                       'confirmation of voting results stop')
+        markup = None
 
-#         elif voting_status == 'completed':
-#             text = 'Это завершенное голосование. Вы можете возобновить голосование за него. Отданные ранее голоса сохранятся'
-#             dict_keyboard[f'continue_voting{voting_id}'] = LEXICON.get('continue_voting','continue_voting')
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
 
-#         logger.info(f'словарь для клавиатуры вариантов: {dict_keyboard}')
-#         markup = create_inline_kb(1, **dict_keyboard)
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при удалении регистратора: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при удалении регистратора.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
 
 
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = text
-#         data['reply_markup'] = markup
+@router.callback_query(F.data.regexp(r'^promote_to_super:\d+$'))
+@log_handler_call
+async def process_promote_to_super(callback: CallbackQuery, data: dict):
+    """
+    Обработчик назначения суперрегистратора
+    """
+    try:
+        logger.info(f"Пользователь {callback.from_user.id} делает регистратора суперрегистратором: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-#         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
+        member_id = int(callback.data.split(':')[1])
+        registrator = callback.from_user.id
 
-#     except Exception as e:
-#         logger.error(f"Ошибка при создании меню администрирования голосования: {e}")
+        result1 = await new_status(registrator=registrator,member_id=member_id,status='superregistrator')
 
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = 'Произошла ошибка при администрировании голосования.'
-#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        if result1:
+            success1,text = result1
 
-#         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
+        markup = None
 
-#         raise  # Передаем исключение middleware для обработки
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
 
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при  назначениии суперрегистратора: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при назначении суперрегистратора.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+@router.callback_query(F.data.regexp(r'^remove_superregistrator:\d+$'))
+@log_handler_call
+async def process_remove_superregistrator(callback: CallbackQuery, data: dict):
+    """
+    Обработчик удаления суперрегистратора
+    """
+    try:
+        logger.info(f"Пользователь {callback.from_user.id} удалаяет суперрегистратора: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        member_id = int(callback.data.split(':')[1])
+        registrator = callback.from_user.id
+
+        result1 = await new_status(registrator=registrator,member_id=member_id,status='not_superregistrator')
+        print(result1)
+
+        if result1:
+            success1,text = result1
+
+
+        markup = None
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при удалении суперрегистратора: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при удалении суперрегистратора.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+
+@router.callback_query(F.data.regexp(r'^demote_to_registrator:\d+$'))
+@log_handler_call
+async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
+    """
+    Обработчик разжалования суперрегистратора в регистраторы
+    """
+    try:
+        logger.info(f"Пользователь {callback.from_user.id} разжалует суперрегистратора в регистраторы: {callback.data}")
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        member_id = int(callback.data.split(':')[1])
+        registrator = callback.from_user.id
+
+        result1 = await new_status(registrator=registrator,member_id=member_id,status='not_superregistrator')
+        result2 = await new_status(registrator=registrator,member_id=member_id,status='registrator')
+
+        if result1:
+            success1,text1 = result1
+        if result2:
+            success2,text2 = result2
+
+        text = f"{text1}\n{text2}"
+
+
+        markup = None
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = text
+        data['reply_markup'] = markup
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при удалении регистратора: {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'Произошла ошибка при удалении регистратора.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+
+        # Пытаемся отредактировать сообщение
+        await callback.message.edit_text(
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+
+"""
+Администрирование голосования
+"""
 
 # Хэндлер для обработки кнопки "администрирование голосования"
 # callback.data 'admin_voting':{voting_id}
@@ -636,7 +804,7 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
 @log_handler_call
 async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
     """
-    Обработчик выбора конкретного голосования.
+    Обработчик удаления варианта
     """
     try:
         logger.info(f"Пользователь {callback.from_user.id} удалаяет вариант: {callback.data}")
@@ -687,7 +855,7 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
 @log_handler_call
 async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
     """
-    Обработчик выбора конкретного голосования.
+    Обработчик завершения утверждения голосования (то есть, последне стадии).
     """
     try:
         logger.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")

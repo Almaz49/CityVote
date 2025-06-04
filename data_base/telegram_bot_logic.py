@@ -244,6 +244,8 @@ async def list_of_members_tg(status):
         logger.error(f"Ошибка при извлечении участников: {e}")
         raise
 
+
+
 # Функция выбора представителя. Принимает в качестве аргумента tg_id пользователя,
 # который доверяет голос и member_id представителя
 @log_function_call
