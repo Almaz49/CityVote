@@ -10,7 +10,7 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration, FSMRereg, FSM_short_registration
-from data_base.telegram_bot_logic import (status_member, extract_user_data_tg, new_status_tg, list_of_members_tg,
+from data_base.telegram_bot_logic import (status_member, extract_user_data_tg, extract_club_info, new_status_tg, list_of_members_tg,
 update_address, recording_user_data_1, update_user_data, update_member_data)
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
 from filters.filters import ContactFilter
@@ -50,41 +50,58 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
             return
 
         tg_id = callback.from_user.id
-
         club_id = data['club_id']
+        club_info = await extract_club_info(club_id)
 
-        text = ('Напишите пожалуйста, кто вы и почему хотите вступить в группу.'
-                'Эта информация будет переслана выбранному вами регистратору, чтобы он смог принять решение, подтверждать ли ваше вступление в группу.'
-                'Если вы согласны продолжать процесс регистрации - пришлите в ответ сообщение.'
-                'Если хотите прервать - наберите или нажмите /cancel '
+        # Логируем club_info для отладки
+        logger.debug(f"Club info: {club_info}")
 
-                )
-        markup = None # Не нужна клавиатура
+        text0 = LEXICON.get('registration_message', 'Напишите о себе')
+        text1 = LEXICON.get('reg_cancel_info')
+
+        # Проверяем, что club_info содержит вопросы
+        questions = club_info.get('questions_for_the_candidate')
+        if questions is None:
+            questions = text0  # Используем текст по умолчанию, если вопроса нет
+
+        text = questions + '\n' + text1
+        markup = None  # Не нужна клавиатура
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = text
         data['reply_markup'] = markup
 
-        # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+        # Проверяем, отличается ли новое сообщение от текущего
+        current_text = callback.message.text
+        current_markup = callback.message.reply_markup
+        if current_text != data['response_text'] or current_markup != data['reply_markup']:
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup'],
+                parse_mode='HTML'
+            )
+        else:
+            logger.info("Сообщение не изменено, так как содержимое совпадает.")
 
+        # Устанавливаем состояние
         await state.set_state(FSM_short_registration.fill_resume)
 
     except Exception as e:
         logger.error(f"Ошибка при обработке кнопки 'registration': {e}")
+        logger.error(f"Текущие данные: {data}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при начале процесса регистрации.'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
-        )
+        try:
+            await callback.message.edit_text(
+                text=data['response_text'],
+                reply_markup=data['reply_markup']
+            )
+        except Exception as edit_error:
+            logger.error(f"Ошибка при редактировании сообщения: {edit_error}")
 
         raise  # Передаем исключение middleware для обработки
 
