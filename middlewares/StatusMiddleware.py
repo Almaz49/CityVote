@@ -1,6 +1,5 @@
 # модуль StatusMiddleware
 from aiogram import BaseMiddleware
-from aiogram.types import Message, CallbackQuery
 from data_base.telegram_bot_logic import status_member, mark_user_as_available, is_user_available
 import logging
 
@@ -53,5 +52,5 @@ class StatusMiddleware(BaseMiddleware):
 
         except Exception as e:
             logger.error(f"An error occurred in StatusMiddleware: {e}")
-            logger.error(f"Event type: {type(event)}, Event data: {event}")
-            return
+            logger.warning(f"Event type: {type(event)}, Event data: {event}")
+            raise # Передаем исключение

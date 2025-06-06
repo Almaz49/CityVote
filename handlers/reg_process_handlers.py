@@ -10,7 +10,7 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration, FSMRereg, FSM_short_registration
-from data_base.telegram_bot_logic import (status_member, extract_user_data_tg, extract_club_info, new_status_tg, list_of_members_tg,
+from data_base.telegram_bot_logic import (status_member, list_of_members, extract_club_info, new_status_tg, list_of_members_tg,
 update_address, recording_user_data_1, update_user_data, update_member_data)
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
 from filters.filters import ContactFilter
@@ -109,21 +109,20 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 # Этот хэндлер будет срабатывать, если введено корректное резюме
 @router.message(StateFilter(FSM_short_registration.fill_resume))
 @log_handler_call
-async def process_resume_sent(message: Message, state: FSMContext):
+async def process_resume_sent(message: Message, state: FSMContext, data: dict):
     logger.info(f"Введено резюме кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем введенное имя в контексте состояния
     await state.update_data(resume=message.text, tg_id = message.from_user.id,
                             tg_first_name = message.from_user.first_name, tg_last_name = message.from_user.last_name)
 
     # Создаем инлайн-кнопки для выбора регистратора
-    registrators = await list_of_members_tg('registrator')
+    registrators = await list_of_members('registrator')
     buttons: list[list[InlineKeyboardButton]] = []
     for item in registrators:
-        name = item[0] if item[0] else item[3] if item[3] else item[5]
-        last_name = item[1] if item [1] else item[4] if item[4] else ''
-        tg_id = item[2]
+        username = item.get('username','Unknown')
+        tg_id = item.get('tg_id')
         buttons.append([InlineKeyboardButton(
-            text=f'{name} {last_name}',
+            text=username,
             callback_data=str(tg_id)
         )])
 

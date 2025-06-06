@@ -1,13 +1,10 @@
 # Модуль main.py - основной цикл бота
 
 import logging
-from logging.handlers import RotatingFileHandler
 import asyncio
-import os
-from dotenv import load_dotenv
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from zoneinfo import ZoneInfo
 from aiogram import Bot, Dispatcher
-from aiogram.types import CallbackQuery, Message
-from aiogram.methods import GetChatMember
 from aiogram.fsm.storage.memory import MemoryStorage
 from config_data.config import Config, load_config
 from utils import setup_logger
@@ -17,10 +14,7 @@ from handlers import (
     new_user_handlers, registrator_handlers, oll_users_handlers, reg_process_handlers,
     chat_member_handlers, last_handlers
 )
-from data_base import data_base
-from filters import filters
-from keyboards import keyboards
-from LEXICON.LEXICON import LEXICON
+from manager.manager import daily_task
 
 # Загружаем конфигурацию из файла .env
 
@@ -32,6 +26,7 @@ if not config.tg_bot.token or not config.db.path_db or not config.tg_bot.club_id
 
 path_db = config.db.path_db  # путь к базе данных
 club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
+admin_ids: list[int] = config.tg_bot.admin_ids  # Список ID админов из конфига
 
 # Инициализируем бот и диспетчер
 bot = Bot(token=config.tg_bot.token)
@@ -59,6 +54,45 @@ logger = setup_logger(
 # logger.warning("Это warning-сообщение")
 # logger.error("Это error-сообщение")
 logger.warning("Бот начал работу")
+
+
+
+# --- Инициализируем планировщик ---
+scheduler = AsyncIOScheduler()
+
+
+def schedule_jobs():
+    tz_name = config.tg_bot.timezone  # <- получаем из конфига
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception as e:
+        tz = ZoneInfo("UTC")
+        logger.warning(f"Неизвестный часовой пояс '{tz_name}'. Используется UTC.")
+
+    scheduler.add_job(
+        daily_task,
+        'cron',
+        hour=0,
+        minute=0,
+        timezone=tz,
+        id='daily_task',
+        args=[club_id]
+    )
+    scheduler.add_job(daily_task, 'interval', seconds=60, args=[club_id])  # раз в 60 секунд
+
+
+# --- Подключаем хуки старта и завершения работы ---
+@dp.startup()
+async def on_startup():
+    logger.info(f"Бот запущен с часовым поясом: {config.tg_bot.timezone}")
+    schedule_jobs()
+    scheduler.start()
+
+
+@dp.shutdown()
+async def on_shutdown():
+    logger.info("Бот остановлен")
+    scheduler.shutdown()
 
 
 

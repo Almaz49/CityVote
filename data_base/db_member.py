@@ -339,7 +339,7 @@ async def update_user_data(user_id: int, **data):
     """
 
     try:
-        await db_update('Users', 'user_id', user_id, **data)
+        await db_update('Users', 'id', user_id, **data)
         logger.info(f"Данные {data} пользователя {user_id} записаны в базу данных.")
     except Exception as e:
         logger.error(f"Ошибка при записи данных пользователя {user_id}: {e}")

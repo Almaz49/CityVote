@@ -1,3 +1,5 @@
+# Файл config.py
+
 from dataclasses import dataclass
 from environs import Env
 import sqlite3
@@ -15,6 +17,7 @@ class TgBot:
     token: str            # Токен для доступа к телеграм-боту
     club_id: int # id группы, которую администрирует бот (группа в БД, а не в телеграм)
     admin_ids: list  # Список id администраторов бота
+    timezone: str  # Часовой пояс группы
 
 
 
@@ -35,6 +38,7 @@ def load_config(path: str) -> Config:
         token=env('BOT_TOKEN'),
         club_id = club_id,
         admin_ids=list(map(int, env.list('ADMIN_IDS'))),
+        timezone=env("TIMEZONE", default="Asia/Novosibirsk")
          ),
         db=DatabaseConfig(path_db)
         )
