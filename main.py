@@ -78,7 +78,7 @@ def schedule_jobs():
         id='daily_task',
         args=[club_id]
     )
-    scheduler.add_job(daily_task, 'interval', seconds=60, args=[club_id])  # раз в 60 секунд
+    # scheduler.add_job(daily_task, 'interval', seconds=60, args=[club_id])  # раз в 60 секунд
 
 
 # --- Подключаем хуки старта и завершения работы ---
