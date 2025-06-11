@@ -605,7 +605,12 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         voting_id = int(callback.data.split(':')[1])
-        voting_status = await extract_voting_status(voting_id)
+        voting_info = await get_voting_info(voting_id)
+        if not voting_info:
+            logger.warning(f"Голосование с ID {voting_id} не найдено")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            raise  # Возвращаем ответ и прерываем обработку
+        voting_status = voting_info['status']
         variants = await list_of_variants(voting_id, 'valid')
         if variants:
             amount = len(variants)

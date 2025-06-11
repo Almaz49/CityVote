@@ -85,7 +85,7 @@ async def process_user_id_sent(message: Message, state: FSMContext):
     try:
         user_id, user_member_id = await extract_user_member_id(user_tg_id)
         if user_member_id:
-            user_profile = await extract_profile(user_member_id)
+            user_profile = await get_profile(user_member_id)
             if user_profile:
                 await message.answer(
                     text=f'''Данные участника которому вы меняете статус:\nИмя: {user_profile.get('first_name')},
@@ -134,7 +134,7 @@ async def process_user_contact_sent(message: Message, state: FSMContext, contact
     try:
         user_id, user_member_id = await extract_user_member_id(user_tg_id)
         if user_member_id:
-            user_profile = await extract_profile(user_member_id)
+            user_profile = await get_profile(user_member_id)
             if user_profile:
                 await message.answer(
                     text=f'''Данные участника которому вы меняете статус:\nИмя: {user_profile.get('first_name')},
@@ -271,7 +271,7 @@ async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext,
         user_id, member_id = await extract_user_member_id(member_tg_id)
         if not member_id:
             raise ValueError("Нет member_ID пользователя")
-        user_profile = await extract_profile(member_id)
+        user_profile = await get_profile(member_id)
         if user_profile:
            status_text = LEXICON.get(status, status)
            text=f'''Данные участника которому вы меняете статус:\nИмя: {user_profile.get('first_name')},

@@ -10,7 +10,7 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration, FSMRereg, FSM_short_registration
-from data_base.telegram_bot_logic import status_member, new_status_tg, list_of_members_tg, update_address, extract_profile
+from data_base.telegram_bot_logic import status_member, new_status_tg, list_of_members_tg, update_address, get_profile
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
 from filters.filters import ContactFilter
 from config_data.config import Config, load_config
@@ -44,7 +44,7 @@ async def reg_button_press(callback: CallbackQuery, state: FSMContext, data:dict
     await callback.answer()
     tg_id = callback.from_user.id
     try:
-        profile = await extract_profile(data['member_id'])
+        profile = await get_profile(data['member_id'])
         logger.info(f"Данные пользователя с tg_id={tg_id}: {profile}")
 
         if not any(value is not None for key, value in profile.items() if (key not in ['tg_id','user_id','member_id']):  # если профиль пользователя пуст, кроме ID

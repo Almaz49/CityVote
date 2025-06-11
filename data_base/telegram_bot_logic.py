@@ -100,7 +100,7 @@ async def extract_new_registrator_data(tg_id):
         logger.warning(f"Участник с tg_id={tg_id} не найден: {ans_str}")
         return flag, ans_str
 
-    user_data = await extract_profile(member_id=member_id)
+    user_data = await get_profile(member_id=member_id)
     if user_data:
         ans_str = (f"Имя: {user_data.get('first_name')}, Фамилия: {user_data.get('last_name')},\n"
                    f"Телефон: {user_data.get('tg_phone_number')}\nПсевдоним: {user_data.get('username')}")

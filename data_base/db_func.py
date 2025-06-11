@@ -3,9 +3,10 @@
 # с базой данных
 # This is a file with functions that are used by other files that work with
 # the database.
-from typing import List, Tuple, Optional
+from typing import List, Optional, Dict
 import aiosqlite
 import datetime
+from aiosqlite import Connection, Cursor  # type: ignore # <-- Явно импортируем типы
 import logging  # Добавляем импорт модуля logging
 from config_data.config import Config, load_config
 from utils import log_function_call, fetch_as_dict
@@ -60,21 +61,16 @@ class AsyncDatabase:
 # где ключ - имя столбца, а значение - значение поля
 @log_function_call
 async def db_update(table, key, value, **cv):
-    data = list(cv.values()) + [value]
-    column = list(cv.keys())
-    l = len(cv)
-    cols = ''
-    for i in range(l):
-        cols += f'{column[i]} = ?, '  # формирую часть строки запроса из имен столбцов и вопросов
-    cols = cols[:-2]  # отрезаю последнюю запятую и пробел
-    ins_str = f'UPDATE {table} SET {cols} WHERE {key} = ?'  # сформирована строка запроса
+    params = list(cv.values()) + [value]
+    columns = ', '.join([f"{k} = ?" for k in cv.keys()])
+    qwery = f'UPDATE {table} SET {columns} WHERE {key} = ?'
 
-    logger.info(f"Выполняется запрос: {ins_str}")
-    logger.info(f"Данные для запроса: {data}")
+    logger.info(f"Выполняется запрос: {qwery}")
+    logger.info(f"Данные для запроса: {params}")
 
     async with AsyncDatabase(path_db) as cursor:
         try:
-            await cursor.execute(ins_str, data)
+            await cursor.execute(qwery, params)
             logger.info("Запрос успешно выполнен.")
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при выполнении запроса: {e}")
@@ -108,7 +104,7 @@ async def extract_user_id(tg_id):
             raise
 
 @log_function_call
-async def extract_club_info(club_id):
+async def get_club_info(club_id):
     """
     Извлекает информацию о группе по её ID.
     :param club_id: ID группы.
@@ -239,7 +235,7 @@ async def list_of_proxy(club_id: int):
 
 
 @log_function_call
-async def extract_profile(member_id: int):
+async def get_profile(member_id: int):
     """
     Возвращает информацию профиля участника по его member_id.
     :param member_id: ID участника в таблице Members
@@ -337,25 +333,25 @@ async def list_of_votings(club_id, *voting_status):
 # Извлекаются голосования имеющие эти статусы.
 # Возвращает cписок кортежей из ID, названий вариантов и статусов вариантов
 @log_function_call
-async def list_of_variants(voting_id: int, *variant_status: str) -> Optional[List[Tuple]]:
+async def list_of_variants(voting_id: int, *variant_status: str) -> Optional[List[Dict]]:
     """
     Возвращает список вариантов голосования на основе voting_id и необязательного фильтра по variant_status.
 
     :param voting_id: ID голосования.
     :param variant_status: Список статусов вариантов (необязательный).
-    :return: Список кортежей с информацией о вариантах или None в случае ошибки.
+    :return: Список словарей с информацией о вариантах или None в случае ошибки.
     """
     if variant_status:
         placeholders = ', '.join('?' for _ in variant_status)
         query = f'''
-            SELECT id, title, variant_status, text
+            SELECT *
             FROM Variants
             WHERE voting_id = ? AND variant_status IN ({placeholders})
         '''
         params = (voting_id,) + variant_status
     else:
         query = '''
-            SELECT id, title, variant_status, text
+            SELECT *
             FROM Variants
             WHERE voting_id = ?
         '''
@@ -366,9 +362,8 @@ async def list_of_variants(voting_id: int, *variant_status: str) -> Optional[Lis
 
     async with AsyncDatabase(path_db) as cursor:
         try:
-            await cursor.execute(query, params)
-            rows = await cursor.fetchall()
-            result = [tuple(row) for row in rows]  # Преобразуем каждую строку в кортеж
+            await cursor.execute(query, params)  # ✅ Выполняем запрос
+            result = await fetch_as_dict(cursor)  # Теперь там есть данные
             logger.info("Запрос успешно выполнен.")
             return result
         except Exception as e:

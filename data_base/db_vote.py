@@ -54,7 +54,7 @@ async def voting_create(club_id, creator, title, text=None, voting_type='usual',
     return result
 
 @log_function_call
-async def extract_voting_info(voting_id):
+async def get_voting_info(voting_id):
     """
     Извлекает информацию о голосовании по его ID.
     :param voting_id: ID голосования.
@@ -281,14 +281,14 @@ async def past_choise(member_id, voting_id):
 # Функция выясняет, за какой вариант в данном голосовании голосовал (лично) пользователь и который пока действителен
 # Возвращает список ID вариантов или None (по идее из одного максимум члена)
 @log_function_call
-async def variant_choise(member_id, voting_id):
+async def extract_member_choise(member_id, voting_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute('''
                 SELECT variant_id FROM Elections
                 WHERE member_id = ? AND variant_id IN
                 (SELECT id FROM Variants
-                WHERE voting_id = ?) AND status = 'valid'
+                WHERE voting_id = ?) AND status IN ('valid','loser','win')
             ''', (member_id, voting_id))
             result = await cursor.fetchall()
             if result:
@@ -367,7 +367,7 @@ async def count_directly_votes(variant_id):
             JOIN Elections ON Members.id = Elections.member_id
             JOIN Status ON Members.id = Status.member_id
             WHERE Elections.variant_id = ?
-            AND Elections.status IN ('valid', 'lose', 'winner')
+            AND Elections.status IN ('valid', 'lose', 'win')
             AND Status.status = 'votist'
             ''', (variant_id,))
 
@@ -456,7 +456,7 @@ async def count_proxy_votes(variant_id):
                       SELECT member_id
                       FROM Elections
                       WHERE variant_id = ?
-                        AND status IN ('valid', 'lose', 'winner')
+                        AND status IN ('valid', 'lose', 'win')
                   )
                   AND m.id NOT IN (
                       SELECT member_id
@@ -608,7 +608,6 @@ async def lose_variant(losers, voting_id=None, result=None, stager=None):
 
 
 # Функция перевода вариантa в статус "победитель" (winner)
-# Заодно отданные за проигравший вариант голоса отмечаются как win
 # производим запись в таблицу голосований и в журнал регистрации
 @log_function_call
 async def win_variant(winner_id, voting_id=None, result=None, stager=None):
@@ -633,12 +632,12 @@ async def win_variant(winner_id, voting_id=None, result=None, stager=None):
                 empty_votes = ?    WHERE id = ?
                 ''', (dir_votes, proxy_votes, empty_votes, winner_id )
             )
-            # Присваиваем голосам, отданным за победивший вариант статус win
-            await cursor.execute(
-                '''
-                UPDATE Elections SET status = 'win' WHERE variant_id = ? AND status = 'valid'
-                ''', (winner_id,)
-            )
+            # # Присваиваем голосам, отданным за победивший вариант статус win
+            # await cursor.execute(
+            #     '''
+            #     UPDATE Elections SET status = 'win' WHERE variant_id = ? AND status = 'valid'
+            #     ''', (winner_id,)
+            # )
             #Присваиваем статус голосованию "Завершенное" и указываем вариант-победитель.
             await cursor.execute(
                 """
@@ -712,7 +711,7 @@ async def voting_stage(voting_id, club_id=None, stager=None):
             return {'success': False, 'message': "Не удалось определить клуб."}
 
     # Получаем информацию о голосовании
-    voting_info = await extract_voting_info(voting_id)
+    voting_info = await get_voting_info(voting_id)
     if voting_info is None:
         logger.error(f"Голосование с voting_id={voting_id} не найдено.")
         return {'success': False, 'message': "Голосование не найдено."}
@@ -728,10 +727,10 @@ async def voting_stage(voting_id, club_id=None, stager=None):
     sum_vote = 0  # Сумма решающих голосов
 
     for item in variants:
-        dir_votes = await count_directly_votes(item[0]) or 0  # Если None, используем 0
-        proxy_votes = await count_proxy_votes(item[0]) or 0  # Если None, используем 0
-        empty_votes = await count_directly_empty_votes(item[0]) or 0  # Если None, используем 0
-        res[item[0]] = (dir_votes + proxy_votes, dir_votes, empty_votes, item[1])
+        dir_votes = await count_directly_votes(item['id']) or 0  # Если None, используем 0
+        proxy_votes = await count_proxy_votes(item['id']) or 0  # Если None, используем 0
+        empty_votes = await count_directly_empty_votes(item['id']) or 0  # Если None, используем 0
+        res[item['id']] = (dir_votes + proxy_votes, dir_votes, empty_votes, item['title'])
         sum_vote += dir_votes + proxy_votes
 
     logger.info(f"Результаты голосования для voting_id={voting_id}: {res}")
@@ -817,116 +816,7 @@ async def voting_stage(voting_id, club_id=None, stager=None):
     result = {'success': flag, 'message': text}
     return result
 
-# async def voting_stage(voting_id, club_id=None, stager=None):
-#     if club_id is None:
-#         club_id = await extract_group_id(voting_id)
-#     voting_info = await extract_voting_info(voting_id)
-#     time_stage = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#     variants = await list_of_variants(voting_id, 'valid')
-#     s_votist = await count_votist(club_id)
 
-#     # Подсчитываем число голосов, отданных за каждый вариант (в виде кортежа): всего, напрямую, не имеющих права голоса
-#     res = {} #Словарь результатов голосования, ключ - ID варианта, значение - кортеж из трех результатов - 1. число реающих
-#             #   голосов за вариант (поданных напрямую и поданных через предстаителя), 2. число решающих голосов, поданных напрямую,
-#             # 3. число нерешающих голосов, поданных за вариант напрямую. Также в кортеж записываем название варианта.
-
-#     sum_vote = 0 #сумма поданых за все варианты решающих голосов (как напрямую так и через представителя)
-
-#     for item in variants:
-#         dir_votes = await count_directly_votes(item[0]) # решающие голоса, поданные за вариант напрямую
-#         proxy_votes = await count_proxy_votes(item[0])   #решающие голоса, поданные через представителя
-#         empty_votes = await count_directly_empty_votes(item[0])   # нерешающие голоса
-#         res[item[0]] = (dir_votes + proxy_votes, dir_votes, empty_votes, item[1])
-#         sum_vote += dir_votes + proxy_votes
-
-#     logger.info(f"Результаты голосования для voting_id={voting_id}: {res}")
-#     logger.info(f"Суммарное количество голосов: {sum_vote}")
-
-#     # Если проголосовало более половины решающих голосои, отсекаем самые непопулярные варианты.
-#     # Сумма голосов за оставшиеся варианты должна быть более 1/2 от числа решающих голосов.
-#     if sum_vote * 2 > s_votist:
-#         a = s_votist / 2
-#         k = None
-
-# # сортрируем варианты в порядке убывания результата
-#         sorted_res = sorted(res.items(), key=lambda item: item[1], reverse=True)
-
-# # по очереди вычитаем результат вариантов из 1/2 общего числа голосов, пока не получим отрицательное значение
-#         for i in range(len(sorted_res)):
-#             a -= sorted_res[i][1][0]
-#             if a < 0:
-#                 k = sorted_res[i][1][0] #Значение "отсечения" - те варианты, которые набрали меньше, становятся проигравшими
-#                 break
-
-#         losers = [item for item in res if res[item][0] < k]
-#         winners = [item for item in res if res[item][0] >= k]
-
-#         logger.debug(f"Проигравшие варианты:\n{losers}\nОставшиеся варианты:\n{winners}")
-
-#         #Записываем проигравшие варианты в базу данных
-#         await lose_variant(losers, voting_id=voting_id, result=res, stager=stager)
-
-#         async with AsyncDatabase(path_db) as cursor:
-#             try:
-#                 if losers:
-#                     await cursor.execute(
-#                         '''
-#                         INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
-#                         VALUES (?,?,?,?,?)
-#                         ''', ('voting', voting_id, stager, 'stage', time_stage)
-#                     )
-#                     logger.info(f"Произведена запись в журнал регистраций")
-#                     los_titles = [] # Составляем спсок наваний проигравших вариантов.
-#                     for item in losers:
-#                         los_titles.append(res[item][3])
-#                     losers_str = '\n'.join(los_titles)
-#                     flag = True
-#                     text =  f'''Прошло промежуточное подведение итогов в голоcовании:\n
-#                     {voting_info.get('title')}\n\n
-#                     Осталось {len(winners)} вариантов. \n
-#                     Выбыли варианты:\n{losers_str}'''
-#                 else:
-#                     logger.info("Нет проигравших вариантов.")
-#                     flag = False
-#                     text = 'Нет проигравших вараинтов'
-#             # Если остался один победивший вариант, завершаем голосование
-#                 if len(winners) == 1:
-#                     winner_id, = winners[0]
-#                     result = await voting_complete(voting_id, stager)
-#                     logger.info(f"Голосование завершено. Победивший вариант: {winner_id}, Проигравшие варианты: {losers}")
-#                     flag = True
-#                     for item in variants:
-#                         if item[0] == winner_id:
-#                             winner_title = item[1]
-#                     text = result.get('message')
-#                 # Если победивших вариантов два - переводим в финал
-#                 elif len(winners) == 2:
-#                     await cursor.execute(
-#                     '''
-#                     INSERT INTO Registrations(object_type, object_id, registrator, status, time_reg)
-#                     VALUES (?,?,?,?,?)
-#                     ''', ('voting', voting_id, stager, 'final', time_stage)
-#                 )
-#                     flag = True
-#                     win_titles = []
-#                     for item in winners:
-#                         win_titles.append(res[item][3])
-#                     win_str = '\n'.join(los_titles)
-#                     text = f'Осталось два действительных варианта: \n{win_str}, \nпереводим голосование в финал.'
-
-
-#             except aiosqlite.Error as e:
-#                 logger.error(f"Ошибка при завершении промежуточного этапа голосования: {e}\n{traceback.format_exc()}")
-#                 flag = False
-#                 text = "Ошибка при завершении промежуточного этапа голосования: {e}"
-#                 raise
-#     else:
-#         logger.info("Сумма голосов недостаточна для завершения промежуточного этапа.")
-#         flag = False
-#         text = 'Сумма голосов недостаточна для завершения промежуточного этапа.'
-
-#     result = {'success':flag, 'message':text}
-#     return result
 
 
 # Функция создания финального этапа голосования (где голосуется два варианта или больше, если есть варианты,
@@ -956,10 +846,10 @@ async def voting_final(voting_id, finaler=None):
     else:
         res = {}
         for item in variants:
-            dir_votes = await count_directly_votes(item[0]) or 0  # Если None, используем 0
-            prox_votes = await count_proxy_votes(item[0]) or 0  # Если None, используем 0
-            empt_votes = await count_directly_empty_votes(item[0]) or 0  # Если None, используем 0
-            res[item[0]] = (dir_votes + prox_votes, dir_votes, empt_votes)
+            dir_votes = await count_directly_votes(item['id']) or 0  # Если None, используем 0
+            prox_votes = await count_proxy_votes(item['id']) or 0  # Если None, используем 0
+            empt_votes = await count_directly_empty_votes(item['id']) or 0  # Если None, используем 0
+            res[item['id']] = (dir_votes + prox_votes, dir_votes, empt_votes)
 
         sorted_res = sorted(res.items(), key=lambda item: item[1], reverse=True)
 
@@ -1003,7 +893,7 @@ async def voting_complete(voting_id, finisher=None):
     time_finish = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(voting_id, 'valid')
     club_id = await extract_group_id(voting_id)
-    voting_info = await extract_voting_info(voting_id) or {}  # Если None, используем пустой словарь
+    voting_info = await get_voting_info(voting_id) or {}  # Если None, используем пустой словарь
     s_votist = await count_votist(club_id) or 0  # Если None, используем 0
 
     if not variants:
@@ -1018,9 +908,9 @@ async def voting_complete(voting_id, finisher=None):
 
     res = {}
     for item in variants:
-        dir_votes = await count_directly_votes(item[0]) or 0  # Если None, используем 0
-        prox_votes = await count_proxy_votes(item[0]) or 0  # Если None, используем 0
-        empt_votes = await count_directly_empty_votes(item[0]) or 0  # Если None, используем 0
+        dir_votes = await count_directly_votes(item['id']) or 0  # Если None, используем 0
+        prox_votes = await count_proxy_votes(item['id']) or 0  # Если None, используем 0
+        empt_votes = await count_directly_empty_votes(item['id']) or 0  # Если None, используем 0
         res[item[0]] = (dir_votes + prox_votes, dir_votes, empt_votes)
 
     sorted_res = sorted(res.items(), key=lambda item: item[1], reverse=True)
@@ -1041,10 +931,10 @@ async def voting_complete(voting_id, finisher=None):
             flag = False
 
     # Делаем список ID проигравших вариантов (все, кроме winner_id)
-    losers = [item[0] for item in variants if item[0] != winner_id]
+    losers = [item['id'] for item in variants if item['id'] != winner_id]
 
     # Находим название победившего варианта
-    winner_title = next((item[1] for item in variants if item[0] == winner_id), None)
+    winner_title = next((item['title'] for item in variants if item['id'] == winner_id), None)
 
     # Записываем в БД проигравшие варианты
     await lose_variant(losers, voting_id=voting_id, result=res, stager=finisher)
@@ -1139,10 +1029,10 @@ async def confirmation_of_voting_results_stop(voting_id, finisher=None):
 
     res = {}
     for item in variants:
-        dir_votes = await count_directly_votes(item[0]) or 0  # Если None, используем 0
-        prox_votes = await count_proxy_votes(item[0]) or 0  # Если None, используем 0
-        empt_votes = await count_directly_empty_votes(item[0]) or 0  # Если None, используем 0
-        res[item[0]] = (dir_votes + prox_votes, dir_votes, empt_votes)
+        dir_votes = await count_directly_votes(item['id']) or 0  # Если None, используем 0
+        prox_votes = await count_proxy_votes(item['id']) or 0  # Если None, используем 0
+        empt_votes = await count_directly_empty_votes(item['id']) or 0  # Если None, используем 0
+        res[item['id']] = (dir_votes + prox_votes, dir_votes, empt_votes)
 
     sorted_res = sorted(res.items(), key=lambda item: item[1], reverse=True)
     winner_id = sorted_res[0][0]
@@ -1162,10 +1052,10 @@ async def confirmation_of_voting_results_stop(voting_id, finisher=None):
             flag = False
 
     # Делаем список ID проигравших вариантов (все, кроме winner_id)
-    losers = [item[0] for item in variants if item[0] != winner_id]
+    losers = [item['id'] for item in variants if item['id'] != winner_id]
 
     # Находим название победившего варианта
-    winner_title = next((item[1] for item in variants if item[0] == winner_id), None)
+    winner_title = next((item['title'] for item in variants if item['id'] == winner_id), None)
 
     try:
         # Записываем в БД проигравшие варианты
@@ -1221,6 +1111,26 @@ async def extract_voting_status(voting_id):
             logger.error(f"Ошибка при получении статуса голосования: {e}\n{traceback.format_exc()}")
             raise
 
+@log_function_call
+async def extract_proxy_choice(member_id, voting_id):
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute('''
+                SELECT variant_id FROM Elections
+                WHERE member_id IN (SELECT proxy FROM Members WHERE id = ?)
+                AND variant_id IN (SELECT id FROM Variants WHERE voting_id = ?)
+                AND status IN ('valid','loser','win')
+            ''', (member_id, voting_id))
+            result = await cursor.fetchall()
+            if result:
+                choise = [item[0] for item in result]
+            else:
+                choise = None
+            logger.info(f"Результат выборки вариантов для member_id={member_id}, voting_id={voting_id}: {result}")
+            return choise
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при проверке прошлых выборов: {e}\n{traceback.format_exc()}")
+            raise
 
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

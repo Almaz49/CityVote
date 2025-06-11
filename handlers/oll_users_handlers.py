@@ -11,7 +11,7 @@ from keyboards.keyboards import (
     user_menu, create_inline_kb, confirm_markup, return_to_main_menu_markup,
     get_profile_menu_keyboard, get_info_menu_keyboard
     )
-from services.services import greetings_message, help_message, club_info, profile_message
+from services.services import greetings_message, help_message, club_info, profile_message, send_variants_by_status
 from manager.manager import leave_club
 import logging
 import traceback
@@ -424,8 +424,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         voting_id = int(callback.data.split(':')[1])
-        variants = await list_of_variants(voting_id)
-        voting_info = await extract_voting_info(voting_id)
+        voting_info = await get_voting_info(voting_id)
         s_votist = await count_votist(data['club_id'])
 
         if voting_info:
@@ -435,7 +434,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
             voting_status = None
             voting_title = None
 
-        choise = await variant_choise(data['member_id'], voting_id)
+        choise = await extract_member_choise(data['member_id'], voting_id)
 
         # Экранируем специальные символы в тексте
         escaped_voting_title = html.quote(voting_title) if voting_title else "Без названия"
@@ -448,74 +447,39 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
             parse_mode="HTML"
         )
 
-        if variants:
-            # Функция для подсчета суммарных голосов за вариант
-            async def calculate_total_votes(variant_id):
-                dir_votes = await count_directly_votes(variant_id)  # решающие голоса, поданные за вариант напрямую
-                proxy_votes = await count_proxy_votes(variant_id)   # решающие голоса, поданные через представителя
-                # With safe default values:
-                return (dir_votes or 0) + (proxy_votes or 0)
+        flag = False
 
-            # Добавляем поле total_votes к каждому варианту
-            variants_with_votes = []
-            for variant in variants:
-                variant_id, title, variant_status, text_var = variant
-                total_votes = await calculate_total_votes(variant_id)
-                variants_with_votes.append((variant_id, title, variant_status, text_var, total_votes))
+        success = await send_variants_by_status(
+            callback,
+            'winner',
+            voting_id,
+            data['member_id'],
+            data['user_status']
+        )
 
-            # Разделяем варианты на действительные и проигравшие
-            valid_variants = [v for v in variants_with_votes if v[2] in ['valid', 'winner']]
-            loser_variants = [v for v in variants_with_votes if v[2] == 'loser']
+        if success: flag = True
 
-            # Сортируем варианты по убыванию total_votes
-            valid_variants.sort(key=lambda x: x[4], reverse=True)
-            loser_variants.sort(key=lambda x: x[4], reverse=True)
+        success = await send_variants_by_status(
+            callback,
+            'valid',
+            voting_id,
+            data['member_id'],
+            data['user_status']
+        )
+        if success: flag = True
 
-            # Выводим сначала действительные варианты, затем проигравшие
-            for variant in valid_variants + loser_variants:
-                variant_id, title, variant_status, text_var, total_votes = variant
-                dir_votes = await count_directly_votes(variant_id)  # решающие голоса, поданные за вариант напрямую
-                proxy_votes = await count_proxy_votes(variant_id)   # решающие голоса, поданные через представителя
-                empty_votes = await count_directly_empty_votes(variant_id)  # нерешающие голоса
-                choise_mark = ''
-                if choise:
-                    if variant_id in choise:
-                        choise_mark = '***ВАШ ВЫБОР***\n'
+        success = await send_variants_by_status(
+            callback,
+            'loser',
+            voting_id,
+            data['member_id'],
+            data['user_status']
+        )
+        if success: flag = True
 
-                # Экранируем специальные символы в тексте
-                escaped_title = html.quote(title)
-                escaped_text_var = html.quote(text_var)
-
-                # Если это идущее голосование, а пользователь - участник группы, добавляем кнопку проголосовать за вариант
-                if voting_status in ['ongoing', 'confirmation'] and 'member' in data['user_status'] and variant_status == 'valid':
-                    keyboard = {f'variant:{variant_id}': LEXICON.get('Vote for this variant', 'Vote for this variant')}
-                    markup = create_inline_kb(1, **keyboard)
-                # Если это голосование в стадии добавления вариантов, а пользователь - админ, добавляем кнопку "удалить вариант"
-                elif voting_status == 'add_variants' and 'admin' in data['user_status'] and variant_status == 'valid':
-                    keyboard = {f'delete_variant:{variant_id}': LEXICON.get('delete variant', 'delete variant')}
-                    markup = create_inline_kb(1, **keyboard)
-                else:
-                    markup = None
-
-                await callback.message.answer( # type: ignore
-                    text=(
-                        f"{choise_mark}"
-                        f"🗳️ <b>{escaped_title}</b>\n"
-                        f"📌 Статус: {LEXICON.get('variant_status',{}).get(variant_status, variant_status)}\n\n"
-                        f"📝 <b>Описание:</b>\n{escaped_text_var}\n\n"
-                        "📊 <b>Статистика голосов:</b>\n"
-                        f"• Решающих голосов: <b>{total_votes}</b>\n"
-                        f"  - Напрямую: {dir_votes}\n"
-                        f"  - Через представителей: {proxy_votes}\n"
-                        f"• Нерешающих голосов: {empty_votes}"
-                    ),
-                    reply_markup=markup,
-                    parse_mode="HTML"
-                )
-
+        if flag:
             text = (f'Всего действительных голосов в группе: {s_votist}\n'
             'Выберите дальнейшее действие')
-
         else:
             text = 'В настоящее время нет доступных вариантов.'
 
@@ -575,7 +539,6 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         )
 
         raise  # Передаем исключение middleware для обработки
-
 
 
 # Хэндлер для кнопки 'leave_the_group'

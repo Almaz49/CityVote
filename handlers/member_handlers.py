@@ -238,7 +238,7 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         # Получаем информацию о представителе
-        proxy_info = await extract_profile(proxy_id)
+        proxy_info = await get_profile(proxy_id)
         if not proxy_info:
             await callback.message.answer( # type: ignore
                 text='Не найдена информация о представителе',
@@ -450,7 +450,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             )
             return
 
-        profile = await extract_profile(data['member_id'])
+        profile = await get_profile(data['member_id'])
         if not profile:
             await callback.message.answer(text='Не найден профиль пользователя') # type: ignore
             return
@@ -861,7 +861,7 @@ async def process_become_registrator(callback: CallbackQuery, state: FSMContext,
             return
 
         # Получаем профиль пользователя
-        profile = await extract_profile(data['member_id'])
+        profile = await get_profile(data['member_id'])
         if not profile:
             logger.error("Профиль пользователя не найден")
             await callback.message.edit_text("Ошибка: профиль не найден.") # type: ignore
@@ -957,7 +957,7 @@ async def process_become_registrator_own(callback: CallbackQuery, state: FSMCont
             return
 
         # Переходим к обработке запроса. Проверяем, есть ли у кандидата псевдоним
-        profile = await extract_profile(data['member_id'])
+        profile = await get_profile(data['member_id'])
         if not profile:
             logger.error("Профиль пользователя не найден")
             await callback.message.edit_text("Ошибка: профиль не найден.") # type: ignore

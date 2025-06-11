@@ -3,8 +3,10 @@
 
 import logging  # Добавляем импорт модуля logging
 from functools import wraps
+from typing import Any, Dict, List
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
+from aiosqlite import Cursor
 
 
 
@@ -119,18 +121,40 @@ def check_fsm_data_message(func):
     return wrapper
 
 
-async def fetch_as_dict(cursor):
+async def fetch_as_dict(cursor: Cursor) -> List[Dict[str, Any]]:
     """
-    Преобразует результат запроса из списка кортежей в список словарей.
+    Преобразует результат SQL-запроса в список словарей,
+    где ключи — это названия столбцов, а значения — данные из строк.
+
     :param cursor: объект курсора после выполнения запроса
-    :return: список словарей
+    :return: список словарей с данными
     """
-    # Получаем названия столбцов из cursor.description
-    columns = [column[0] for column in cursor.description]
-    # Получаем все строки результата
-    rows = await cursor.fetchall()
-    # Возвращаем список словарей
-    return [dict(zip(columns, row)) for row in rows]
+    try:
+        logger.debug("Начинаем обработку результата запроса через fetch_as_dict")
+
+        # Проверяем, есть ли данные
+        if cursor.description is None:
+            logger.warning("Запрос не вернул данных. cursor.description == None")
+            return []
+
+        # Получаем названия столбцов
+        columns = [column[0] for column in cursor.description]
+        logger.debug(f"Получены столбцы: {columns}")
+
+        # Получаем все строки
+        rows = await cursor.fetchall()
+        rows_list = list(rows)
+        logger.debug(f"Получено {len(rows_list)} строк данных")
+
+        # Формируем результат
+        result = [dict(zip(columns, row)) for row in rows]
+        logger.debug(f"Сформирован результат с {len(result)} записями")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке результата запроса: {e}", exc_info=True)
+        raise
 
 # Пример использования:
 #     async with AsyncDatabase(path_db) as cursor:

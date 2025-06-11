@@ -4,22 +4,18 @@
 # Может пределаю позже.
 
 import logging
+from aiogram import Bot
 import aiosqlite
-from aiogram import Bot, Router, F
-from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Contact
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import default_state, State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
-from FSMs.FSMs import FSMRegistration, FSMRereg
-from data_base.db_func import extract_club_info, extract_profile
+import html
+from data_base.db_func import get_club_info, get_profile
 # from data_base.telegram_bot_logic import AsyncDatabase, is_votist
 from data_base.data_base import *
-from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup, main_menu_markup
+from keyboards.keyboards import main_menu_markup, create_inline_kb
 from config_data.config import Config, load_config
-from utils import log_handler_call, log_function_call
+from utils import log_function_call
 from LEXICON.LEXICON import LEXICON
 
 # Настройка логирования
@@ -416,7 +412,7 @@ async def votist_because_proxy_returned(proxy:int):
 # Функция создания приветственного обращения. Использует информацию о группе
 @log_function_call
 async def greetings_message(club_id:int):
-    result = await extract_club_info(club_id)
+    result = await get_club_info(club_id)
     if result:
         # name, description,father_group, tg_bot, channel_link, conditions_of_entry = result
         response = f"<b>👋 Привет! Я — бот для голосований группы {result.get('name')}.</b>" + LEXICON.get('greetings',
@@ -445,7 +441,7 @@ def help_message(status_list: list):
 # Функция создания справки о группе
 @log_function_call
 async def club_info(club_id:int):
-    info = await extract_club_info(club_id)
+    info = await get_club_info(club_id)
     if not info:
         logger.error('Не найдена информация о группе')
         raise  Exception( 'Ошибка. Не найдена информация о группе')
@@ -630,7 +626,7 @@ async def process_channel_info(channel_info: str, club_id: int, action: str) -> 
     return result
 
 async def profile_message(member_id, status):
-    profile = await extract_profile(member_id)
+    profile = await get_profile(member_id)
     text = 'Данные вашего профиля:\n'
     if profile.get('username'):
         text += f"Псевдоним: {profile.get('username')}\n"
@@ -645,3 +641,126 @@ async def profile_message(member_id, status):
             text += f"Ваш представитель: {profile.get('proxy_username')}\n"
     text+=LEXICON.get('profile_menu','Выберите, что хотите поменять в профиле') # Сюда вставить функцию создания текста
     return text
+
+
+
+async def send_variants_by_status(
+    callback: CallbackQuery,
+    variant_status: str,
+    voting_id: int,
+    member_id: int,
+    member_status: List[str],):
+    """
+    Отправляет пользователю список вариантов с указанным статусом.
+    Добавляет пометки о выборе пользователя и его представителя.
+
+    :param callback: объект CallbackQuery
+    :param variant_status: статус вариантов ('valid', 'winner', 'loser', 'invalid')
+    :param voting_id: ID голосования
+    :param member_id: ID участника (для проверки выбора)
+    """
+
+    if not callback.message:
+        raise ValueError("Нет сообщения в callback.")
+
+
+    # Получаем информацию о голосовании
+    voting_info = await get_voting_info(voting_id)
+    if not voting_info:
+        logger.error(f"Голосование с voting_id={voting_id} не найдено.")
+        raise  ValueError(f"Го<h1/> с voting_id={voting_id} не найдено.")
+    voting_status = voting_info.get('voting_status')
+
+    # Получаем список вариантов нужного статуса
+    variants = await list_of_variants(voting_id, variant_status)
+
+    # Если вариантов нет — ничего не отправляем
+    if not variants:
+        return False
+
+    # Сортируем варианты по total_votes в порядке убывания
+    variants = sorted(
+        variants,
+        key=lambda v: (v.get('directly_votes', 0) + v.get('proxy_votes', 0)),
+        reverse=True
+    )
+
+    # Получаем выбор пользователя и его представителя
+    choise = await extract_member_choise(member_id, voting_id)
+    proxy_choice = await extract_proxy_choice(member_id, voting_id)
+
+    # Формируем заголовок
+    status_title_map = LEXICON.get('status_title_map')
+
+    if status_title_map:
+        title_text = status_title_map.get(variant_status, f'Варианты со статусом "{variant_status}"')
+    else:
+        title_text = f'Варианты со статусом "{variant_status}"'
+
+    await callback.message.answer(
+        text=f"<b>{title_text}</b>",
+        parse_mode="HTML"
+    )
+
+    # Обрабатываем каждый вариант
+    for variant in variants:
+        variant_id = variant['id']
+        title = variant['title']
+        text_var = variant['text']
+
+        # Подготовка пометок
+        choise_mark = ''
+        proxy_mark = ''
+
+        if choise and variant_id in choise:
+            choise_mark = '📌 ***ВАШ ВЫБОР***\n'
+
+        if proxy_choice and variant_id == proxy_choice:
+            proxy_mark = '🔹 ***Выбор вашего представителя***\n'
+
+        # Экранируем HTML
+        escaped_title = html.escape(title)
+        escaped_text_var = html.escape(text_var)
+
+        # Формируем кнопки
+        markup = None
+
+        if variant_status == 'valid':
+            if voting_status in ['ongoing', 'confirmation'] and 'member' in member_status:
+                keyboard = {f'variant:{variant_id}': LEXICON["Vote for this variant"]}
+                markup = create_inline_kb(1, **keyboard)
+            elif voting_status == 'add_variants' and 'admin' in member_status:
+                keyboard = {f'delete_variant:{variant_id}': LEXICON["delete variant"]}
+                markup = create_inline_kb(1, **keyboard)
+
+        # Формируем текст
+        if variant_status == 'invalid':
+            message_text = (
+                f"{choise_mark}{proxy_mark}"
+                f"🗑️ <b>{escaped_title}</b>\n\n"
+                f"📝 <b>Описание:</b>\n{escaped_text_var}\n\n"
+                "<i>Статистика голосов не доступна</i>"
+            )
+        else:
+            dir_votes = variant.get('directly_votes') or 0
+            proxy_votes = variant.get('proxy_votes') or 0
+            empty_votes = variant.get('empty_votes') or 0
+            total_votes = dir_votes + proxy_votes
+
+            message_text = (
+                f"{choise_mark}{proxy_mark}"
+                f"🗳️ <b>{escaped_title}</b>\n\n"
+                f"📝 <b>Описание:</b>\n{escaped_text_var}\n\n"
+                "📊 <b>Статистика голосов:</b>\n"
+                f"• Решающих голосов: <b>{total_votes}</b>\n"
+                f"  - Напрямую: {dir_votes}\n"
+                f"  - Через представителей: {proxy_votes}\n"
+                f"• Нерешающих голосов: {empty_votes}"
+            )
+
+        await callback.message.answer(
+            text=message_text,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    return True

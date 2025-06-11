@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 
 
 from FSMs.FSMs import FSM_short_registration
-from data_base.telegram_bot_logic import (list_of_members, extract_club_info, new_status_tg,
+from data_base.telegram_bot_logic import (list_of_members, get_club_info, new_status_tg,
                                           update_user_data, update_member_data)
 from keyboards.keyboards import user_menu, return_to_main_menu_markup
 from config_data.config import Config, load_config
@@ -52,7 +52,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 
         tg_id = callback.from_user.id
         club_id = data['club_id']
-        club_info = await extract_club_info(club_id)
+        club_info = await get_club_info(club_id)
         if not club_info:
             logger.error('Нет информации о группе')
             await callback.message.answer(text='Ошибка. Не найдена информация о группе') # type: ignore

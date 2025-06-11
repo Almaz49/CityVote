@@ -9,8 +9,8 @@ from data_base.data_base import (
     voting_create,
     list_of_members,
     list_of_channel,
-    extract_club_info,
-    extract_voting_info,
+    get_club_info,
+    get_voting_info,
     member_leave_club,
     voting_stage,
     voting_start,
@@ -44,7 +44,7 @@ async def voting_create_manager(club_id: int, creator: str, title: str, text: Op
     if not result or not result.get('success'):
         return {'success': False, 'message': result.get('message', 'Ошибка при создании голосования')}
 
-    club_info = await extract_club_info(club_id)
+    club_info = await get_club_info(club_id)
     if not club_info:
         logger.error(f"Информация о группе {club_id} не найдена")
         return {'success': False, 'message': 'Группа не найдена'}
@@ -99,13 +99,13 @@ async def voting_manager(voting_id: int, club_id: Optional[int] = None, admin: O
             logger.error("Не удалось получить club_id по voting_id")
             return {'success': False, 'message': 'club_id не найден'}
 
-    club_info = await extract_club_info(club_id)
+    club_info = await get_club_info(club_id)
     if not club_info:
         return {'success': False, 'message': 'Информация о группе не найдена'}
 
     club_name = club_info.get('name', 'Неизвестная группа')
 
-    voting_info = await extract_voting_info(voting_id)
+    voting_info = await get_voting_info(voting_id)
     if not voting_info:
         return {'success': False, 'message': 'Информация о голосовании не найдена'}
 
