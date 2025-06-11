@@ -10,7 +10,7 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from FSMs.FSMs import FSMRegistration, FSMRereg, FSM_short_registration
-from data_base.telegram_bot_logic import (status_member, extract_user_data_tg, new_status_tg, list_of_members_tg,
+from data_base.telegram_bot_logic import (status_member, new_status_tg, list_of_members_tg,
 update_address, recording_user_data_1, update_user_data, update_member_data)
 from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
 from filters.filters import ContactFilter

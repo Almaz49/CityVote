@@ -30,7 +30,7 @@ class SafeEditMiddleware(BaseMiddleware):
                     logger.warning("Переход на message.answer из-за ошибки при редактировании сообщения")
                     text = data.get('response_text', 'Произошла ошибка при обновлении сообщения')
                     reply_markup = data.get('reply_markup', None)
-                    await event.message.answer(text=text, reply_markup=reply_markup)
+                    await event.message.answer(text=text, reply_markup=reply_markup) # type: ignore
                 else:
                     logger.error("Необработанное событие при редактировании сообщения")
             else:

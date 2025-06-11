@@ -3,12 +3,11 @@
 # с базой данных
 # This is a file with functions that are used by other files that work with
 # the database.
-import sqlite3
+from typing import List, Tuple, Optional
 import aiosqlite
 import datetime
 import logging  # Добавляем импорт модуля logging
 from config_data.config import Config, load_config
-from functools import wraps
 from utils import log_function_call, fetch_as_dict
 
 
@@ -237,6 +236,8 @@ async def list_of_proxy(club_id: int):
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при получении списка представителей: {e}")
             raise
+
+
 @log_function_call
 async def extract_profile(member_id: int):
     """
@@ -265,31 +266,12 @@ async def extract_profile(member_id: int):
                 WHERE m.id = ?
             ''', (member_id,))
             profile = await fetch_as_dict(cursor)
-            return profile[0] if profile else None
+            return profile[0] if profile else {}
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при получении информации о профиле: {e}")
             raise
 
-# Функция извлечения данных о пользователе. *c - список столбцов, данные из которых
-# извлекаются.
-@log_function_call
-async def extract_user_data(user_id, *columns):
-    cols = ', '.join(columns) if columns else '*'  # формирую часть строки запроса из имен столбцов или '*'
 
-    ins_str = f"SELECT {cols} FROM Users WHERE id = ?"
-
-    logger.info(f"Выполняется запрос: {ins_str}")
-    logger.info(f"Параметры для запроса: {(user_id,)}")
-
-    async with AsyncDatabase(path_db) as cursor:
-        try:
-            await cursor.execute(ins_str, (user_id,))
-            answ = await cursor.fetchone()
-            logger.info("Запрос успешно выполнен.")
-            return answ
-        except aiosqlite.Error as e:
-            logger.error(f"Ошибка при выполнении запроса: {e}")
-            raise
 
 # Функция выявления всех статусов, использующихся в группе.
 # Нужна только для тестирования
@@ -355,31 +337,41 @@ async def list_of_votings(club_id, *voting_status):
 # Извлекаются голосования имеющие эти статусы.
 # Возвращает cписок кортежей из ID, названий вариантов и статусов вариантов
 @log_function_call
-async def list_of_variants(voting_id, *variant_status):
+async def list_of_variants(voting_id: int, *variant_status: str) -> Optional[List[Tuple]]:
+    """
+    Возвращает список вариантов голосования на основе voting_id и необязательного фильтра по variant_status.
+
+    :param voting_id: ID голосования.
+    :param variant_status: Список статусов вариантов (необязательный).
+    :return: Список кортежей с информацией о вариантах или None в случае ошибки.
+    """
     if variant_status:
         placeholders = ', '.join('?' for _ in variant_status)
         query = f'''
-            SELECT id, title, variant_status, text FROM Variants
+            SELECT id, title, variant_status, text
+            FROM Variants
             WHERE voting_id = ? AND variant_status IN ({placeholders})
-            '''
+        '''
         params = (voting_id,) + variant_status
     else:
         query = '''
-            SELECT id, title, variant_status, text FROM Variants
+            SELECT id, title, variant_status, text
+            FROM Variants
             WHERE voting_id = ?
-            '''
+        '''
         params = (voting_id,)
 
     logger.info(f"Выполняется запрос: {query}")
-    logger.info(f"Параметры для запроса: {params}")
+    logger.debug(f"Параметры для запроса: {params}")  # Логируем параметры на уровне DEBUG
 
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(query, params)
-            result = await cursor.fetchall()
+            rows = await cursor.fetchall()
+            result = [tuple(row) for row in rows]  # Преобразуем каждую строку в кортеж
             logger.info("Запрос успешно выполнен.")
             return result
-        except aiosqlite.Error as e:
+        except Exception as e:
             logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
@@ -447,7 +439,10 @@ async def is_username_uniq(username:str):
             'SELECT username FROM Users'
         )
         result = await cursor.fetchall()
-        return (username,) not in result
+        if result is None:
+            return True
+        username_list = [item[0] for item in result]
+        return username not in username_list
 
 """
 Функции администрирования бота
@@ -569,7 +564,7 @@ async def update_stage_duration(club_id: int, duration_add_variants = 2,
             return "Произошла ошибка при изменении продолжительности этапов."
 
 @log_function_call
-async def update_thresholds(club_id: int, threshold_in_voices: float = None, threshold_in_percent: float = None):
+async def update_thresholds(club_id: int, threshold_in_voices = None, threshold_in_percent = None):
     """
     Обновляет пороги доверенных голосов для группы в таблице Clubs.
     :param club_id: ID группы.
@@ -598,7 +593,7 @@ async def update_thresholds(club_id: int, threshold_in_voices: float = None, thr
             return "Произошла ошибка при изменении порогов."
 
 @log_function_call
-async def add_telegram_channel(club_id: int, tg_id: int, name: str, type: str, invite_link:str = None):
+async def add_telegram_channel(club_id: int, tg_id: int, name: str, type: str, invite_link = None):
     """
     Добавляет телеграм-канал или чат в таблицу TgChats.
     :param club_id: ID группы.
@@ -806,3 +801,36 @@ async def threshold_in_voices(club_id):
         result = max(threshold_in_voices, threshold_in_percent * amount / 100)
         logger.debug(f"Электоральный порог для группы {club_id}: {result}")
         return result
+
+
+async def check_member_status(member_id: int, target_status: str) -> bool:
+    """
+    Проверяет, есть ли у пользователя с указанным member_id заданный статус.
+
+    :param member_id: ID пользователя (member_id) для проверки.
+    :param target_status: Статус, который нужно проверить (например, 'admin', 'member' и т.д.).
+    :return: True, если статус найден, иначе False.
+    """
+    # Используем контекстный менеджер для работы с базой данных
+    async with AsyncDatabase('your_database_name.db') as cursor:
+        try:
+            # SQL-запрос для проверки наличия статуса
+            query = """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM Status
+                    WHERE member_id = ? AND status = ?
+                )
+            """
+            # Выполняем запрос с параметрами
+            await cursor.execute(query, (member_id, target_status))
+            # Получаем результат (первый элемент кортежа)
+            result = await cursor.fetchone()
+            # Если результат 1, значит запись существует
+            if result:
+                return True
+            else:
+                return False
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при выполнении запроса к базе данных: {e}")
+            raise

@@ -2,7 +2,7 @@
 # Содержит кнопки, клавиатуры и функции для их создания
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from LEXICON.LEXICON import *
 from data_base.telegram_bot_logic import extract_status_tg
 from utils import log_function_call
@@ -59,7 +59,7 @@ def create_inline_kb(width: int, *args: str, **kwargs: str) -> InlineKeyboardMar
 
 # Функция создания инлайн-кнопки
 @log_function_call
-def button(button: str, text: str = None) -> InlineKeyboardButton:
+def button(button: str, text: str|None = None) -> InlineKeyboardButton:
     """
     Создает инлайн-кнопку.
     :param button: Callback_data кнопки.
@@ -138,7 +138,7 @@ def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton
     return keyboard
 
 @log_function_call
-async def user_menu(tg_id: int = None, status:list[str] = None) -> InlineKeyboardMarkup | None:
+async def user_menu(tg_id: int|None = None, status:list[str]|None = None) -> InlineKeyboardMarkup | None:
     try:
         if not status:
             status = await extract_status_tg(tg_id)
@@ -157,6 +157,8 @@ async def user_menu(tg_id: int = None, status:list[str] = None) -> InlineKeyboar
         #         return create_inline_kb(1, **unknown_button)
         # else:
         #     keyboard = get_keyboard_for_status(status)
+        if not status:
+            raise ValueError("Не удалось получить статус пользователя")
         keyboard = get_keyboard_for_status(status)
 
         # Добавляем кнопку "Информация"
@@ -301,7 +303,7 @@ def get_profile_menu_keyboard(status:list):
 
 # Функция для создания клавиатуры справочной информации
 @log_function_call
-def get_info_menu_keyboard(exc: str = None):
+def get_info_menu_keyboard(exc: str|None = None):
     builder = InlineKeyboardBuilder()
 
     # Список кнопок с их текстами и callback_data

@@ -84,8 +84,8 @@ async def send_notification_to_chat_or_channel(
     chat_id: int,
     message_text: str,
     inline_button_text: str = "Принять участие в голосованиях",
-    inline_button_callback_data: str = None, # Параметр, который передается при нажатии на кнопку
-    member_id: int = None,
+    inline_button_callback_data: str|None = None, # Параметр, который передается при нажатии на кнопку
+    member_id: int|None = None,
     parse_mode: str = "HTML"
 ):
     """
@@ -309,7 +309,11 @@ async def not_votist_because_proxy_quit(proxy:int):
         try:
             await cursor.execute('''SELECT username FROM Users WHERE id IN
                                  (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
-            proxy_name, = await cursor.fetchone()
+            username_result = await cursor.fetchone()
+            if username_result:
+                proxy_name, = username_result
+            else:
+                proxy_name = 'Имя неизвестно'
 
             await cursor.execute(
                 'SELECT id FROM Members WHERE proxy = ?',
@@ -331,17 +335,22 @@ async def not_votist_because_proxy_quit(proxy:int):
                 (SELECT user_id FROM Members WHERE id = ?)''',
                 (member_id,)
                     )
-                    tg_id, = await cursor.fetchone()
+                    tg_id_result = await cursor.fetchone()
+                    if tg_id_result:
+                        tg_id, = tg_id_result
+                    else:
+                        tg_id = None
                     message_text = f'''
 Ваш представитель {proxy_name} утратил статус представителя.
 Выберите другого или сами станьте представителем, чтобы иметь право решающего голоса.
 Для начала работы наберите или нажмите команду /start
 '''
                     # Отправляем сообщение участннику, чей представитель ушел в отставку
-                    await send_notification_to_user(
-                        tg_id,
-                        message_text
-                    )
+                    if tg_id:
+                        await send_notification_to_user(
+                            tg_id,
+                            message_text
+                        )
 
                 except aiosqlite.Error as e:
                     logger.error(f"Ошибка при лишении статуса голосующего: {e}")
@@ -355,7 +364,11 @@ async def votist_because_proxy_returned(proxy:int):
         try:
             await cursor.execute('''SELECT username FROM Users WHERE id IN
                                  (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
-            proxy_name, = await cursor.fetchone()
+            username_result = await cursor.fetchone()
+            if username_result:
+                proxy_name, = username_result
+            else:
+                proxy_name = 'Имя неизвестно'
 
             await cursor.execute(
                 'SELECT id FROM Members WHERE proxy = ?',
@@ -377,17 +390,22 @@ async def votist_because_proxy_returned(proxy:int):
                 (SELECT user_id FROM Members WHERE id = ?)''',
                 (member_id,)
                     )
-                    tg_id, = await cursor.fetchone()
+                    tg_id_result = await cursor.fetchone()
+                    if tg_id_result:
+                        tg_id, = tg_id_result
+                    else:
+                        tg_id = None
                     message_text = f'''
 Ваш представитель {proxy_name} вернул статус представителя.
 Теперь ваш голос будет учитываться при голосованиях.
 Для начала работы наберите или нажмите команду /start
 '''
                     # Отправляем сообщение участннику, чей представитель ушел в отставку
-                    await send_notification_to_user(
-                        tg_id,
-                        message_text
-                    )
+                    if  tg_id:
+                        await send_notification_to_user(
+                            tg_id,
+                            message_text
+                        )
 
                 except aiosqlite.Error as e:
                     logger.error(f"Ошибка при лишении статуса голосующего: {e}")
@@ -428,6 +446,9 @@ def help_message(status_list: list):
 @log_function_call
 async def club_info(club_id:int):
     info = await extract_club_info(club_id)
+    if not info:
+        logger.error('Не найдена информация о группе')
+        raise  Exception( 'Ошибка. Не найдена информация о группе')
     amount = await count_member(club_id)
     text = (
         f'Название группы: {info.get("name","Отсутствует")}\n\n'
@@ -514,12 +535,12 @@ async def validate_and_get_channel_info(channel_info: str) -> dict:
         # Проверяем права в зависимости от типа
         if is_channel:
             # Для каналов
-            can_send = member.can_post_messages if hasattr(member, 'can_post_messages') else False
+            can_send = getattr(member, 'can_post_messages', False)
             required_admin = True  # В каналах бот должен быть админом
             channel_type = 'channel'
         elif is_group:
             # Для чатов (групп/супергрупп)
-            can_send = member.can_send_messages if hasattr(member, 'can_send_messages') else False
+            can_send = getattr(member, 'can_send_messages', False)
             required_admin = False  # В чатах можно быть обычным участником
             channel_type = 'chat'
         else:

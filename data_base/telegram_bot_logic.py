@@ -56,16 +56,6 @@ async def status_member(tg_id):
     logger.info(f"Статус участника с tg_id={tg_id}: {status}")
     return status
 
-# Функция извлечения данных о пользователе по его tg_id
-# *c - список (точнее кортеж) колонок, из которых извлекаются данные.
-# При отсутствии *c извлекаются все данные.
-@log_function_call
-async def extract_user_data_tg(tg_id, *c):
-    user_id = await extract_user_id(tg_id)
-    if user_id:
-        return await extract_user_data(user_id, *c)
-    else:
-        return None
 
 # # Функция создания нового голосования
 # @log_function_call
@@ -81,7 +71,7 @@ async def extract_user_data_tg(tg_id, *c):
 
 # Функция извлечения user_id и member_id по tg_id
 @log_function_call
-async def extract_user_member_id(tg_id):  # Добавляем club_id как параметр
+async def extract_user_member_id(tg_id: int):  # Добавляем club_id как параметр
     try:
         user_id = await extract_user_id(tg_id)
         if user_id:
@@ -110,19 +100,21 @@ async def extract_new_registrator_data(tg_id):
         logger.warning(f"Участник с tg_id={tg_id} не найден: {ans_str}")
         return flag, ans_str
 
-    user_data = await extract_user_data_tg(tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')
-    ans_str = f'Имя: {user_data[1]}, Фамилия: {user_data[2]},\n Телефон: {user_data[3]}'
+    user_data = await extract_profile(member_id=member_id)
+    if user_data:
+        ans_str = (f"Имя: {user_data.get('first_name')}, Фамилия: {user_data.get('last_name')},\n"
+                   f"Телефон: {user_data.get('tg_phone_number')}\nПсевдоним: {user_data.get('username')}")
+    else:
+        # Если user_data пустое, устанавливаем ans_str в значение по умолчанию
+        ans_str = "Данные профиля участника не найдены."
 
-    status = await extract_status(member_id)
-    if status:  # если у пользователя есть хоть какой-то статус
-        if ('registrator',) in status:  # если пользователь уже регистратор
-            flag = False
-            ans_str += '\nЭтот участник уже регистратор.'
-        else:
-            flag = True
-    else:  # если пользователь подал заявку, но еще не зарегистрирован как участник группы
+    has_registator = await check_member_status(member_id=member_id, target_status='registrator')
+    has_superregistator = await check_member_status(member_id=member_id, target_status='superregistrator')
+    if has_registator or has_superregistator:  # если пользователь регистратор или суперрегистратор
         flag = False
-        ans_str += '\nЭтот участник еще не зарегистрирован в группе.'
+        ans_str += '\nЭтот участник уже регистратор.'
+    else:
+        flag = True
 
     logger.info(f"Результат проверки на регистрацию для tg_id={tg_id}: {flag}, {ans_str}")
     return flag, ans_str

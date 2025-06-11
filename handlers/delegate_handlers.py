@@ -2,12 +2,12 @@
 # В нем хэндлеры пользователей, обладающих правами делегатов
 from aiogram import Bot, Router, F
 from aiogram.filters import Command, StateFilter
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from filters.filters import StatusFilter
 from FSMs.FSMs import FSMNewVoting, FSMNewVariant
-from keyboards.keyboards import confirm_markup, variant_markup, create_inline_kb, user_menu
+from keyboards.keyboards import confirm_markup, variant_markup, user_menu
 from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import *
 import logging
@@ -38,12 +38,12 @@ router.callback_query.filter(StatusFilter(required_status=['delegate']))
 # и переводить бота в состояние ожидания ввода названия голосования
 @router.message(Command(commands='new_voting'), StateFilter(default_state))
 @log_handler_call
-async def process_new_voting_start(message: Message, state: FSMContext):
+async def process_new_voting_start_command(message: Message, state: FSMContext):
     """
     Обработчик команды /new_voting.
     Запускает процесс создания нового голосования.
     """
-    logger.info(f"Пользователь {message.from_user.id} начал создание голосования.")
+    logger.info(f"Пользователь {message.from_user.id} начал создание голосования.") # type: ignore
     await message.answer(text='Пожалуйста, введите название голосования.')
     await state.set_state(FSMNewVoting.fill_voting_title)
 
@@ -57,7 +57,7 @@ async def process_new_voting_start(callback: CallbackQuery, state: FSMContext):
     Запускает процесс создания нового голосования.
     """
     logger.info(f"Пользователь {callback.from_user.id} начал создание голосования.")
-    await callback.message.answer(text='Пожалуйста, введите название голосования.')
+    await callback.message.answer(text='Пожалуйста, введите название голосования.') # type: ignore
     await state.set_state(FSMNewVoting.fill_voting_title)
 
 
@@ -70,7 +70,10 @@ async def process_new_voting_title_sent(message: Message, state: FSMContext):
     Обработчик ввода названия голосования.
     Сохраняет название и запрашивает описание.
     """
-    logger.info(f"Пользователь {message.from_user.id} ввел название голосования: {message.text}.")
+    if not message.text:
+        logger.warning('Отсутствует текст сообщения')
+        return
+    logger.info(f"Пользователь {message.from_user.id} ввел название голосования: {message.text}.") # type: ignore
     if len(message.text) > 40:
         await message.answer("Название не должно быть длиннее 40 символов. Попробуйте снова.")
         return
@@ -89,7 +92,7 @@ async def process_new_voting_description_sent(message: Message, state: FSMContex
     Обработчик ввода описания голосования.
     Запрашивает подтверждение данных.
     """
-    logger.info(f"Пользователь {message.from_user.id} ввел описание голосования: {message.text}.")
+    logger.info(f"Пользователь {message.from_user.id} ввел описание голосования: {message.text}.") # type: ignore
     await state.update_data(description=message.text)
     fsm_data = await state.get_data()
     title = fsm_data['title']
@@ -138,7 +141,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
             data['reply_markup'] = await user_menu(status=data['user_status'])
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -149,7 +152,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
             data['reply_markup'] = None  # Если клавиатура не нужна
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -162,7 +165,7 @@ async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: F
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -187,7 +190,7 @@ async def process_new_voting_no_confirm_press(callback: CallbackQuery, state: FS
     data['reply_markup'] = await user_menu(status = data['user_status'])
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -319,6 +322,11 @@ async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext,
     Обработчик кнопки добавления варианта.
     Запрашивает ввод названия варианта.
     """
+    # Проверяем, что callback.data существует
+    if callback.data is None:
+        logger.warning("Callback data отсутствует")
+        await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+        return
     logger.info(f"Пользователь {callback.from_user.id} начал добавление варианта к голосованию ID={callback.data}.")
     voting_id = int(callback.data.split(':')[1])
     await state.update_data(voting_id=voting_id)
@@ -328,7 +336,7 @@ async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext,
     data['reply_markup'] = None  # Убираем клавиатуру
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -346,7 +354,10 @@ async def process_variant_description_sent(message: Message, state: FSMContext):
     Обработчик ввода названия варианта.
     Запрашивает ввод описания.
     """
-    logger.info(f"Пользователь {message.from_user.id} ввел название варианта: {message.text}.")
+    if not message.text:
+        logger.warning('Отсутствует текст сообщения')
+        return
+    logger.info(f"Пользователь {message.from_user.id} ввел название варианта: {message.text}.") # type: ignore
     if len(message.text) > 40:
         await message.answer("Название не должно быть длиннее 40 символов. Попробуйте снова.")
         return
@@ -364,7 +375,7 @@ async def process_new_variant_description_sent(message: Message, state: FSMConte
     Обработчик ввода описания варианта.
     Запрашивает подтверждение данных.
     """
-    logger.info(f"Пользователь {message.from_user.id} ввел описание варианта: {message.text}.")
+    logger.info(f"Пользователь {message.from_user.id} ввел описание варианта: {message.text}.") # type: ignore
     await state.update_data(description=message.text)
     data = await state.get_data()
     title = data['title']
@@ -405,7 +416,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
             data['reply_markup'] = variant_markup
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -419,7 +430,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
             data['reply_markup'] = await user_menu(status = data['user_status'])
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -432,7 +443,7 @@ async def process_new_variant_yes_confirm_press(callback: CallbackQuery, state: 
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -450,7 +461,7 @@ async def process_new_variant_no_confirm_press(callback: CallbackQuery, state: F
     data['reply_markup'] = variant_markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -473,7 +484,7 @@ async def process_more_variant(callback: CallbackQuery, state: FSMContext, data:
     data['reply_markup'] = None  # Если клавиатура не нужна
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -498,7 +509,7 @@ async def process_finish_variant(callback: CallbackQuery, state: FSMContext, dat
     data['reply_markup'] = await user_menu(status=data['user_status'])
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )

@@ -10,8 +10,8 @@ from config_data.config import Config, load_config
 from utils import setup_logger
 from middlewares import LoggingAndErrorHandlingMiddleware, SafeEditMiddleware, StatusMiddleware
 from handlers import (
-    admin_handlers, candidate_handlers, member_handlers, delegate_handlers, owner_handlers,
-    new_user_handlers, registrator_handlers, oll_users_handlers, reg_process_handlers,
+    admin_handlers, member_handlers, delegate_handlers, owner_handlers,
+    registrator_handlers, oll_users_handlers, reg_process_handlers,
     chat_member_handlers, last_handlers
 )
 from manager.manager import daily_task
@@ -105,12 +105,10 @@ dp.update.middleware(SafeEditMiddleware())  # Затем middleware для safe_
 # Регистрируем роутеры
 routers = [
     member_handlers.router,
-    new_user_handlers.router,
     delegate_handlers.router,
     registrator_handlers.router,
     admin_handlers.router,
     owner_handlers.router,
-    candidate_handlers.router,
     reg_process_handlers.router,
     oll_users_handlers.router,
     chat_member_handlers.router,

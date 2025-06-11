@@ -1,17 +1,15 @@
 import logging
-from aiogram import Bot, Router, F
-from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Contact
+from aiogram import Router, F
+from aiogram.filters import Command, StateFilter
+from aiogram.types import CallbackQuery, Message, Contact
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import default_state, State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.state import default_state
 from filters.filters import StatusFilter
-from FSMs.FSMs import FSMNewRegistrator, FSMNewVoting, FSMNewStatus, AdminStates
+from FSMs.FSMs import FSMNewStatus, AdminStates
 from data_base.telegram_bot_logic import *
 from services.services import process_channel_info
 from utils import log_handler_call
 from keyboards.keyboards import *
-from config_data.config import Config, load_config
 from LEXICON.LEXICON import LEXICON
 
 # Настройка логирования
@@ -54,7 +52,7 @@ async def process_new_status_cb(callback: CallbackQuery, state: FSMContext, data
     data['reply_markup'] = None  # Если клавиатура не нужна, устанавливаем None
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -69,19 +67,38 @@ async def process_new_status_cb(callback: CallbackQuery, state: FSMContext, data
 @router.message(StateFilter(FSMNewStatus.fill_ID_User), ~F.contact, (lambda x: x.text.isdigit()))
 @log_handler_call
 async def process_user_id_sent(message: Message, state: FSMContext):
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
     logger.info(f"Введенный ID пользователя: {message.text} от пользователя {message.from_user.id}")
-    user_tg_id = int(message.text)
+    if message.text is not None:
+        try:
+            user_tg_id = int(message.text.strip())
+        except ValueError:
+            await message.answer("Пожалуйста, введите корректное числовое значение.")
+            raise ValueError("Сообщние не содержит числовое значение.")
+    else:
+        await message.answer("Сообщение не содержит текст. Пожалуйста, попробуйте снова.")
+        raise ValueError("Сообщние не содержит текст")
     await state.update_data(ID=user_tg_id)
     try:
-        user_data = await extract_user_data_tg(user_tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')  # извлекаем данные о пользователе
-        if user_data:
-            await message.answer(
-                text=f'''Данные участника которому вы меняете статус:\nИмя: {user_data[1]},
-Фамилия: {user_data[2]}, \n Телефон: {user_data[3]}\nВсё верно?''',
-                reply_markup=confirm_markup  # клавиатура подтверждения из модуля клавиатур
-            )
-            # Устанавливаем состояние ожидания подтверждения
-            await state.set_state(FSMNewStatus.fill_OK)
+        user_id, user_member_id = await extract_user_member_id(user_tg_id)
+        if user_member_id:
+            user_profile = await extract_profile(user_member_id)
+            if user_profile:
+                await message.answer(
+                    text=f'''Данные участника которому вы меняете статус:\nИмя: {user_profile.get('first_name')},
+    Фамилия: {user_profile.get('last_name')}, \n Телефон: {user_profile.get('tg_phone_number')}\n
+    Псевдоним: {user_profile.get('username')} Всё верно?''',
+                    reply_markup=confirm_markup  # клавиатура подтверждения из модуля клавиатур
+                )
+                # Устанавливаем состояние ожидания подтверждения
+                await state.set_state(FSMNewStatus.fill_OK)
+            else:
+                await message.answer(text='Данные участника не найдены')
+                # Сбрасываем состояние и очищаем данные, полученные внутри состояний
+                await state.clear()
         else:
             await message.answer(text='Такой участник не найден')
             # Сбрасываем состояние и очищаем данные, полученные внутри состояний
@@ -96,19 +113,40 @@ async def process_user_id_sent(message: Message, state: FSMContext):
 # и переводить в состояние подтверждения
 @router.message(StateFilter(FSMNewStatus.fill_ID_User), F.contact)
 @log_handler_call
-async def process_user_contact_sent(message: Message, state: FSMContext, contact: Contact = None):
+async def process_user_contact_sent(message: Message, state: FSMContext, contact: Contact):
+    if message.contact is None:
+        await message.answer("Пожалуйста, отправьте контакт.")
+        raise ValueError("Сообщние не содержит контакта.")
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
     contact = message.contact
     logger.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
+
+    if not contact.user_id:
+        await message.answer("К сожалению, ID контакта отсутствует. Попробуйте отправить просто ID")
+        raise ValueError("Сообщние не содержит ID контакта.")
+
     user_tg_id = contact.user_id
+
     await state.update_data(ID=user_tg_id)
     try:
-        user_data = await extract_user_data_tg(user_tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')  # извлекаем данные о пользователе
-        if user_data:
-            await message.answer(
-                text=f'''Данные которому вы меняете статус\nИмя: {user_data[1]},
-Фамилия: {user_data[2]}, \n Телефон: {user_data[3]}\nВсё верно?''',
-                reply_markup=confirm_markup  # клавиатура подтверждения из модуля клавиатур
-            )
+        user_id, user_member_id = await extract_user_member_id(user_tg_id)
+        if user_member_id:
+            user_profile = await extract_profile(user_member_id)
+            if user_profile:
+                await message.answer(
+                    text=f'''Данные участника которому вы меняете статус:\nИмя: {user_profile.get('first_name')},
+    Фамилия: {user_profile.get('last_name')}, \n Телефон: {user_profile.get('tg_phone_number')}\n
+    Псевдоним: {user_profile.get('username')} Всё верно?''',
+                    reply_markup=confirm_markup  # клавиатура подтверждения из модуля клавиатур
+                )
+            else:
+                await message.answer(text='Данные участника не найдены')
+                # Сбрасываем состояние и очищаем данные, полученные внутри состояний
+                await state.clear()
+
             # Устанавливаем состояние ожидания подтверждения
             await state.set_state(FSMNewStatus.fill_OK)
         else:
@@ -156,7 +194,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -172,7 +210,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -195,7 +233,7 @@ async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMCon
     data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -205,6 +243,10 @@ async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMCon
 @router.message(StateFilter(FSMNewStatus.fill_OK))
 @log_handler_call
 async def warning_registrator(message: Message):
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
     logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewStatus.fill_OK}")
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
@@ -218,26 +260,30 @@ async def warning_registrator(message: Message):
 async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext, data: dict):
     logger.info(f"Выбран статус: {callback.data} пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
+    if not callback.data:
+        raise ValueError("Нет callback.data")
     await state.update_data(status=callback.data)
     status = callback.data
     fsm_data = await state.get_data()
     member_tg_id = fsm_data['ID']
 
     try:
-        user_data = await extract_user_data_tg(member_tg_id, 'id', 'tg_first_name', 'tg_last_name', 'tg_phone_number')  # Извлекаем данные о пользователе
-        status_text = LEXICON.get(status, status)
-
+        user_id, member_id = await extract_user_member_id(member_tg_id)
+        if not member_id:
+            raise ValueError("Нет member_ID пользователя")
+        user_profile = await extract_profile(member_id)
+        if user_profile:
+           status_text = LEXICON.get(status, status)
+           text=f'''Данные участника которому вы меняете статус:\nИмя: {user_profile.get('first_name')},
+Фамилия: {user_profile.get('last_name')}, \n Телефон: {user_profile.get('tg_phone_number')}\n
+Псевдоним: {user_profile.get('username')}\nВы хотите изменить его статус:
+\n{status_text}\nВсё верно?'''
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = f'''Данные пользователя\nИмя: {user_data[1]},
-Фамилия: {user_data[2]}, \n Телефон: {user_data[3]}
-\nВы хотите изменить его статус:
-\n{status_text}
-\nВсё верно?'''
+        data['response_text'] = text
         data['reply_markup'] = confirm_markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -252,7 +298,7 @@ async def process_new_status_confirm(callback: CallbackQuery, state: FSMContext,
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -287,7 +333,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -302,7 +348,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
                 data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
                 # Пытаемся отредактировать сообщение
-                await callback.message.edit_text(
+                await callback.message.edit_text( # type: ignore
                     text=data['response_text'],
                     reply_markup=data['reply_markup']
                 )
@@ -317,7 +363,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -330,7 +376,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -341,7 +387,7 @@ async def process_new_status_entry(callback: CallbackQuery, state: FSMContext, d
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
 @router.callback_query(StateFilter(FSMNewStatus.fill_new_status_confirm), F.data == 'ConfirmNotOK')
 @log_handler_call
-async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMContext, data: dict):
+async def process_no_confirm_status(callback: CallbackQuery, state: FSMContext, data: dict):
     logger.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -353,7 +399,7 @@ async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMCon
     data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -363,6 +409,10 @@ async def process_no_confirm_status_press(callback: CallbackQuery, state: FSMCon
 @router.message(StateFilter(FSMNewStatus.fill_new_status_confirm))
 @log_handler_call
 async def warning_new_status(message: Message):
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
     logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewStatus.fill_new_status_confirm}")
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
@@ -378,7 +428,7 @@ async def warning_new_status(message: Message):
 @log_handler_call
 async def admin_menu(callback: CallbackQuery):
     markup = get_admin_menu_keyboard()
-    await callback.message.edit_text("Выберите действие:", reply_markup=markup)
+    await callback.message.edit_text("Выберите действие:", reply_markup=markup) # type: ignore
 
 
 # Изменение имени группы
@@ -386,12 +436,15 @@ async def admin_menu(callback: CallbackQuery):
 @router.callback_query(F.data == "edit_club_name")
 @log_handler_call
 async def edit_club_name_start(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer("Введите новое имя группы:")
+    await callback.message.answer("Введите новое имя группы:") # type: ignore
     await state.set_state(AdminStates.entering_club_name)
 
 @router.message(AdminStates.entering_club_name)
 @log_handler_call
 async def process_club_name(message: Message, state: FSMContext, club_id: int):
+    if not message.text:
+        await message.answer("Имя не может быть пустым. Попробуйте снова.")
+        raise ValueError("Текст сообщения пуст")
     new_name = message.text.strip()
     if not new_name:
         await message.answer("Имя не может быть пустым. Попробуйте снова.")
@@ -411,16 +464,19 @@ async def process_club_name(message: Message, state: FSMContext, club_id: int):
 @router.callback_query(F.data == "edit_club_description")
 @log_handler_call
 async def edit_club_description_start(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer("Введите новое описание группы:")
+    await callback.message.answer("Введите новое описание группы:") # type: ignore
     await state.set_state(AdminStates.entering_club_description)
 
 @router.message(AdminStates.entering_club_description)
 @log_handler_call
 async def process_club_description(message: Message, state: FSMContext, club_id: int):
+    if not message.text:
+        await message.answer("Описание не может быть пустым. Попробуйте снова.")
+        raise ValueError("Текст сообщения пуст")
     new_description = message.text.strip()
     if not new_description:
         await message.answer("Описание не может быть пустым. Попробуйте снова.")
-        return
+        raise ValueError("Текст сообщения пуст")
 
     success = await update_club_description(club_id=club_id, new_description=new_description)
     if success:
@@ -436,16 +492,19 @@ async def process_club_description(message: Message, state: FSMContext, club_id:
 @router.callback_query(F.data == "edit_club_conditions")
 @log_handler_call
 async def edit_club_conditions_start(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer("Введите новые условия участия в группе:")
+    await callback.message.answer("Введите новые условия участия в группе:") # type: ignore
     await state.set_state(AdminStates.entering_club_conditions)
 
 @router.message(AdminStates.entering_club_conditions)
 @log_handler_call
 async def process_club_conditions(message: Message, state: FSMContext, club_id: int):
+    if not message.text:
+        await message.answer("Условия не могут быть пустыми. Попробуйте снова.")
+        raise ValueError("Текст сообщения пуст")
     new_conditions = message.text.strip()
     if not new_conditions:
         await message.answer("Условия не могут быть пустыми. Попробуйте снова.")
-        return
+        raise ValueError("Текст сообщения пуст")
 
     success = await update_club_conditions(club_id=club_id, new_conditions=new_conditions)
     if success:
@@ -461,16 +520,19 @@ async def process_club_conditions(message: Message, state: FSMContext, club_id: 
 @router.callback_query(F.data == "add_channel")
 @log_handler_call
 async def add_channel_start(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer("Введите ID или ссылку на канал/чат для рассылок:")
+    await callback.message.answer("Введите ID или ссылку на канал/чат для рассылок:") # type: ignore
     await state.set_state(AdminStates.adding_telegram_channel)
 
 @router.message(AdminStates.adding_telegram_channel)
 @log_handler_call
 async def process_add_channel(message: Message, state: FSMContext, club_id: int):
+    if  not message.text:
+        await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
+        raise ValueError("Текст сообщения пуст")
     channel_info = message.text.strip()
     if not channel_info:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
-        return
+        raise
 
     result = await process_channel_info(channel_info, club_id, "add")
     await message.answer(result["message"])
@@ -482,12 +544,15 @@ async def process_add_channel(message: Message, state: FSMContext, club_id: int)
 @router.callback_query(F.data == "remove_channel")
 @log_handler_call
 async def remove_channel_start(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer("Введите ID или ссылку на канал/чат для удаления из рассылок:")
+    await callback.message.answer("Введите ID или ссылку на канал/чат для удаления из рассылок:") # type: ignore
     await state.set_state(AdminStates.removing_telegram_channel)
 
 @router.message(AdminStates.removing_telegram_channel)
 @log_handler_call
 async def process_remove_channel(message: Message, state: FSMContext, club_id: int):
+    if  not message.text:
+        await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
+        raise ValueError("Текст сообщения пуст")
     channel_info = message.text.strip()
     if not channel_info:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
@@ -503,12 +568,15 @@ async def process_remove_channel(message: Message, state: FSMContext, club_id: i
 @router.callback_query(F.data == "set_main_channel")
 @log_handler_call
 async def set_main_channel_start(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer("Введите ID или ссылку на основной канал/чат:")
+    await callback.message.answer("Введите ID или ссылку на основной канал/чат:") # type: ignore
     await state.set_state(AdminStates.setting_main_channel)
 
 @router.message(AdminStates.setting_main_channel)
 @log_handler_call
 async def process_set_main_channel(message: Message, state: FSMContext, club_id: int):
+    if  not message.text:
+        await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
+        raise ValueError("Текст сообщения пуст")
     channel_info = message.text.strip()
     if not channel_info:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
@@ -531,6 +599,8 @@ async def process_set_main_channel(message: Message, state: FSMContext, club_id:
 @router.message(Command(commands='set_stage_durations'), StateFilter(default_state))
 @log_handler_call
 async def start_setting_stage_durations(message: Message, state: FSMContext):
+    if  not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
     logger.info(f"Команда /set_stage_durations сработала для пользователя {message.from_user.id}")
     await message.answer(
         text="Введите продолжительность этапов голосования (в сутках) в следующем формате:\n"
@@ -568,7 +638,7 @@ async def process_set_stage_durations_cb(callback: CallbackQuery, state: FSMCont
     data['reply_markup'] = reply_markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -581,8 +651,16 @@ async def process_set_stage_durations_cb(callback: CallbackQuery, state: FSMCont
 @router.message(StateFilter(AdminStates.setting_stage_durations), F.text)
 @log_handler_call
 async def process_stage_durations_input(message: Message, state: FSMContext):
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
     logger.info(f"Пользователь {message.from_user.id} ввел продолжительность этапов: {message.text}")
     try:
+        if not message.text:
+            await message.answer("Произошла ошибка: данные не найдены.")
+            logger.warning("Данные введены пустыми")
+            raise ValueError("Данные введены пустыми")
         # Разбиваем введенные данные на список чисел
         durations = list(map(int, message.text.split()))
         if len(durations) != 4:
@@ -644,7 +722,7 @@ async def confirm_stage_durations(callback: CallbackQuery, state: FSMContext, da
     markup = await user_menu(callback.from_user.id, data['user_status'])
 
     # Отправляем ответ и завершаем машину состояний
-    await callback.message.edit_text(text=response_text, reply_markup=markup)
+    await callback.message.edit_text(text=response_text, reply_markup=markup) # type: ignore
     await state.clear()
 
 # 4. Хэндлер для отмены подтверждения
@@ -660,7 +738,7 @@ async def cancel_stage_durations(callback: CallbackQuery, state: FSMContext, dat
     # Отправляем сообщение об отмене
     response_text = "Установка продолжительности этапов отменена."
     markup = await user_menu(callback.from_user.id, data['user_status'])
-    await callback.message.edit_text(text=response_text, reply_markup=markup)
+    await callback.message.edit_text(text=response_text, reply_markup=markup) # type: ignore
 
 # Установка электоральных порогов для делегатов.
 # Один порог - в голосах, другой - в процентах. Работать будет тот, который больше.
@@ -698,7 +776,7 @@ async def process_set_threshold_cb(callback: CallbackQuery, state: FSMContext, d
     data['reply_markup'] = None  # Клавиатура не нужна
 
     # Редактируем сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -711,6 +789,12 @@ async def process_set_threshold_cb(callback: CallbackQuery, state: FSMContext, d
 @router.message(StateFilter(AdminStates.setting_thresholds), F.text)
 @log_handler_call
 async def process_thresholds_input(message: Message, state: FSMContext, data:dict):
+    if not message.text:
+        await message.answer("Введите значения порогов через пробел.")
+        raise ValueError("Введено пустое значение")
+    if not message.from_user:
+        raise ValueError("Отправтель сообщения отсутствует (from_user == None)")
+
     logger.info(f"Пользователь {message.from_user.id} ввел пороги: {message.text}")
     try:
         # Заменяем запятую на точку для единообразия
@@ -772,7 +856,7 @@ async def confirm_thresholds(callback: CallbackQuery, state: FSMContext, data: d
     markup = await user_menu(callback.from_user.id, data['user_status'])
 
     # Отправляем ответ и завершаем машину состояний
-    await callback.message.edit_text(text=response_text, reply_markup=markup)
+    await callback.message.edit_text(text=response_text, reply_markup=markup) # type: ignore
     await state.clear()
 
 
@@ -789,4 +873,4 @@ async def cancel_thresholds(callback: CallbackQuery, state: FSMContext, data: di
     # Отправляем сообщение об отмене
     response_text = "Установка порогов доверенных голосов отменена."
     markup = await user_menu(callback.from_user.id, data['user_status'])
-    await callback.message.edit_text(text=response_text, reply_markup=markup)
+    await callback.message.edit_text(text=response_text, reply_markup=markup) # type: ignore

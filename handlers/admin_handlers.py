@@ -2,14 +2,12 @@
 
 import logging
 from aiogram import Bot, Router, F
-from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Contact
+from aiogram.filters import Command, StateFilter
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import default_state, State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
-import traceback
+from aiogram.fsm.state import default_state
 from filters.filters import StatusFilter
-from FSMs.FSMs import FSMNewRegistrator, FSMNewVoting, FSMNewStatus
+from FSMs.FSMs import FSMNewRegistrator
 from data_base.telegram_bot_logic import *
 from utils import log_handler_call
 from services.services import send_notification_to_user
@@ -63,6 +61,11 @@ router.callback_query.filter(StatusFilter(required_status = ['admin','owner']))
 @router.message(Command(commands='new_registrator'), StateFilter(default_state))
 @log_handler_call
 async def process_new_registrator(message: Message, state: FSMContext):
+    if message.from_user is None:
+        logger.warning("Сообщение от пользователя без данных from_user")
+        await message.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+        return
+
     logger.info(f"Команда /new_registrator сработала для пользователя {message.from_user.id}")
     await message.answer(text='''Пожалуйста, введите телеграм-ID участника,
 которому вы хотите присвоить новый статус или отправьте контакт с ID''')
@@ -82,7 +85,7 @@ async def process_new_registrator_cb(callback: CallbackQuery, state: FSMContext,
     data['reply_markup'] = None  # Если клавиатура не нужна, устанавливаем None
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -95,13 +98,21 @@ async def process_new_registrator_cb(callback: CallbackQuery, state: FSMContext,
 # и переводить в состояние подтверждения
 @router.message(StateFilter(FSMNewRegistrator.fill_ID_NewRegistrator), (lambda x: x.text.isdigit()))
 @log_handler_call
-async def process_registrator_id_sent(message: Message, state: FSMContext, data: dict = None):
-    logger.info(f"Введенный ID нового регистратора: {message.text} от пользователя {message.from_user.id}")
+async def process_registrator_id_sent(message: Message, state: FSMContext, data: dict):
+    # Проверяем, что message.text существует и является строкой
+    if message.text is None:
+        logger.warning("Получено сообщение без текста")
+        await message.answer("Произошла ошибка. Пожалуйста, отправьте корректный ID.")
+        return
 
+    logger.info(f"Введенный ID нового регистратора: {message.text} от пользователя {message.from_user.id}")  # type: ignore
+
+    # Преобразуем текст в целое число
     member_tg_id = int(message.text)
     await state.update_data(ID=member_tg_id)
 
-    flag, ans_str = await extract_new_registrator_data(member_tg_id)  # извлекаем данные о новом регистраторе
+    # Извлекаем данные о новом регистраторе
+    flag, ans_str = await extract_new_registrator_data(member_tg_id)
 
     # Создаем объект инлайн-клавиатуры
     markup = confirm_markup
@@ -134,13 +145,27 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
         # Сбрасываем состояние и очищаем данные
         await state.clear()
 
-# Этот хэндлер будет срабатывать, если  отправлен контакт с ID
+# Этот хэндлер будет срабатывать, если отправлен контакт с ID
 # и переводить в состояние подтверждения
 @router.message(StateFilter(FSMNewRegistrator.fill_ID_NewRegistrator), F.contact)
 @log_handler_call
-async def process_registrator_contact_sent(message: Message, state: FSMContext, data, contact: Contact = None):
+async def process_registrator_contact_sent(message: Message, state: FSMContext, data: dict):
+    # Проверяем, что контакт существует
+    if message.contact is None:
+        logger.warning("Получено сообщение без контакта")
+        await message.answer("Произошла ошибка. Пожалуйста, отправьте корректный контакт.")
+        return
 
     contact = message.contact
+
+    # Проверяем, что from_user существует
+    if message.from_user is None:
+        logger.warning("Сообщение от пользователя без данных from_user")
+        await message.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+        return
+
+
+
     logger.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
     member_tg_id = contact.user_id
 
@@ -198,7 +223,7 @@ async def process_yes_registrator_press(callback: CallbackQuery, state: FSMConte
             data['response_text'] = f'Произошла ошибка: {ans_str}'
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(text=data['response_text'], reply_markup=data['reply_markup'])
+            await callback.message.edit_text(text=data['response_text'], reply_markup=data['reply_markup']) # type: ignore
             return
 
         # Завершаем машину состояний
@@ -227,7 +252,7 @@ async def process_yes_registrator_press(callback: CallbackQuery, state: FSMConte
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Отправляем в чат сообщение о выходе из машины состояний
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -253,7 +278,7 @@ async def process_no_registrator_press(callback: CallbackQuery, state: FSMContex
     data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -263,7 +288,7 @@ async def process_no_registrator_press(callback: CallbackQuery, state: FSMContex
 @router.message(StateFilter(FSMNewRegistrator.fill_OK))
 @log_handler_call
 async def warning_registrator(message: Message):
-    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewRegistrator.fill_OK}")
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewRegistrator.fill_OK}") # type: ignore
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
              'Если вы хотите прервать назначение регистратора - '
@@ -279,29 +304,47 @@ async def warning_registrator(message: Message):
 @router.callback_query(F.data == 'registrators_list')
 @log_handler_call
 async def process_registrators_list(callback: CallbackQuery, data: dict):
+    # Проверяем, что callback.from_user существует
+    if callback.from_user is None:
+        logger.warning("Callback from_user отсутствует")
+        return
     logger.info(f"Пользователь {callback.from_user.id} запросил список регистраторов")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
+    # Проверяем, доступно ли сообщение для редактирования
+    if callback.message is None:
+        logger.warning("Сообщение недоступно для редактирования")
+        # Проверяем, что callback.bot существует
+        if callback.bot is None:
+            logger.error("Bot объект недоступен")
+            return
+        await callback.bot.send_message(
+            chat_id=callback.from_user.id,
+            text="Произошла ошибка при формировании списка регистраторов. Попробуйте снова."
+        )
+        return
+
     # Здесь будет логика получения и отображения списка регистраторов и суперрегистраторов
-    registrators = await list_of_members(data['club_id'],status='registrator')  # Функция для получения списка регистраторов
-    super_registrators = await list_of_members(data['club_id'], status='superregistrator')  # Функция для получения списка суперhегистраторов
+    registrators = await list_of_members(data['club_id'], status='registrator')  # Функция для получения списка регистраторов
+    super_registrators = await list_of_members(data['club_id'], status='superregistrator')  # Функция для получения списка суперрегистраторов
 
     if not registrators and not super_registrators:
-            # Добавляем данные для SafeEditMiddleware
-            data['response_text'] = 'В данный момент нет регистраторов.'
-            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        # Добавляем данные для SafeEditMiddleware
+        data['response_text'] = 'В данный момент нет регистраторов.'
+        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
-            # Редактируем сообщение
-            await callback.message.edit_text(
-                text=data['response_text'],
-                reply_markup=data['reply_markup']
-            )
-            return
+        # Редактируем сообщение
+        await callback.message.edit_text(  # type: ignore
+            text=data['response_text'],
+            reply_markup=data['reply_markup']
+        )
+        return
 
     for registrator in registrators:
         # Отправляем сообщение про каждого регистратора
         await callback.message.answer(
-            text=(f"Регистратор: {registrator['username']} {registrator['first_name'] if registrator['first_name'] else ''} "
+            text=(f"Регистратор: {registrator['username']} "
+                  f"{registrator['first_name'] if registrator['first_name'] else ''} "
                   f"{registrator['last_name'] if registrator['last_name'] else ''}"),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="Удалить из регистраторов", callback_data=f"remove_registrator:{registrator['member_id']}")],
@@ -312,17 +355,19 @@ async def process_registrators_list(callback: CallbackQuery, data: dict):
     for super_registrator in super_registrators:
         # Отправляем сообщение про каждого суперрегистратора
         await callback.message.answer(
-            text=(f"Суперегистратор: {super_registrator['username']} \n{super_registrator['first_name'] if super_registrator['first_name'] else ''} "
+            text=(f"Суперегистратор: {super_registrator['username']} \n"
+                  f"{super_registrator['first_name'] if super_registrator['first_name'] else ''} "
                   f"{super_registrator['last_name'] if super_registrator['last_name'] else ''}"),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="Удалить из суперрегистраторов", callback_data=f"remove_superregistrator:{super_registrator['member_id']}")],
                 [InlineKeyboardButton(text="Разжаловать в простые регистраторы", callback_data=f"demote_to_registrator:{super_registrator['member_id']}")]
             ])
         )
+
     await callback.message.answer(
         text="Вернуться в основное меню",
         reply_markup=return_to_main_menu_markup
-        )
+    )
 
 
 @router.callback_query(F.data.regexp(r'^remove_registrator:\d+$'))
@@ -332,17 +377,24 @@ async def process_remove_registrator(callback: CallbackQuery, data: dict):
     Обработчик удаления регистратора
     """
     try:
-        logger.info(f"Пользователь {callback.from_user.id} удалаяет регистратора: {callback.data}")
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
+
+        logger.info(f"Пользователь {callback.from_user.id} удаляет регистратора: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
+        # Извлекаем member_id из callback.data
         member_id = int(callback.data.split(':')[1])
         registrator = callback.from_user.id
 
-        result1 = await new_status(registrator=registrator,member_id=member_id,status='not_registrator')
+        # Выполняем операцию изменения статуса
+        result1 = await new_status(registrator=registrator, member_id=member_id, status='not_registrator')
 
         if result1:
-            success1,text = result1
-
+            success1, text = result1
 
         markup = None
 
@@ -351,7 +403,7 @@ async def process_remove_registrator(callback: CallbackQuery, data: dict):
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -364,7 +416,7 @@ async def process_remove_registrator(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -379,6 +431,12 @@ async def process_promote_to_super(callback: CallbackQuery, data: dict):
     Обработчик назначения суперрегистратора
     """
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
+
         logger.info(f"Пользователь {callback.from_user.id} делает регистратора суперрегистратором: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -397,7 +455,7 @@ async def process_promote_to_super(callback: CallbackQuery, data: dict):
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -410,7 +468,7 @@ async def process_promote_to_super(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -424,18 +482,24 @@ async def process_remove_superregistrator(callback: CallbackQuery, data: dict):
     Обработчик удаления суперрегистратора
     """
     try:
-        logger.info(f"Пользователь {callback.from_user.id} удалаяет суперрегистратора: {callback.data}")
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
+
+        logger.info(f"Пользователь {callback.from_user.id} удаляет суперрегистратора: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
+        # Извлекаем member_id из callback.data
         member_id = int(callback.data.split(':')[1])
         registrator = callback.from_user.id
 
-        result1 = await new_status(registrator=registrator,member_id=member_id,status='not_superregistrator')
+        result1 = await new_status(registrator=registrator, member_id=member_id, status='not_superregistrator')
         print(result1)
 
         if result1:
-            success1,text = result1
-
+            success1, text = result1
 
         markup = None
 
@@ -444,7 +508,7 @@ async def process_remove_superregistrator(callback: CallbackQuery, data: dict):
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text(  # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -457,7 +521,7 @@ async def process_remove_superregistrator(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -472,6 +536,11 @@ async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
     Обработчик разжалования суперрегистратора в регистраторы
     """
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
         logger.info(f"Пользователь {callback.from_user.id} разжалует суперрегистратора в регистраторы: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -496,7 +565,7 @@ async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -509,7 +578,7 @@ async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -527,6 +596,11 @@ async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
 @log_handler_call
 async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
         logger.info(f"Пользователь {callback.from_user.id} запустил администрирование голосвания: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -567,7 +641,7 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
         data['reply_markup'] = markup
 
         # Отправляем или редактируем сообщение
-        await callback.message.answer(
+        await callback.message.answer( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -580,7 +654,7 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.answer(
+        await callback.message.answer( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -588,7 +662,6 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
         raise  # Передаем исключение middleware для обработки
 
 
-# Хэндлер для запуска голосования после нажатия соотвествующей кнопки в меню администратора
 @router.callback_query(F.data.regexp(r'^voting_start:\d+$'))
 @log_handler_call
 async def process_voting_start_cb(callback: CallbackQuery, data: dict):
@@ -596,6 +669,12 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
     Обработчик выбора конкретного голосования.
     """
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
+
         logger.info(f"Пользователь {callback.from_user.id} запускает голосование: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -605,14 +684,13 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
 
         result = await voting_manager(voting_id, club_id=club_id, admin=member_id, stage_type='start')
 
-
-
-        if result:
-            text = result.get('message')
+        # Гарантируем, что text всегда является строкой
+        if result and 'message' in result:
+            text = result['message']
             logger.info(text)
         else:
             text = 'Что-то пошло не так при запуске голосования'
-            logger.info(text+f':{voting_id}')
+            logger.info(text + f':{voting_id}')
 
         markup = await user_menu(status=data['user_status'])
 
@@ -621,7 +699,7 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text(  # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -629,12 +707,12 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
     except Exception as e:
         logger.error(f"Ошибка при запуске голосования: {e}")
 
-        # Добавляем данные для SafeEditMiddleware
+        # Гарантируем, что response_text всегда является строкой
         data['response_text'] = 'Произошла ошибка при запуске голосования.'
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text(  # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -650,6 +728,11 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
     Обработчик нажатия кнопки старта промежуточного этапа голосования.
     """
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
         logger.info(f"Пользователь {callback.from_user.id} запускает промежуточный этап голосования: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -670,12 +753,12 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
 
         markup = await user_menu(status=data['user_status'])
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
+        # Гарантируем, что response_text всегда является строкой
+        data['response_text'] = text if isinstance(text, str) else 'Неизвестная ошибка'
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -688,7 +771,7 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -703,6 +786,11 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
     Обработчик перехода в финал конкретного голосования.
     """
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
         logger.info(f"Пользователь {callback.from_user.id} запускает финальный этап голосования: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -723,12 +811,12 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
 
         markup = await user_menu(status=data['user_status'])
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
+        # Гарантируем, что response_text всегда является строкой
+        data['response_text'] = text if isinstance(text, str) else 'Неизвестная ошибка'
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -741,7 +829,7 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -756,6 +844,11 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
     Обработчик выбора конкретного голосования.
     """
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
         logger.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -773,12 +866,12 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
 
         markup = await user_menu(status=data['user_status'])
 
-        # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
+        # Гарантируем, что response_text всегда является строкой
+        data['response_text'] = text if isinstance(text, str) else 'Неизвестная ошибка'
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -791,7 +884,7 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -807,6 +900,11 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
     Обработчик удаления варианта
     """
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
         logger.info(f"Пользователь {callback.from_user.id} удалаяет вариант: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -829,7 +927,7 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -842,7 +940,7 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -858,6 +956,11 @@ async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
     Обработчик завершения утверждения голосования (то есть, последне стадии).
     """
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
         logger.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -867,7 +970,7 @@ async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
 
         result = await confirmation_of_voting_results_stop (voting_id, finisher=member_id)
         if result:
-            text = result[0]
+            text = result.get('message','Произошла непредвиденная ошибка при звершении утверждения голосования')
             logger.info(text)
         else:
             text = 'Что-то пошло не так при завершении утверждения голосования'
@@ -880,7 +983,7 @@ async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -893,7 +996,7 @@ async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )

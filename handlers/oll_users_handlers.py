@@ -1,21 +1,18 @@
 # Модуль oll_users_handlers
 # В нем хэндлеры, которые работают для всех пользователей
 from aiogram import Router, F
-from aiogram.filters import Command, CommandStart, StateFilter, CommandObject
+from aiogram.filters import Command, StateFilter, CommandObject
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.text_decorations import html_decoration as html
-from aiogram.fsm.state import default_state, State, StatesGroup
+from aiogram.fsm.state import default_state
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ChatMemberUpdated
-from aiogram.filters import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
 from data_base.data_base import *
 from keyboards.keyboards import (
-    user_menu, remove_markup, create_inline_kb, confirm_markup, return_to_main_menu_markup,
-    get_admin_menu_keyboard, get_profile_menu_keyboard, get_info_menu_keyboard
+    user_menu, create_inline_kb, confirm_markup, return_to_main_menu_markup,
+    get_profile_menu_keyboard, get_info_menu_keyboard
     )
 from services.services import greetings_message, help_message, club_info, profile_message
 from manager.manager import leave_club
-from config_data.config import Config, load_config
 import logging
 import traceback
 from utils import log_handler_call
@@ -76,6 +73,9 @@ async def process_start_command(message: Message, command: CommandObject, data: 
     Если команда /start вызвана с параметром (например, через URL), обрабатывает его.
     """
     try:
+        # Проверям, существует ли message.from_user
+        if not message.from_user:
+            raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
         # Извлекаем параметр из команды /start
         args = command.args  # Это то, что идет после ?start= в URL
 
@@ -127,6 +127,9 @@ async def process_help_command(message: Message, data: dict):
     Обработчик команды /help.
     Отправляет справочную информацию о боте.
     """
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
     logger.info(f"Пользователь {message.from_user.id} запросил справку.")
     await message.answer(
         text=help_message(data['user_status']),
@@ -150,7 +153,7 @@ async def process_help_callback(callback: CallbackQuery, data: dict):
     data['reply_markup'] = await user_menu(callback.from_user.id, status = data['user_status'])
 
     # Отправляем сообщение со справкой в ответ
-    await callback.message.answer(
+    await callback.message.answer( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup'],
         parse_mode="HTML"  # Указываем режим разметки
@@ -164,6 +167,9 @@ async def process_cancel_command(message: Message, data:dict):
     Обработчик команды /cancel.
     Уведомляет пользователя, что команда работает только внутри машин состояний.
     """
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
     logger.info(f"Пользователь {message.from_user.id} попытался использовать /cancel вне машины состояний.")
     markup = await user_menu(message.from_user.id, data['user_status'])
     await message.answer(
@@ -179,6 +185,9 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
     Обработчик команды /cancel.
     Завершает текущую машину состояний.
     """
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
     logger.info(f"Пользователь {message.from_user.id} вышел из машины состояний.")
     markup = await user_menu(message.from_user.id, data['user_status'])
     await message.answer(
@@ -208,7 +217,7 @@ async def process_main_menu_button(callback: CallbackQuery, data: dict):
     data['reply_markup'] = markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -233,7 +242,7 @@ async def process_main_menu_button_state(callback: CallbackQuery, state: FSMCont
     data['reply_markup'] = markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -311,6 +320,11 @@ async def process_main_menu_button_state(callback: CallbackQuery, state: FSMCont
 @router.callback_query(F.data.regexp(r'^(ongoing_votings|completed_votings|future_votings)$'))
 @log_handler_call
 async def process_list_of_votings(callback: CallbackQuery, data: dict):
+    # Проверяем, что callback.data существует
+    if not callback.data:
+        logger.warning("Данные callback пусты")
+        await callback.message.edit_text("Произошла ошибка: данные не найдены.") # type: ignore
+        raise ValueError("Callback data отсутствует")
     try:
         logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -341,12 +355,12 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
 
         if votings:
             # Отправляем заголовок
-            await callback.message.answer(header_message)
+            await callback.message.answer(header_message) # type: ignore
 
             # Отправляем по одному сообщению на каждое голосование
             for i, voting in enumerate(votings):
                 voting_id, title, description = voting
-                await callback.message.answer(
+                await callback.message.answer( # type: ignore
                     text=(
                         f"🗳️ <b>{title}</b>\n"
                         f"📝 Описание:\n{description}\n\n"
@@ -357,14 +371,14 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
                 )
 
             # В последнем сообщении добавляем кнопку "Вернуться в главное меню"
-            await callback.message.answer(
+            await callback.message.answer( # type: ignore
                 text=LEXICON.get('return_to_main_menu', 'Вернуться в главное меню'),
                 reply_markup=main_menu_markup
             )
         else:
             # Если голосований нет, отправляем сообщение об этом и кнопку "Вернуться в главное меню"
-            await callback.message.answer(empty_message)
-            await callback.message.answer(
+            await callback.message.answer(empty_message) # type: ignore
+            await callback.message.answer( # type: ignore
                 text=LEXICON.get('return_to_main_menu', 'Вернуться в главное меню'),
                 reply_markup=main_menu_markup
             )
@@ -382,7 +396,7 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.answer(
+        await callback.message.answer( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -400,6 +414,11 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
     """
     Обработчик просмотра вариантов.
     """
+    # Проверяем, что callback.data существует
+    if not callback.data:
+        logger.warning("Данные callback пусты")
+        await callback.message.edit_text("Произошла ошибка: данные не найдены.") # type: ignore
+        raise ValueError("Callback data отсутствует")
     try:
         logger.info(f"Пользователь {callback.from_user.id} запросил просмотр вариантов: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -419,9 +438,9 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         choise = await variant_choise(data['member_id'], voting_id)
 
         # Экранируем специальные символы в тексте
-        escaped_voting_title = html.quote(voting_title)
+        escaped_voting_title = html.quote(voting_title) if voting_title else "Без названия"
 
-        await callback.message.answer(
+        await callback.message.answer( # type: ignore
             text=(
                 f"Список вариантов к голосованию\n"
                 f"<b>{escaped_voting_title}</b>\n"
@@ -434,7 +453,8 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
             async def calculate_total_votes(variant_id):
                 dir_votes = await count_directly_votes(variant_id)  # решающие голоса, поданные за вариант напрямую
                 proxy_votes = await count_proxy_votes(variant_id)   # решающие голоса, поданные через представителя
-                return dir_votes + proxy_votes
+                # With safe default values:
+                return (dir_votes or 0) + (proxy_votes or 0)
 
             # Добавляем поле total_votes к каждому варианту
             variants_with_votes = []
@@ -477,7 +497,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
                 else:
                     markup = None
 
-                await callback.message.answer(
+                await callback.message.answer( # type: ignore
                     text=(
                         f"{choise_mark}"
                         f"🗳️ <b>{escaped_title}</b>\n"
@@ -531,7 +551,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         data['reply_markup'] = markup
 
         # Отправляем сообщение
-        await callback.message.answer(
+        await callback.message.answer( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -549,7 +569,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Отправляем сообщение в случае ошибки
-        await callback.message.answer(
+        await callback.message.answer( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -574,7 +594,7 @@ async def process_leave_the_group(callback: CallbackQuery, state: FSMContext, da
         data['reply_markup'] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -594,7 +614,7 @@ async def process_leave_the_group(callback: CallbackQuery, state: FSMContext, da
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -622,7 +642,7 @@ async def process_leave_club_entry(callback: CallbackQuery, state: FSMContext, d
         data['reply_markup'] = await user_menu(callback.from_user.id)
 
         # Редактируем сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -644,7 +664,7 @@ async def process_leave_club_entry(callback: CallbackQuery, state: FSMContext, d
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -665,7 +685,7 @@ async def process_no_confirm_leave_club(callback: CallbackQuery, state: FSMConte
     data['reply_markup'] = await user_menu(status=data['user_status'])
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -675,11 +695,28 @@ async def process_no_confirm_leave_club(callback: CallbackQuery, state: FSMConte
 
 
 # Этот хэндлер будет срабатывать, если во время подтверждения
-# выхода из группы будет введено/отправлено что-то некорректное
+# Обработка некорректного ввода пользователя при попытке выйти из клуба
+# Если при выходе из группы будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSM_leave_club.fill_OK))
 @log_handler_call
 async def warning_leave_club(message: Message):
-    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
+    """
+    Функция предупреждает пользователя о некорректном вводе во время состояния выхода из клуба.
+    Она логирует предупреждение и предлагает пользователю использовать кнопки или отправить команду /cancel для отмены действия.
+
+    Параметры:
+    - message: Message - сообщение, отправленное пользователем
+
+    Возвращает:
+    None
+    """
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
+    # Логирование некорректного ввода пользователя
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии FSM_leave_club.fill_OK")
+    # Ответ пользователю с предложением использовать кнопки или отменить действие
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
              'Если вы хотите прервать изменение статуса - '
@@ -689,11 +726,15 @@ async def warning_leave_club(message: Message):
 # Хэндлер для команды /club_info
 @router.message(Command(commands=['club_info']))
 @log_handler_call
-async def process_club_info(message: Message, data: dict):
+async def process_club_info_command(message: Message, data: dict):
     """
     Обработчик команды /club_info.
     Отправляет справочную информацию о группе.
     """
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
     logger.info(f"Пользователь {message.from_user.id} запросил справку о группе.")
     await message.answer(
         text=await club_info(data['club_id']),
@@ -717,7 +758,7 @@ async def process_club_info(callback: CallbackQuery, data: dict):
     data['reply_markup'] = get_info_menu_keyboard(exc='club_info')
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup'],
         parse_mode="HTML"  # Указываем режим разметки
@@ -739,7 +780,7 @@ async def process_info(callback: CallbackQuery, data: dict):
     data['reply_markup'] = get_info_menu_keyboard()
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup'],
         parse_mode="HTML"  # Указываем режим разметки
@@ -760,7 +801,7 @@ async def process_profile(callback: CallbackQuery, data: dict):
     data['response_text'] = await profile_message(data['member_id'],data['user_status'])
     data['reply_markup'] = get_profile_menu_keyboard(data['user_status'])
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup'],
         parse_mode="HTML"  # Указываем режим разметки
@@ -782,7 +823,7 @@ async def process_bot_info(callback: CallbackQuery, data: dict):
     data['reply_markup'] = get_info_menu_keyboard(exc='bot_info')
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup'],
         parse_mode="HTML"  # Указываем режим разметки
@@ -807,7 +848,7 @@ async def process_aboute(callback: CallbackQuery, data: dict):
     reply_markup = get_info_menu_keyboard(exc='about')
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=response_text,
         reply_markup=reply_markup,
         parse_mode="HTML"  # Указываем режим разметки
@@ -837,12 +878,13 @@ async def press_edit_username(callback: CallbackQuery, state: FSMContext, data: 
     data['reply_markup'] = return_to_main_menu_markup
 
     # Редактируем сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
 
     await state.set_state(FSM_profile.fill_username)
+
 
 
 @router.message(StateFilter(FSM_profile.fill_username))
@@ -853,7 +895,18 @@ async def process_username_sent(message: Message, state: FSMContext):
     Проверяет уникальность псевдонима.
     Запрашивает подтверждение.
     """
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
     logger.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
+
+    if message.text is None:
+        await message.answer(
+            text="Ошибка: пустое сообщение. Пожалуйста, введите псевдоним."
+        )
+        raise ValueError("Сообщение пустое")
+
     flag = await is_username_uniq(message.text)
     if flag:
         await state.update_data(username = message.text)
@@ -893,7 +946,7 @@ async def press_username_entry(callback: CallbackQuery, state: FSMContext, data:
     data['reply_markup'] = get_profile_menu_keyboard(status)
 
     # Редактируем сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -919,7 +972,7 @@ async def process_no_confirm_proxy_press(callback: CallbackQuery, state: FSMCont
     data['reply_markup'] = return_to_main_menu_markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -933,6 +986,9 @@ async def warning_new_status(message: Message):
     """
     Обработчик ввода текста когда ожидается нажатие кнопки
     """
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
 
     logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
     await message.answer(
@@ -966,7 +1022,7 @@ async def press_edit_description(callback: CallbackQuery, state: FSMContext, dat
     data['reply_markup'] = return_to_main_menu_markup
 
     # Редактируем сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -980,6 +1036,10 @@ async def process_description_sent(message: Message, state: FSMContext, data:dic
     """
     Обработчик ввода О СЕБЕ.
     """
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
     logger.info(f"Пользователь {message.from_user.id} ввел О СЕБЕ: {message.text}.")
     # member_data = {'description': message.text}
     member_id = data['member_id']
@@ -1026,7 +1086,7 @@ async def press_edit_info_level(callback: CallbackQuery, state: FSMContext, data
     data['reply_markup'] = create_inline_kb(1,*menu_list)
 
     # Редактируем сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -1052,8 +1112,19 @@ async def process_info_level_selection(callback: CallbackQuery, state: FSMContex
         'average_info': 'Средний уровень информирования',
         'min_info': 'Минимальный уровень информирования'
     }
-    confirmation_text = f"Вы выбрали: {level_description[selected_level]}."
-    info_level = selected_level.split('_')[0]
+    # 假设 level_description 是 dict[str, str]
+    if selected_level is None:
+        confirmation_text = "Вы выбрали: Неизвестный уровень"
+    else:
+        confirmation_text = f"Вы выбрали: {level_description.get(selected_level, 'Неизвестный уровень')}"
+    # Before:
+    # info_level = selected_level.split('_')[0]
+
+    # After:
+    if selected_level is not None:
+        info_level = selected_level.split('_')[0]
+    else:
+        info_level = "default"  # or handle accordingly
 
     try:
         # Обновляем данные пользователя в БД
@@ -1064,14 +1135,14 @@ async def process_info_level_selection(callback: CallbackQuery, state: FSMContex
         data['reply_markup']=get_profile_menu_keyboard(data['user_status'])  # Меняем клавиатуру после выбора
 
         # Редактируем сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
     except Exception as e:
         # Логируем ошибку и уведомляем пользователя
         logger.error(f"Ошибка при обновлении уровня информирования для пользователя {member_id}: {e}")
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text="Произошла ошибка при сохранении уровня информирования. Попробуйте позже.",
             reply_markup=None
         )
@@ -1088,6 +1159,10 @@ async def warning_level_selection(message: Message):
     """
     Обработчик ввода текста когда ожидается нажатие кнопки
     """
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
 
     logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_profile.fill_info_level}")
     await message.answer(

@@ -2,13 +2,12 @@
 # Содержит хэндлеры регистраторов (тех, кто подтверждает членство
 # в группе новых участников)
 from aiogram import Router, F
-from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import CallbackQuery, Message
 import logging
 from filters.filters import StatusFilter
-from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu
+from keyboards.keyboards import user_menu
 from config_data.config import Config, load_config
-from data_base.telegram_bot_logic import db_update, extract_user_data_tg, extract_user_member_id, new_status, update_member_data
+from data_base.telegram_bot_logic import extract_user_member_id, new_status, update_member_data
 from services.services import send_notification_to_user
 from utils import log_handler_call
 
@@ -57,15 +56,27 @@ async def process_registrator_yes_press(callback: CallbackQuery,data:dict):
     Обработчик подтверждения членства нового участника.
     Изменяет статус пользователя в базе данных.
     """
+    if not callback.message:
+        raise ValueError("Callback message is None")
+
+    if not isinstance(callback.message, Message):
+        logger.warning("Получено InaccessibleMessage, нельзя удалить клавиатуру")
+        await callback.answer("Сообщение недоступно")
+        return
     try:
         # Извлекаем Telegram ID пользователя из callback_data
+        # Проверяем, что callback.data существует
+        if not callback.data:
+            logger.warning("Данные callback пусты")
+            await callback.message.edit_text("Произошла ошибка: данные не найдены.") # type: ignore
+            raise ValueError("Callback data отсутствует")
         tg_id = int(callback.data.split(':')[1])
         logger.info(f"Регистратор {callback.from_user.id} подтверждает членство пользователя {tg_id}.")
 
         # Получаем member_id пользователя
         user_id, member_id = await extract_user_member_id(tg_id)
         if not member_id:
-            await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.")
+            await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.") # type: ignore
             return
 
         # Обновляем статус пользователя в базе данных
@@ -103,6 +114,11 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
     Обработчик отказа от подтверждения членства нового участника.
     Изменяет поле "familiar" пользователя в базе данных.
     """
+    # Проверяем, что callback.data существует
+    if not callback.data:
+        logger.warning("Данные callback пусты")
+        await callback.message.edit_text("Произошла ошибка: данные не найдены.") # type: ignore
+        raise ValueError("Callback data отсутствует")
     try:
         # Извлекаем Telegram ID пользователя из callback_data
         tg_id = int(callback.data.split(':')[1])
@@ -111,8 +127,15 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
         # Получаем member_id пользователя
         user_id, member_id = await extract_user_member_id(tg_id)
         if not member_id:
-            await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.")
+            await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.") # type: ignore
             return
+        if not callback.message:
+            raise ValueError("Callback message is None")
+
+        if not isinstance(callback.message, Message):
+            logger.warning("Получено InaccessibleMessage, нельзя удалить клавиатуру")
+            await callback.answer("Получено InaccessibleMessage")
+            raise  ValueError("Callback message is None")
 
         # Обновляем поле "familiar" пользователя в базе данных
         await update_member_data(member_id=member_id, familiar='stranger')
@@ -125,7 +148,7 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
         )
     except Exception as e:
         logger.error(f"Ошибка при отклонении членства пользователя {tg_id}: {e}")
-        await callback.message.answer(
+        await callback.message.answer( # type: ignore
             text="Произошла ошибка при отклонении членства.",
             reply_markup=await user_menu(callback.from_user.id,data['user_status'])
             )

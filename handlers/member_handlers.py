@@ -1,17 +1,14 @@
-from aiogram import Bot, Router, F
-from aiogram.filters import Command, CommandStart, StateFilter
+from aiogram import Router, F
+from aiogram.filters import StateFilter
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message, PhotoSize, Contact)
+                           InlineKeyboardMarkup, Message, ReplyKeyboardRemove)
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import default_state, State, StatesGroup
+from aiogram.fsm.state import default_state
 from filters.filters import StatusFilter
-from LEXICON.LEXICON import LEXICON
-from FSMs.FSMs import FSM_become_proxy, FSM_appoint_deputy, FSM_leave_club, FSM_become_registrator
+from FSMs.FSMs import FSM_become_proxy, FSM_appoint_deputy, FSM_become_registrator
 from services.services import not_votist_because_proxy_quit, votist_because_proxy_returned
-from keyboards.keyboards import (reg_markup, contact_markup, remove_markup, user_menu,
-            create_inline_kb, confirm_markup, return_to_main_menu_markup, back_to_menu_button)
-from config_data.config import Config, load_config
+from keyboards.keyboards import (user_menu, confirm_markup, return_to_main_menu_markup)
 from data_base.telegram_bot_logic import *
 import logging
 from utils import log_handler_call, paginate
@@ -38,6 +35,11 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
     Обработчик выбора конкретного варианта голосования.
     """
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
         logger.info(f"Пользователь {callback.from_user.id} выбрал вариант: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -57,7 +59,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
         data['reply_markup'] = None # markup
 
         # Отправляем ответ
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -70,7 +72,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Отправляем новое сообщение в случае ошибки
-        await callback.message.answer(
+        await callback.message.answer( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -89,6 +91,11 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         try:
+            # Проверяем, что callback.data существует
+            if callback.data is None:
+                logger.warning("Callback data отсутствует")
+                await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+                return
             _, page = callback.data.split(':')
             page = int(page) if page.isdigit() else 1
         except ValueError:
@@ -102,7 +109,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -152,7 +159,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
         # Редактируем сообщение
         data['response_text'] = 'Выберите представителя, которому вы доверите свой голос:'
         data['reply_markup'] = markup
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -165,7 +172,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -179,6 +186,11 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
 @log_handler_call
 async def process_trust(callback: CallbackQuery, data: dict):
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
         proxy = int(callback.data.split(':')[1])
         logger.info(f"Пользователь {callback.from_user.id} доверил свой голос пользователю с tg_id {proxy}.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -190,7 +202,7 @@ async def process_trust(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -203,7 +215,7 @@ async def process_trust(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -215,6 +227,11 @@ async def process_trust(callback: CallbackQuery, data: dict):
 @log_handler_call
 async def process_proxy_details(callback: CallbackQuery, data: dict):
     try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
         proxy_id = int(callback.data.split(':')[1])
         trusted_votes = int(callback.data.split(':')[2])
         logger.info(f"Пользователь {callback.from_user.id} запросил подробную информацию о представителе с ID {proxy_id}.")
@@ -222,6 +239,12 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
 
         # Получаем информацию о представителе
         proxy_info = await extract_profile(proxy_id)
+        if not proxy_info:
+            await callback.message.answer( # type: ignore
+                text='Не найдена информация о представителе',
+                reply_markup= return_to_main_menu_markup
+            )
+            return
 
         # Формируем текст с подробной информацией
         text = f"Username: {proxy_info['username']}\nОписание: {proxy_info['description']}\nЧисло доверенных голосов: {trusted_votes}"
@@ -240,7 +263,7 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -291,7 +314,7 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
         data['response_text'] = text
         data['reply_markup'] = markup
 
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -299,7 +322,7 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
 
     except Exception as e:
         logger.error(f"Ошибка при получении подробной информации о представителе: {e}")
-        await callback.message.answer('Произошла ошибка при получении информации о представителе.')
+        await callback.message.answer('Произошла ошибка при получении информации о представителе.') # type: ignore
 
 
 # Хэндлер для кнопки 'select_subproxy' представителем (выбор заместителя)
@@ -315,7 +338,7 @@ async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMC
         data['reply_markup'] = None  # Если клавиатура не нужна, устанавливаем None
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -332,14 +355,13 @@ async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMC
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
-
         raise  # Передаем исключение middleware для обработки
 
-# Хэндлер для выбора заместителя представителем
+
 @router.message(
     StatusFilter(required_status=['proxy']),
     StateFilter(FSM_appoint_deputy.fill_id),
@@ -348,19 +370,27 @@ async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMC
 @log_handler_call
 async def process_appoint_deputy(message: Message, data: dict, state: FSMContext):
     try:
+        if not message.from_user:
+            raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
+        user_id = message.from_user.id
+
         if message.contact:
             deputy_tg_id = message.contact.user_id
         else:
+            if message.text is None:
+                raise ValueError("Текст сообщения отсутствует")
             deputy_tg_id = int(message.text)
-        logger.info(f"Представитель {message.from_user.id} выбрал своим заместителем пользователя с tg_id {deputy_tg_id}.")
 
-        flag, ans_str = await trust_tg(message.from_user.id, deputy_tg_id)
+        logger.info(f"Представитель {user_id} выбрал своим заместителем пользователя с tg_id {deputy_tg_id}.")
+
+        flag, ans_str = await trust_tg(user_id, deputy_tg_id)
         if not ans_str:
             ans_str = "Неизвестная ошибка при назначении заместителя."
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = ans_str
-        data['reply_markup'] = await user_menu(message.from_user.id, data['user_status'])
+        data['reply_markup'] = await user_menu(user_id, data['user_status'])
 
         # Отвечаем
         await message.answer(
@@ -370,11 +400,12 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
         await state.clear()
 
     except Exception as e:
-        logger.error(f"Ошибка при выборе  заместителя: {e}")
+        logger.error(f"Ошибка при выборе заместителя: {e}")
 
         # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при выборе заместителя.'
-        data['reply_markup'] = await user_menu(message.from_user.id, data['user_status'])
+        data['reply_markup'] = await user_menu(message.from_user.id, data['user_status']) \
+            if message.from_user else ReplyKeyboardRemove()
 
         # Отправляем сообщение в случае ошибки
         await message.answer(
@@ -401,7 +432,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -413,15 +444,17 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
             return
 
-        columns = ('username',)
-        username, = await extract_user_data(data['user_id'], *columns)
-        if username:
+        profile = await extract_profile(data['member_id'])
+        if not profile:
+            await callback.message.answer(text='Не найден профиль пользователя') # type: ignore
+            return
+        if profile.get('username'):
             # Присваиваем статус 'proxy'
             await new_status(member_id, member_id, 'proxy')
             # Присваиваем статус 'votist' (если его не было)
@@ -434,7 +467,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             data['reply_markup'] = await user_menu(callback.from_user.id)
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -450,7 +483,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             data['reply_markup'] = None
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -465,7 +498,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -474,29 +507,47 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
         raise  # Передаем исключение middleware для обработки
 
 
-# Хэндлер будет обрабатывать ввод username представителя
-# и переводить в состояние ожидания подтверждения
-@router.message(StateFilter(FSM_become_proxy.fill_username))
+@router.message(
+    StateFilter(FSM_become_proxy.fill_username),
+    F.text
+)
 @log_handler_call
 async def process_username_sent(message: Message, state: FSMContext):
     """
     Обработчик ввода имени/псевдонима.
     Запрашивает подтверждение.
     """
-    logger.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
-    flag = await is_username_uniq(message.text)
+    if not message.from_user:
+        logger.error("Отправитель сообщения не определён.")
+        await message.answer("Произошла ошибка. Попробуйте позже.")
+        await state.clear()
+        return
+
+    user_id = message.from_user.id
+
+    # Явная проверка наличия текста (гарантирована фильтром, но Pylance хочет явности)
+    if not message.text:
+        logger.error("Получено сообщение без текста")
+        await message.answer("Введите псевдоним.")
+        return
+
+    username: str = message.text  # Теперь безопасно
+
+    logger.info(f"Пользователь {user_id} ввёл свой псевдоним: {username}.")
+
+    flag = await is_username_uniq(username)
     if flag:
-        await state.update_data(username = message.text)
+        await state.update_data(username=username)
         # Отправляем сообщение с подтверждением
         await message.answer(
             text=f'''Пожалуйста, подтвердите, правильно ли введено ваше имя/псевдоним?
-    {message.text}''',
+{username}''',
             reply_markup=confirm_markup
         )
         await state.set_state(FSM_become_proxy.fill_OK)
     else:
         await message.answer(
-            text='Такое имя/псевдоним уже есть. Попрбуйте придумать другой псевдоним или добавьте что-нибудь, что выделяло бы вас'
+            text='Такое имя/псевдоним уже есть. Попробуйте придумать другой псевдоним или добавьте что-нибудь, что выделяло бы вас'
         )
 
 
@@ -528,7 +579,7 @@ async def process_username_entry(callback: CallbackQuery, state: FSMContext, dat
         data['reply_markup'] = await user_menu(callback.from_user.id)
 
         # Редактируем сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -545,7 +596,7 @@ async def process_username_entry(callback: CallbackQuery, state: FSMContext, dat
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -566,7 +617,7 @@ async def process_no_confirm_proxy_press(callback: CallbackQuery, state: FSMCont
     data['reply_markup'] = return_to_main_menu_markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -574,18 +625,17 @@ async def process_no_confirm_proxy_press(callback: CallbackQuery, state: FSMCont
     await state.set_state(FSM_become_proxy.fill_username)
 
 
-# Этот хэндлер будет срабатывать, если во время подтверждения
-# статуса будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSM_become_proxy.fill_OK))
 @log_handler_call
 async def warning_new_status(message: Message):
-    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
+    user_id = message.from_user.id if message.from_user else "неизвестный пользователь"
+    logger.warning(f"Некорректный ввод от пользователя {user_id} в состоянии FSM_become_proxy.fill_OK")
+
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
              'Если вы хотите прервать изменение статуса - '
              'отправьте команду /cancel'
     )
-
 
 
 # Хэндлер для кнопки ''resign_from_proxy''
@@ -603,7 +653,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -624,7 +674,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
     data['reply_markup'] = await user_menu(callback.from_user.id)
 
     # Редактируем сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -648,7 +698,7 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -667,7 +717,7 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id)
 
         # Редактируем сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -680,7 +730,7 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -691,7 +741,7 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
 # Удаляет статус администратора при отказе быть администратором
 @router.callback_query(F.data == 'resign_from_admin')
 @log_handler_call
-async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
+async def process_resign_from_admin(callback: CallbackQuery, data: dict):
     try:
         logger.info(f"Пользователь {callback.from_user.id} отказывается от статуса 'admin'.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -703,7 +753,7 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -721,7 +771,7 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id)
 
         # Редактируем сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -734,7 +784,7 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -742,125 +792,133 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
         raise  # Передаем исключение middleware для обработки
 
 
-# Хэндлер для согласия стать регистратором (кнопки pre_registrator_yes: )
 @router.callback_query(F.data.regexp(r'^pre_registrator_yes:\d+:\d+$'), StateFilter(default_state))
 @log_handler_call
 async def process_become_registrator(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
-        logger.info(f"Пользователь {callback.from_user.id} дал согласие стать регистратором.")
-        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-        # Разбираем callback_data на части
-        action, admin_id, member_tg_id = callback.data.split(':')
+        if not callback.from_user:
+            logger.error("Отправитель callback не определён.")
+            await callback.answer("Ошибка: пользователь не найден")
+            return
 
-        # Преобразуем ID в целые числа
+        user_id = callback.from_user.id
+        logger.info(f"Пользователь {user_id} дал согласие стать регистратором.")
+
+        await callback.answer()  # Подтверждаем callback
+
+        # Проверяем, что callback.data существует
+        if not callback.data:
+            logger.warning("Данные callback пусты")
+            await callback.message.edit_text("Произошла ошибка: данные не найдены.") # type: ignore
+            return
+
+        # Парсим callback_data
+        action, admin_id, member_tg_id = callback.data.split(':')
         admin_id = int(admin_id)
         member_tg_id = int(member_tg_id)
 
-        member_id = data['member_id']
-
-        # Проверяем, что отправитель коллбэка и кандидат в регистраторы - один и тот же аккаунт
-        if callback.from_user.id != member_tg_id:
-            # Добавляем данные для SafeEditMiddleware
+        # Проверяем, что пользователь тот же, что и в данных
+        if user_id != member_tg_id:
             data['response_text'] = 'Предложение стать регистратором предназначалось не вам'
-            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+            data['reply_markup'] = await user_menu(user_id, data.get('user_status','user'))
 
-            # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
             return
 
+        # Получаем member_id из данных
+        member_id = data.get('member_id')
         if not member_id:
-            # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'Вы не являетесь участником группы.'
-            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+            data['reply_markup'] = await user_menu(user_id, data.get('user_status','user'))
 
-            # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
             return
 
-        if 'registrator' in data['user_status']:
-            # Добавляем данные для SafeEditMiddleware
+        if 'registrator' in data.get('user_status', []):
             data['response_text'] = 'Вы уже являетесь регистратором'
-            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+            data['reply_markup'] = await user_menu(user_id, data.get('user_status','user'))
 
-            # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
             return
 
-        if 'pre-registrator' not in data['user_status']:
-            # Добавляем данные для SafeEditMiddleware
+        if 'pre-registrator' not in data.get('user_status', []):
             data['response_text'] = 'Вы не являетесь кандидатом в регистраторы'
-            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+            data['reply_markup'] = await user_menu(user_id, data.get('user_status','user'))
 
-            # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
             return
 
-        # Переходим к обработке запроса. Проверяем, есть ли у кандидата псевдоним
-        columns = ('username',)
-        username, = await extract_user_data(data['user_id'], *columns)
-        # Если есть псевдоним - записываем новый статус
+        # Получаем профиль пользователя
+        profile = await extract_profile(data['member_id'])
+        if not profile:
+            logger.error("Профиль пользователя не найден")
+            await callback.message.edit_text("Ошибка: профиль не найден.") # type: ignore
+            return
+
+        username = profile.get('username')
+
         if username:
-            # Присваиваем статус 'registrator'
             await new_status(member_id, member_id, 'registrator')
-            # Удаляем статус 'pre-registrator'
-            await new_status(member_id,member_id,'not_pre-registrator')
+            await new_status(member_id, member_id, 'not_pre-registrator')
 
-            # Добавляем данные для SafeEditMiddleware
             data['response_text'] = 'Вы стали регистратором!'
-            data['reply_markup'] = await user_menu(callback.from_user.id)
+            data['reply_markup'] = await user_menu(user_id)
 
-            # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
             await state.clear()
-        # Если нет псевдонима, просим его создать
         else:
-            # Добавляем данные для SafeEditMiddleware
             data['response_text'] = (
-                'Введите уникальное имя или псевдоним.'
-                'Это может быть ваше собственное имя (фамилия).'
-                'Важно, чтобы оно было уникальным для этой группы, чтобы пользователи различали представителей.'
-                'И желательно не длиннее 40 символов'
+                'Введите уникальное имя или псевдоним.\n'
+                'Это может быть ваше собственное имя (фамилия).\n'
+                'Важно, чтобы оно было уникальным для этой группы,\n'
+                'чтобы пользователи различали представителей.\n'
+                'Желательно не длиннее 40 символов.'
             )
             data['reply_markup'] = None
 
-            # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
 
             await state.set_state(FSM_become_registrator.fill_username)
 
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e):
+            logger.warning("Попытка изменить сообщение с тем же текстом")
+        elif "message to edit not found" in str(e):
+            logger.warning("Сообщение для редактирования не найдено")
+        else:
+            logger.error(f"Telegram API ошибка: {e}")
     except Exception as e:
         logger.error(f"Ошибка при обработке кнопки 'pre_registrator_yes': {e}")
 
-        # Добавляем данные для SafeEditMiddleware
         data['response_text'] = 'Произошла ошибка при присвоении статуса регистратора.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data['reply_markup'] = await user_menu(callback.from_user.id, data.get('user_status','user'))
 
-        # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
-        await state.clear()
 
-        raise  # Передаем исключение middleware для обработки
+
+        await state.clear()
+        raise
 
 # Хэндлер для позднего согласия стать регистратором (кнопка основного меню become_registrator: )
 @router.callback_query(F.data == 'become_registrator', StateFilter(default_state))
@@ -880,7 +938,7 @@ async def process_become_registrator_own(callback: CallbackQuery, state: FSMCont
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -892,15 +950,19 @@ async def process_become_registrator_own(callback: CallbackQuery, state: FSMCont
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
             return
 
         # Переходим к обработке запроса. Проверяем, есть ли у кандидата псевдоним
-        columns = ('username',)
-        username, = await extract_user_data(data['user_id'], *columns)
+        profile = await extract_profile(data['member_id'])
+        if not profile:
+            logger.error("Профиль пользователя не найден")
+            await callback.message.edit_text("Ошибка: профиль не найден.") # type: ignore
+            return
+        username = profile.get('username')
         # Если есть псевдоним - записываем новый статус
         if username:
             # Присваиваем статус 'registrator'
@@ -913,7 +975,7 @@ async def process_become_registrator_own(callback: CallbackQuery, state: FSMCont
             data['reply_markup'] = await user_menu(callback.from_user.id)
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -930,7 +992,7 @@ async def process_become_registrator_own(callback: CallbackQuery, state: FSMCont
             data['reply_markup'] = None
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -945,7 +1007,7 @@ async def process_become_registrator_own(callback: CallbackQuery, state: FSMCont
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -960,6 +1022,13 @@ async def process_not_become_registrator(callback: CallbackQuery, state: FSMCont
     try:
         logger.info(f"Пользователь {callback.from_user.id} не дал согласие стать регистратором.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        # Проверяем, что callback.data существует
+        if not callback.data:
+            logger.warning("Данные callback пусты")
+            await callback.message.edit_text("Произошла ошибка: данные не найдены.") # type: ignore
+            return
+
         # Разбираем callback_data на части
         action, admin_id, member_tg_id = callback.data.split(':')
 
@@ -975,7 +1044,7 @@ async def process_not_become_registrator(callback: CallbackQuery, state: FSMCont
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -987,7 +1056,7 @@ async def process_not_become_registrator(callback: CallbackQuery, state: FSMCont
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -999,7 +1068,7 @@ async def process_not_become_registrator(callback: CallbackQuery, state: FSMCont
             data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
             # Редактируем сообщение
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -1013,7 +1082,7 @@ async def process_not_become_registrator(callback: CallbackQuery, state: FSMCont
         data['reply_markup'] = await user_menu(callback.from_user.id)
 
         # Редактируем сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -1027,7 +1096,7 @@ async def process_not_become_registrator(callback: CallbackQuery, state: FSMCont
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -1035,29 +1104,47 @@ async def process_not_become_registrator(callback: CallbackQuery, state: FSMCont
 
         raise  # Передаем исключение middleware для обработки
 
-# Хэндлер будет обрабатывать ввод username регистратора
-# и переводить в состояние ожидания подтверждения
-@router.message(StateFilter(FSM_become_registrator.fill_username))
+@router.message(
+    StateFilter(FSM_become_registrator.fill_username),
+    F.text
+)
 @log_handler_call
 async def process_reg_username_sent(message: Message, state: FSMContext):
     """
     Обработчик ввода имени/псевдонима.
     Запрашивает подтверждение.
     """
-    logger.info(f"Пользователь {message.from_user.id} ввел свой псевдоним: {message.text}.")
-    flag = await is_username_uniq(message.text)
+    if not message.from_user:
+        logger.error("Отправитель сообщения не определён.")
+        await message.answer("Произошла ошибка. Попробуйте позже.")
+        await state.clear()
+        return
+
+    user_id = message.from_user.id
+
+    # Явная проверка наличия текста (гарантирована фильтром, но Pylance хочет явности)
+    if not message.text:
+        logger.warning("Получено сообщение без текста")
+        await message.answer("Введите псевдоним.")
+        return
+
+    username = message.text.strip()  # Теперь безопасно
+
+    logger.info(f"Пользователь {user_id} ввёл свой псевдоним: {username}.")
+
+    flag = await is_username_uniq(username)
     if flag:
-        await state.update_data(username = message.text)
+        await state.update_data(username=username)
         # Отправляем сообщение с подтверждением
         await message.answer(
             text=f'''Пожалуйста, подтвердите, правильно ли введено ваше имя/псевдоним?
-    {message.text}''',
+{username}''',
             reply_markup=confirm_markup
         )
         await state.set_state(FSM_become_registrator.fill_OK)
     else:
         await message.answer(
-            text='Такое имя/псевдоним уже есть. Попрбуйте придумать другой псевдоним или добавьте что-нибудь, что выделяло бы вас'
+            text='Такое имя/псевдоним уже есть. Попробуйте придумать другой псевдоним или добавьте что-нибудь, что выделяло бы вас'
         )
 
 
@@ -1088,7 +1175,7 @@ async def process_reg_username_entry(callback: CallbackQuery, state: FSMContext,
         data['reply_markup'] = await user_menu(callback.from_user.id)
 
         # Редактируем сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -1105,7 +1192,7 @@ async def process_reg_username_entry(callback: CallbackQuery, state: FSMContext,
         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(
+        await callback.message.edit_text( # type: ignore
             text=data['response_text'],
             reply_markup=data['reply_markup']
         )
@@ -1126,7 +1213,7 @@ async def process_no_confirm_registrator_press(callback: CallbackQuery, state: F
     data['reply_markup'] = return_to_main_menu_markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(
+    await callback.message.edit_text( # type: ignore
         text=data['response_text'],
         reply_markup=data['reply_markup']
     )
@@ -1134,12 +1221,16 @@ async def process_no_confirm_registrator_press(callback: CallbackQuery, state: F
     await state.set_state(FSM_become_registrator.fill_username)
 
 
-# Этот хэндлер будет срабатывать, если во время подтверждения
-# статуса будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSM_become_proxy.fill_OK))
 @log_handler_call
-async def warning_new_status(message: Message):
-    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSM_become_proxy.fill_OK}")
+async def warning_reg_resume(message: Message):
+    if message.from_user:
+        user_id = message.from_user.id
+    else:
+        user_id = "неизвестный пользователь"
+
+    logger.warning(f"Некорректный ввод от пользователя {user_id} в состоянии FSM_become_proxy.fill_OK")
+
     await message.answer(
         text='Пожалуйста, воспользуйтесь кнопками!\n\n'
              'Если вы хотите прервать процедуру - '

@@ -5,7 +5,7 @@ import logging  # Добавляем импорт модуля logging
 from functools import wraps
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
-from LEXICON.LEXICON import LEXICON
+
 
 
 
@@ -85,7 +85,7 @@ def check_fsm_data(func):
         # Проверяем наличие FSM-данных
         fsm_data = await state.get_data()
         if not fsm_data:
-            await message.answer("Сессия устарела. Пожалуйста, начните заново.")
+            await message.answer("Сессия устарела. Пожалуйста, начните заново.") # type: ignore
             return
 
         return await func(event, state, *args, **kwargs)
@@ -100,7 +100,7 @@ def check_fsm_data_callback(func):
     async def wrapper(callback: CallbackQuery, state: FSMContext, *args, **kwargs):
         fsm_data = await state.get_data()
         if not fsm_data:
-            await callback.message.answer("Сессия устарела. Пожалуйста, начните заново.")
+            await callback.message.answer("Сессия устарела. Пожалуйста, начните заново.") # type: ignore
             return
         return await func(callback, state, *args, **kwargs)
     return wrapper

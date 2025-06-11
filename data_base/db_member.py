@@ -160,7 +160,9 @@ async def is_votist(member_id):
                 'SELECT status FROM Status WHERE member_id = ?',
                 (member_id,)
             )
-            status = await cursor.fetchall()
+            result = await cursor.fetchall()
+            # Преобразуем Row в обычные кортежи
+            status = [tuple(row) for row in result]
             votist = ('votist',) in status #выявляем текущий статус
             if ('member',) in status:
                 if ('proxy',) in status:
@@ -173,7 +175,9 @@ async def is_votist(member_id):
                         (member_id,)
                     )
                     result = await cursor.fetchall()
-                    if ('proxy',) in result:
+                    # Преобразуем Row в обычные кортежи
+                    status = [tuple(row) for row in result]
+                    if ('proxy',) in status:
                         flag = True
                     else:
                         flag = False
@@ -429,8 +433,12 @@ async def count_trust(club_id, member_id):
                 SELECT COUNT(*) FROM Members WHERE club_id = ? AND proxy = ? AND
                 id IN (SELECT member_id FROM Status WHERE status = 'member')
             ''', (club_id, member_id))
-            result, = await cursor.fetchone()
-            return result
+            result = await cursor.fetchone()
+            if result:
+                amount_votes, = result
+            else:
+                amount_votes = 0
+            return amount_votes
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при подсчете голосов, доверенных представителю: {e}")
             raise
@@ -453,7 +461,7 @@ async def is_delegate(club_id, member_id):
     if trust_voice >= threshold:
         logger.debug(f"Пользователь {member_id} имеет право быть делегатом по числу голосов")
         return True
-    status = extract_status(member_id)
+    status = await extract_status(member_id)
     if 'delegate' in status and trust_voice >= threshold * coefficient:
         logger.debug(f"""Пользователь {member_id} имеет право быть делегатом,
                      потому что пока число его голосов не опустилось ниже порога потери статуса""")

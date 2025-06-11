@@ -3,7 +3,7 @@
 import logging
 import traceback
 from aiogram import BaseMiddleware
-from aiogram.types import Update, Message, CallbackQuery
+from aiogram.types import Update
 from pprint import pformat
 from data_base.telegram_bot_logic import extract_user_member_id
 from keyboards.keyboards import user_menu
@@ -102,9 +102,13 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
                 event_type = event.__class__.__name__
                 logger.info(f"Получено событие {event_type} от пользователя {tg_id}")
 
-            # Извлекаем club_id, user_id и member_id
+            # Извлекаем club_id, user_id и member_id только если tg_id — целое число
             club_id = data.get('club_id', None)
-            user_id, member_id = await extract_user_member_id(tg_id)
+            if isinstance(tg_id, int):
+                user_id, member_id = await extract_user_member_id(tg_id)
+            else:
+                user_id, member_id = None, None
+                logger.warning("tg_id не определён или неверного типа. Пропущено извлечение user_id и member_id.")
 
             # Логируем состояние FSM перед обработкой
             if 'state' in data:
@@ -152,9 +156,15 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
             )
 
             # Отправляем сообщение пользователю о возникшей ошибке
-            try:
-                markup = await user_menu(tg_id)
-            except:
+            # Only call user_menu if tg_id is an integer
+            if isinstance(tg_id, int):
+                try:
+                    markup = await user_menu(tg_id)
+                except Exception as menu_error:
+                    logger.error(f"Failed to generate user menu for tg_id {tg_id}: {menu_error}")
+                    markup = None
+            else:
+                logger.warning(f"Skipping user_menu generation: tg_id is '{tg_id}' (not an integer).")
                 markup = None
 
             if hasattr(event, "message") and event.message:
@@ -163,7 +173,7 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
                     reply_markup=markup
                 )
             elif hasattr(event, "callback_query") and event.callback_query:
-                await event.callback_query.message.answer(
+                await event.callback_query.message.answer( # type: ignore
                     text="Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.",
                     reply_markup=markup
                 )

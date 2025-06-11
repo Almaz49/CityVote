@@ -3,21 +3,19 @@
 
 import logging
 from aiogram import Bot, Router, F
-from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Contact
+from aiogram.filters import StateFilter
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import default_state, State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
 
-from FSMs.FSMs import FSMRegistration, FSMRereg, FSM_short_registration
-from data_base.telegram_bot_logic import (status_member, list_of_members, extract_club_info, new_status_tg, list_of_members_tg,
-update_address, recording_user_data_1, update_user_data, update_member_data)
-from keyboards.keyboards import reg_markup, contact_markup, remove_markup, user_menu, return_to_main_menu_markup
-from filters.filters import ContactFilter
+
+from FSMs.FSMs import FSM_short_registration
+from data_base.telegram_bot_logic import (list_of_members, extract_club_info, new_status_tg,
+                                          update_user_data, update_member_data)
+from keyboards.keyboards import user_menu, return_to_main_menu_markup
 from config_data.config import Config, load_config
-from utils import log_handler_call, log_function_call
+from utils import log_handler_call
 from LEXICON.LEXICON import LEXICON
-from services.services import notify_registrator, notify_registrator_short, notify_super_registrator_short
+from services.services import notify_registrator_short, notify_super_registrator_short
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -38,12 +36,15 @@ router = Router()
 @router.callback_query(F.data == 'registration')
 @log_handler_call
 async def process_registration(callback: CallbackQuery, state: FSMContext, data: dict):
+    if not callback.message:
+        raise ValueError("Нет сообщения для ответа")
     try:
         logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
+
         if 'member' in data['user_status']:
-            await callback.message.answer(
+            await callback.message.answer( # type: ignore
                 text='Вы уже зарегистрированы в группе',
                 reply_markup=return_to_main_menu_markup
             )
@@ -52,6 +53,10 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         tg_id = callback.from_user.id
         club_id = data['club_id']
         club_info = await extract_club_info(club_id)
+        if not club_info:
+            logger.error('Нет информации о группе')
+            await callback.message.answer(text='Ошибка. Не найдена информация о группе') # type: ignore
+            return
 
         # Логируем club_info для отладки
         logger.debug(f"Club info: {club_info}")
@@ -71,7 +76,13 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         data['response_text'] = text
         data['reply_markup'] = markup
 
-        # Проверяем, отличается ли новое сообщение от текущего
+        # Убеждаемся, что это доступное сообщение
+        if not isinstance(callback.message, Message):
+            logger.warning("Сообщение недоступно (InaccessibleMessage)")
+            await callback.answer("Сообщение недоступно")
+            return
+
+        # Теперь можно безопасно использовать .text и .reply_markup
         current_text = callback.message.text
         current_markup = callback.message.reply_markup
         if current_text != data['response_text'] or current_markup != data['reply_markup']:
@@ -96,7 +107,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 
         # Пытаемся отредактировать сообщение
         try:
-            await callback.message.edit_text(
+            await callback.message.edit_text( # type: ignore
                 text=data['response_text'],
                 reply_markup=data['reply_markup']
             )
@@ -110,6 +121,8 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 @router.message(StateFilter(FSM_short_registration.fill_resume))
 @log_handler_call
 async def process_resume_sent(message: Message, state: FSMContext, data: dict):
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user.id == None)")
     logger.info(f"Введено резюме кандидата: {message.text} от пользователя {message.from_user.id}")
     # Сохраняем введенное имя в контексте состояния
     await state.update_data(resume=message.text, tg_id = message.from_user.id,
@@ -151,8 +164,14 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
     try:
         logger.info(f"Выбран регистратор {callback.data} пользователем {callback.from_user.id}")
 
-        # Удаляем сообщение с кнопками подтверждения
-        await callback.message.delete()
+        # Удаляем сообщение с кнопками подтверждения, если доступно
+        if callback.message and isinstance(callback.message, Message):
+            try:
+                await callback.message.delete()
+            except Exception as del_err:
+                logger.warning(f"Не удалось удалить сообщение: {del_err}")
+        else:
+            logger.warning("Сообщение недоступно для удаления (InaccessibleMessage или None)")
 
         # Сохраняем знакомого модератора (callback.data нажатой кнопки) в контексте состояния по ключу "familiar"
         await state.update_data(familiar=callback.data)
@@ -179,32 +198,38 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         # Меняем статус пользователя на 'candidate'
         success, result = await new_status_tg(None, tg_id, 'candidate')  # меняем статус пользователя на 'candidate'
         if not success:
-            await callback.message.answer(text=result)
+            await callback.message.answer(text=result) # type: ignore
             return
 
         # Завершаем машину состояний
         await state.clear()
 
         # Отправляем в чат сообщение о выходе из машины состояний
-        await callback.message.answer(
+        await callback.message.answer( # type: ignore
             text='Спасибо! Ваши данные сохранены.\nАдминистрация их проверит и даст вам соответствующие права\nВы вышли из машины состояний',
             reply_markup= await user_menu(callback.from_user.id)
         )
+
+        # Проверяем, что callback.data существует
+        if not callback.data:
+            logger.warning("Данные callback пусты")
+            await callback.message.edit_text("Произошла ошибка: данные не найдены.") # type: ignore
+            raise ValueError("Callback data отсутствует")
 
         # Если выбран регистратор, отправляем ему сообщение с просьбой подтвердить регистрацию
         if callback.data.isdigit():
             success, result = await notify_registrator_short(int(callback.data), tg_id, user_dict)
             if not success:
-                await callback.message.answer(text=f'Ошибка при уведомлении регистратора: {result}')
+                await callback.message.answer(text=f'Ошибка при уведомлении регистратора: {result}') # type: ignore
         elif callback.data == 'stranger':
             logger.info(f"Пользователь {tg_id} выбрал 'Никого не знаю'.")
             success, result = await notify_super_registrator_short(tg_id, user_dict)
             if not success:
-                await callback.message.answer(text=f'Ошибка при уведомлении супер-регистратора: {result}')
+                await callback.message.answer(text=f'Ошибка при уведомлении супер-регистратора: {result}') # type: ignore
             # Здесь тоже нужна функция уведомления администрации
     except Exception as e:
         logger.error(f"Ошибка при выборе регистратора: {e}")
-        await callback.message.answer(text=f'Произошла ошибка: {str(e)}')
+        await callback.message.answer(text=f'Произошла ошибка: {str(e)}') # type: ignore
         # Завершаем машину состояний
         await state.clear()
 
@@ -213,6 +238,10 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
 @router.message(StateFilter(FSM_short_registration.fill_registrator))
 @log_handler_call
 async def warning_not_registrator(message: Message):
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
     logger.warning(f"Некорректный ввод при выборе модератора от пользователя {message.from_user.id}")
     await message.answer(
         text='Пожалуйста, пользуйтесь кнопками при выборе модератора.\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel'
