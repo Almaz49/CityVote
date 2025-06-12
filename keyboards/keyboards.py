@@ -309,6 +309,7 @@ def get_info_menu_keyboard(exc: str|None = None):
     # Список кнопок с их текстами и callback_data
     buttons = [
         ("club_info", LEXICON.get("club_info", "О группе")),
+        ("proxy_list", LEXICON.get("proxy_list", "Список представителей")),
         ("bot_info", LEXICON.get("bot_info", "О боте")),
         # ("status_info", LEXICON.get("status_info", "Статусы")),
         ("about", LEXICON.get("about", "Общие принципы")),

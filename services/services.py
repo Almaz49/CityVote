@@ -661,14 +661,16 @@ async def send_variants_by_status(
     """
 
     if not callback.message:
-        raise ValueError("Нет сообщения в callback.")
+        logger.error("Нет сообщения в callback.")
+        return False
+
 
 
     # Получаем информацию о голосовании
     voting_info = await get_voting_info(voting_id)
     if not voting_info:
         logger.error(f"Голосование с voting_id={voting_id} не найдено.")
-        raise  ValueError(f"Го<h1/> с voting_id={voting_id} не найдено.")
+        return False
     voting_status = voting_info.get('voting_status')
 
     # Получаем список вариантов нужного статуса
