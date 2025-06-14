@@ -30,7 +30,7 @@ class AsyncDatabase:
         try:
             self.conn = await aiosqlite.connect(self.db_name)
             self.cursor = await self.conn.cursor()
-            logger.info(f"Асинхронное соединение с базой данных {self.db_name} установлено.")
+            logger.debug(f"Асинхронное соединение с базой данных {self.db_name} установлено.")
             return self.cursor
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при установке асинхронного соединения с базой данных: {e}")
@@ -40,7 +40,7 @@ class AsyncDatabase:
         if exc_type is None:
             try:
                 await self.conn.commit()  # Если ошибок нет, подтвержаем изменения
-                logger.info("Асинхронные изменения подтверждены.")
+                logger.debug("Асинхронные изменения подтверждены.")
             except aiosqlite.Error as e:
                 logger.error(f"Ошибка при подтверждении асинхронных изменений: {e}")
                 await self.conn.rollback()
@@ -50,7 +50,7 @@ class AsyncDatabase:
 
         try:
             await self.conn.close()  # Закрываем соединение
-            logger.info("Асинхронное соединение с базой данных закрыто.")
+            logger.debug("Асинхронное соединение с базой данных закрыто.")
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при закрытии асинхронного соединения: {e}")
 
