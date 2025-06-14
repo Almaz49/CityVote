@@ -911,24 +911,18 @@ async def voting_complete(voting_id, finisher=None):
         dir_votes = await count_directly_votes(item['id']) or 0  # Если None, используем 0
         prox_votes = await count_proxy_votes(item['id']) or 0  # Если None, используем 0
         empt_votes = await count_directly_empty_votes(item['id']) or 0  # Если None, используем 0
-        res[item[0]] = (dir_votes + prox_votes, dir_votes, empt_votes)
+        res[item['id']] = (dir_votes + prox_votes, dir_votes, empt_votes)
 
-    sorted_res = sorted(res.items(), key=lambda item: item[1], reverse=True)
+    # Сортируем:
+    # - по убыванию голосов (главный критерий)
+    # - при равенстве — по возрастанию id (то есть победит тот, кто создан раньше)
+    sorted_res = sorted(
+        res.items(),
+        key=lambda item: (-item[1][0], item[0])  # минус для сортировки по убыванию
+    )
+
     winner_id = sorted_res[0][0]
     winner_res = sorted_res[0][1]
-
-    # Ищем, нет ли других вариантов с максимальным результатом.
-    # Если есть - победителем назначается вариант, созданный раньше.
-    i = 1
-    flag = True if i < len(sorted_res) else False
-
-    while flag:
-        if sorted_res[i][1] == winner_res:
-            if sorted_res[i][0] < winner_id:
-                winner_id = sorted_res[i][0]
-            i += 1
-        else:
-            flag = False
 
     # Делаем список ID проигравших вариантов (все, кроме winner_id)
     losers = [item['id'] for item in variants if item['id'] != winner_id]
@@ -952,6 +946,7 @@ async def voting_complete(voting_id, finisher=None):
         Он набрал менее 50% действительных голосов.\n
         Запущена процедура утверждения итогов голосования.'''
         success = True
+        confirmation = True
     else:
         try:
             await win_variant(winner_id, voting_id=voting_id, result=res[winner_id], stager=finisher)
@@ -965,15 +960,19 @@ async def voting_complete(voting_id, finisher=None):
             Всего действительных голосов в группе: {s_votist}\n
             Голосование завершено.'''
             success = True
+            confirmation = False
 
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при завершении голосования: {e}\n{traceback.format_exc()}")
             success = False
+            text = f"Произошла ошибка при завершении голосования."
+            confirmation = False
             raise
 
     return {
         'success': success,
         'message': text,
+        'confirmation': confirmation,
         'winner_id': winner_id,
         'winner_title': winner_title,
         'winner_res': winner_res

@@ -359,15 +359,14 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
 
             # Отправляем по одному сообщению на каждое голосование
             for i, voting in enumerate(votings):
-                voting_id, title, description = voting
                 await callback.message.answer( # type: ignore
                     text=(
-                        f"🗳️ <b>{title}</b>\n"
-                        f"📝 Описание:\n{description}\n\n"
+                        f"🗳️ <b>{voting.get('title')}</b>\n"
+                        f"📝 Описание:\n{voting.get('description')}\n\n"
                         f"<i>Выберите это голосование для просмотра вариантов.</i>"
                     ),
                     parse_mode="HTML",
-                    reply_markup=create_inline_kb(1, **{f'show_oll_variants:{voting_id}': 'Посмотреть варианты'})
+                    reply_markup=create_inline_kb(1, **{f'show_oll_variants:{voting.get('id')}': 'Посмотреть варианты'})
                 )
 
             # В последнем сообщении добавляем кнопку "Вернуться в главное меню"

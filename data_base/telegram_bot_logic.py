@@ -214,16 +214,6 @@ async def extract_status_tg(tg_id):
     logger.info(f"Статусы участника с tg_id={tg_id}: {status}")
     return status
 
-# Функция извлечения списка идущих голосований
-@log_function_call
-async def list_of_votings_tg(*voting_status):
-    try:
-        votings = await list_of_votings(club_id, *voting_status)
-        logger.info(f"Извлечены голосования для club_id={club_id}: {votings}")
-        return votings
-    except Exception as e:
-        logger.error(f"Ошибка при извлечении голосований: {e}")
-        raise
 
 # Функция извлечения списка участников с указанным статусом
 @log_function_call

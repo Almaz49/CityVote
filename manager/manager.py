@@ -1,6 +1,7 @@
 # Модуль manager.py
 # Содержит функции, управляющие сложными составными процессами.
 # Например, этап голосования и последующая информационная рассылка об его итогах.
+import datetime
 import logging
 from typing import Dict, Optional, Any
 from keyboards.keyboards import create_inline_kb
@@ -16,7 +17,9 @@ from data_base.data_base import (
     voting_start,
     voting_final,
     voting_complete,
-    extract_group_id
+    extract_group_id,
+    list_of_votings,
+    confirmation_of_voting_results_stop
 )
 from utils import log_function_call
 
@@ -128,8 +131,10 @@ async def voting_manager(voting_id: int, club_id: Optional[int] = None, admin: O
         result = await voting_start(voting_id, admin)
     elif stage_type == 'final':
         result = await voting_final(voting_id, admin)
-    elif stage_type == 'complete':
+    elif stage_type == 'complete' and current_status == 'ongoing':
         result = await voting_complete(voting_id, admin)
+    elif stage_type == 'complete' and current_status == 'confirmation':
+        result = await confirmation_of_voting_results_stop(voting_id, admin)
     else:
         return {'success': False, 'message': 'Неизвестный этап голосования'}
 
@@ -148,7 +153,14 @@ async def voting_manager(voting_id: int, club_id: Optional[int] = None, admin: O
         notify_text = f'{base_text}подведен промежуточный итог голосования: {title}\n\n{notify}'
     elif stage_type == 'final':
         notify_text = f'{base_text}начался финальный этап голосования: {title}\n\n{notify}'
-    elif stage_type == 'complete':
+    elif stage_type == 'complete' and current_status == 'ongoing':
+        if result.get('confirmation'):
+            notify_text = f'{base_text}Завершился финал голосования. Началось утверждение результата: {title}\n\n{notify}\n\n'
+        else:
+            notify_text = f'{base_text}завершилось голосование: {title}\n\n{notify}'
+            keyboard = {f'show_oll_variants:{voting_id}': 'Посмотреть итоги'}
+            markup = create_inline_kb(1, **keyboard)
+    elif stage_type == 'complete' and current_status == 'confirmation':
         notify_text = f'{base_text}завершилось голосование: {title}\n\n{notify}'
         keyboard = {f'show_oll_variants:{voting_id}': 'Посмотреть итоги'}
         markup = create_inline_kb(1, **keyboard)
@@ -194,18 +206,112 @@ async def leave_club(member_id: int, status: str) -> None:
     if 'proxy' in status:
         await not_votist_because_proxy_quit(member_id)
 
-
-async def daily_task(club_id: int) -> None:
+@log_function_call
+async def daily_task(club_id: int, message_text:str = "📅 Ежедневная задача выполнена!") -> None:
     """
-    Ежедневная задача — рассылка админам.
+    Рассылка админам.
     """
     logger.info("Выполняется ежедневная задача в 00:00")
-    admins = await list_of_members(club_id, status='admin')
+    admins = await list_of_members(club_id, status=['admin','owner'])
     if admins:
         for admin in admins:
             tg_id = admin.get('tg_id')
             if tg_id is not None:
                 try:
-                    await send_notification_to_user(tg_id=tg_id, message_text="📅 Ежедневная задача выполнена!")
+                    await send_notification_to_user(tg_id=tg_id, message_text=message_text)
                 except Exception as e:
                     logger.error(f"Не удалось отправить сообщение админу {tg_id}: {e}")
+
+
+# Пишем функциЮ которая будет исполняться ежедневно в 00:00
+# Она будет вызывать список идущих голосований и проверять не пришло ли время очередного этапа.
+# Если да, то выполнять этап голосования
+@log_function_call
+async def voting_task(club_id) -> None:
+    logger.info("Выполняется автоматический запуск этапов голосований")
+    club_info = await get_club_info(club_id)
+    if not club_info:
+        logger.error(f"Группа {club_id} не найдена")
+        return
+
+    required_status = ['add_variants', 'ongoing', 'confirmation']
+    voting_list = await list_of_votings(club_id, *required_status)
+
+    for voting in voting_list:
+        voting_id = voting.get('id')
+        if not voting_id:
+            logger.error(f"Идентификатор голосования отсутствует")
+            continue
+
+        voting_status = voting.get('voting_status')
+        time_create_str = voting.get('time_create')
+
+        # Проверяем time_create
+        if not isinstance(time_create_str, str):
+            logger.error(f"Неверный формат даты создания в голосовании {voting_id}")
+            continue
+
+        try:
+            time_create = datetime.datetime.strptime(time_create_str, "%Y-%m-%d %H:%M:%S")
+        except ValueError as e:
+            logger.error(f"Ошибка при парсинге даты создания: {e}")
+            continue
+
+        time_now = datetime.datetime.now()
+        time_delta_create = (time_now - time_create).days
+
+        duration_add_variants = club_info.get('duration_add_variants', 0)
+        duration_first_stage = club_info.get('duration_first_stage', 0)
+        duration_final = club_info.get('duration_final', 0)
+        duration_confirmation = club_info.get('duration_confirmation', 0)
+
+        stage_type = None
+
+        if voting_status == 'add_variants':
+            if time_delta_create >= duration_add_variants:
+                stage_type = 'start'
+
+        elif voting_status == 'ongoing':
+            time_start_str = voting.get('time_start')
+            if not isinstance(time_start_str, str):
+                logger.error(f"Неверный формат даты начала в голосовании {voting_id}")
+                continue
+
+            try:
+                time_start = datetime.datetime.strptime(time_start_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError as e:
+                logger.error(f"Ошибка при парсинге даты начала: {e}")
+                continue
+
+            time_delta_start = (time_now - time_start).days
+
+            total_duration = duration_first_stage + duration_final
+            if time_delta_start >= total_duration:
+                stage_type = 'complete'
+            elif time_delta_start >= duration_first_stage:
+                stage_type = 'final'
+            else:
+                stage_type = 'stage'
+
+        elif voting_status == 'confirmation':
+            time_start_str = voting.get('time_start')
+            if not isinstance(time_start_str, str):
+                logger.error(f"Неверный формат даты начала в голосовании {voting_id}")
+                continue
+
+            try:
+                time_start = datetime.datetime.strptime(time_start_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError as e:
+                logger.error(f"Ошибка при парсинге даты начала: {e}")
+                continue
+
+            time_delta_start = (time_now - time_start).days
+
+            total_duration = duration_first_stage + duration_final + duration_confirmation
+            if time_delta_start >= total_duration:
+                stage_type = 'complete'
+
+        if stage_type:
+            await voting_manager(voting_id, club_id=club_id, stage_type=stage_type)
+
+    await daily_task(club_id)

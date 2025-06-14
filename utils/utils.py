@@ -1,6 +1,7 @@
 # Модуль utils.py
 # Это файл с функциями и декораторами, которые используются другими модулями
 
+import asyncio
 import logging  # Добавляем импорт модуля logging
 from functools import wraps
 from typing import Any, Dict, List
@@ -27,16 +28,28 @@ logger = logging.getLogger(__name__)
 
 def log_function_call(func):
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def sync_wrapper(*args, **kwargs):
         args_str = ', '.join([repr(a) for a in args])
         kwargs_str = ', '.join([f"{k}={repr(v)}" for k, v in kwargs.items()])
-
         logger.debug(
             f"Вызвана функция {func.__name__} из модуля {func.__module__}\n"
             f"Аргументы: ({args_str}) {{{kwargs_str}}}"
         )
         return func(*args, **kwargs)
-    return wrapper
+
+    async def async_wrapper(*args, **kwargs):
+        args_str = ', '.join([repr(a) for a in args])
+        kwargs_str = ', '.join([f"{k}={repr(v)}" for k, v in kwargs.items()])
+        logger.debug(
+            f"Вызвана АСИНХРОННАЯ функция {func.__name__} из модуля {func.__module__}\n"
+            f"Аргументы: ({args_str}) {{{kwargs_str}}}"
+        )
+        return await func(*args, **kwargs)
+
+    if asyncio.iscoroutinefunction(func):
+        return async_wrapper
+    else:
+        return sync_wrapper
 
 
 # Это декоратор, который каждый хэндлер объявляет в логах. Вызов происходит @log_function_call

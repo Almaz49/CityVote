@@ -14,7 +14,7 @@ from handlers import (
     registrator_handlers, oll_users_handlers, reg_process_handlers,
     chat_member_handlers, last_handlers
 )
-from manager.manager import daily_task
+from manager.manager import voting_task
 
 # Загружаем конфигурацию из файла .env
 
@@ -62,6 +62,7 @@ scheduler = AsyncIOScheduler()
 
 
 def schedule_jobs():
+    logger.info("Запущен планировщик задач")
     tz_name = config.tg_bot.timezone  # <- получаем из конфига
     try:
         tz = ZoneInfo(tz_name)
@@ -69,16 +70,16 @@ def schedule_jobs():
         tz = ZoneInfo("UTC")
         logger.warning(f"Неизвестный часовой пояс '{tz_name}'. Используется UTC.")
 
-    scheduler.add_job(
-        daily_task,
-        'cron',
-        hour=0,
-        minute=0,
-        timezone=tz,
-        id='daily_task',
-        args=[club_id]
-    )
-    # scheduler.add_job(daily_task, 'interval', seconds=60, args=[club_id])  # раз в 60 секунд
+    # scheduler.add_job(
+    #     voting_task,
+    #     'cron',
+    #     hour=0,
+    #     minute=0,
+    #     timezone=tz,
+    #     id='voting_task',
+    #     args=[club_id]
+    # )
+    scheduler.add_job(voting_task, 'interval', seconds=60, args=[club_id])  # раз в 60 секунд
 
 
 # --- Подключаем хуки старта и завершения работы ---

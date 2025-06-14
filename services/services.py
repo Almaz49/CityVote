@@ -680,10 +680,15 @@ async def send_variants_by_status(
     if not variants:
         return False
 
+    for  variant in variants:
+        if variant.get('directly_votes') == None: variant['directly_votes'] = await count_directly_votes(variant['id'])
+        if variant.get('proxy_votes') == None: variant['proxy_votes'] = await count_proxy_votes(variant['id'])
+        if variant.get('empty_votes') == None: variant['empty_votes'] = await count_directly_empty_votes(variant['id'])
+
     # Сортируем варианты по total_votes в порядке убывания
     variants = sorted(
         variants,
-        key=lambda v: (v.get('directly_votes', 0) + v.get('proxy_votes', 0)),
+        key=lambda v: ((v.get('directly_votes') or 0) + (v.get('proxy_votes') or 0)),
         reverse=True
     )
 

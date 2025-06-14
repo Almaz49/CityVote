@@ -163,7 +163,14 @@ async def extract_member_id(club_id, user_id):
 # Функция извлечения информации об участниках группы.
 # Опционально можно указать статус участников, информация о которых требуется.
 @log_function_call
-async def list_of_members(club_id, status='all'):
+async def list_of_members(club_id, status:str|list[str]='all'):
+    if isinstance(status, str):
+        if status != 'all':
+            status = [status]
+    elif isinstance(status, list):
+        pass
+    else:
+        raise ValueError("Параметр status должен быть строкой или списком строк")
     # Получаем список участников с дополнительным полем info_level из таблицы Members
     query = '''
     SELECT
@@ -183,14 +190,15 @@ async def list_of_members(club_id, status='all'):
     params = (club_id,)
     # Подзапрос проверяет, есть ли у участника указанный статус в таблице Status
     if status != 'all':
-        query += '''
+        placeholders = ', '.join('?' for _ in status)
+        query += f'''
         AND Members.id IN (
             SELECT member_id
             FROM Status
-            WHERE status = ?
+            WHERE status IN ({placeholders})
         )
         '''
-        params += (status,)
+        params += tuple(status)
 
     logger.info(f"Выполняется запрос: {query}")
     logger.info(f"Параметры для запроса: {params}")
@@ -304,7 +312,7 @@ async def list_of_votings(club_id, *voting_status):
     if voting_status:
         placeholders = ', '.join('?' for _ in voting_status)
         query = f'''
-            SELECT id, title, text FROM Votings
+            SELECT * FROM Votings
             WHERE club_id = ? AND voting_status IN ({placeholders})
             '''
         params = (club_id,) + voting_status
@@ -321,9 +329,9 @@ async def list_of_votings(club_id, *voting_status):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(query, params)
-            ans = await cursor.fetchall()
+            result = await fetch_as_dict(cursor)
             logger.info("Запрос успешно выполнен.")
-            return ans
+            return result
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
