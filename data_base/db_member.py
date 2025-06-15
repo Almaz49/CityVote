@@ -151,39 +151,39 @@ async def trust(member_id, proxy):
             logger.error(f"Ошибка при работе с доверием: {e}")
             raise
 
-# Функция проверяет, имеет ли пользователь право голоса и дает ему или отбирает статус 'votist' в зависимости от результата
 @log_function_call
 async def is_votist(member_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
+            # Получаем все статусы пользователя
             await cursor.execute(
                 'SELECT status FROM Status WHERE member_id = ?',
                 (member_id,)
             )
-            result = await cursor.fetchall()
-            # Преобразуем Row в обычные кортежи
-            status = [tuple(row) for row in result]
-            votist = ('votist',) in status #выявляем текущий статус
-            if ('member',) in status:
-                if ('proxy',) in status:
-                    flag = True
-                else:
-                    await cursor.execute(
-                        '''SELECT status FROM Status WHERE member_id in (
-                        SELECT proxy FROM Members WHERE id = ?
-                        )''',
-                        (member_id,)
-                    )
-                    result = await cursor.fetchall()
-                    # Преобразуем Row в обычные кортежи
-                    status = [tuple(row) for row in result]
-                    if ('proxy',) in status:
-                        flag = True
-                    else:
-                        flag = False
+            user_statuses = [tuple(row) for row in await cursor.fetchall()]
+            has_member = ('member',) in user_statuses
+            has_proxy = ('proxy',) in user_statuses
+            has_votist = ('votist',) in user_statuses
+
+            if not has_member:
+                flag = False  # Не член клуба — не голосует
+            elif has_proxy:
+                flag = True  # Сам представитель — голосует
             else:
-                flag =  False
-            if votist != flag: # Если статус надо поменять
+                # Проверяем, есть ли представитель со статусом 'proxy'
+                await cursor.execute('''
+                    SELECT 1 FROM Status
+                    WHERE member_id IN (
+                        SELECT proxy FROM Members
+                        WHERE id = ? AND proxy IS NOT NULL
+                    ) AND status = 'proxy'
+                ''', (member_id,))
+                has_proxy_parent = await cursor.fetchone()
+
+                flag = bool(has_proxy_parent)  # Голосует через представителя
+
+            # Обновляем статус 'votist', если нужно
+            if flag != has_votist:
                 response = 'votist' if flag else 'not_votist'
                 await new_status(registrator=None, member_id=member_id, status=response)
 
@@ -473,3 +473,43 @@ async def is_delegate(club_id, member_id):
         return True
     logger.debug(f"""Пользователь {member_id} не имеет право быть делегатом""")
     return False
+
+async def remove_status_votist_for_non_members(club_id: int):
+    """
+    Проверка правильности статуса 'votist' для всех пользователей
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        # Удаляем статус 'votist' у тех, кто не имеет статус 'member'
+        query_delete = """
+        DELETE FROM Status
+        WHERE status = 'votist'
+        AND member_id IN (
+            SELECT Members.id
+            FROM Members
+            WHERE Members.club_id = ?
+            AND Members.id NOT IN (
+                SELECT Status.member_id
+                FROM Status
+                WHERE Status.status = 'member'
+            )
+        )
+        """
+        await cursor.execute(query_delete, (club_id,))
+
+async def extract_list_of_full_member_ids(club_id):
+    async with AsyncDatabase(path_db) as cursor:
+        # Получаем членов группы с актуальным статусом 'member'
+        query_select = """
+        SELECT Members.id AS member_id
+        FROM Members
+        WHERE Members.club_id = ?
+          AND Members.id IN (
+            SELECT Status.member_id
+            FROM Status
+            WHERE Status.status = 'member'
+          )
+        """
+        await cursor.execute(query_select, (club_id,))
+        members = list(await cursor.fetchall())
+        logger.info(f"Найдено {len(members)} участников с правом голоса. Обновляем статус 'votist'")
+        return  members

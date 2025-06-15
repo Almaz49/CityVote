@@ -31,7 +31,7 @@ def log_function_call(func):
     def sync_wrapper(*args, **kwargs):
         args_str = ', '.join([repr(a) for a in args])
         kwargs_str = ', '.join([f"{k}={repr(v)}" for k, v in kwargs.items()])
-        logger.info(
+        logger.debug(
             f"Вызвана функция {func.__name__} из модуля {func.__module__}\n"
             f"Аргументы: ({args_str}) {{{kwargs_str}}}"
         )
@@ -40,7 +40,7 @@ def log_function_call(func):
     async def async_wrapper(*args, **kwargs):
         args_str = ', '.join([repr(a) for a in args])
         kwargs_str = ', '.join([f"{k}={repr(v)}" for k, v in kwargs.items()])
-        logger.info(
+        logger.debug(
             f"Вызвана АСИНХРОННАЯ функция {func.__name__} из модуля {func.__module__}\n"
             f"Аргументы: ({args_str}) {{{kwargs_str}}}"
         )

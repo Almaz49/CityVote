@@ -1,10 +1,12 @@
 # Модуль manager.py
 # Содержит функции, управляющие сложными составными процессами.
 # Например, этап голосования и последующая информационная рассылка об его итогах.
+import asyncio
 import datetime
 import logging
 from typing import Dict, Optional, Any
 from data_base.db_func import list_of_variants
+from data_base.db_member import is_votist
 from keyboards.keyboards import create_inline_kb
 from services.services import send_notification_to_user, send_notification_to_chat_or_channel, not_votist_because_proxy_quit
 from data_base.data_base import (
@@ -20,7 +22,9 @@ from data_base.data_base import (
     voting_complete,
     extract_group_id,
     list_of_votings,
-    confirmation_of_voting_results_stop
+    confirmation_of_voting_results_stop,
+    remove_status_votist_for_non_members,
+    extract_list_of_full_member_ids
 )
 from utils import log_function_call
 
@@ -235,6 +239,9 @@ async def voting_task(club_id) -> None:
         logger.error(f"Группа {club_id} не найдена")
         return
 
+    # Проверка права голоса для всех участников
+    await check_votist_status_for_all_members(club_id)
+
     required_status = ['add_variants', 'ongoing', 'confirmation']
     voting_list = await list_of_votings(club_id, *required_status)
 
@@ -325,4 +332,16 @@ async def voting_task(club_id) -> None:
         if stage_type:
             await voting_manager(voting_id, club_id=club_id, stage_type=stage_type)
 
-    await daily_task(club_id)
+    await daily_task(club_id) # Отсылаем сообщение админам
+
+@log_function_call
+async def check_votist_status_for_all_members(club_id: int):
+    """
+    Проверка правильности статуса 'votist' для всех пользователей
+    """
+    # удаляем статус 'votist' у тех, кто не имеет статус 'member'
+    await remove_status_votist_for_non_members(club_id)
+    # Получаем членов группы с актуальным статусом 'member'
+    members = await extract_list_of_full_member_ids(club_id)
+    # Обновляем статус 'votist' через is_votist для всех действительных участников
+    await asyncio.gather(*[is_votist(member[0]) for member in members])

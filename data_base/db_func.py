@@ -366,7 +366,7 @@ async def list_of_variants(voting_id: int, *variant_status: str) -> Optional[Lis
         params = (voting_id,)
 
     logger.info(f"Выполняется запрос: {query}")
-    logger.debug(f"Параметры для запроса: {params}")  # Логируем параметры на уровне DEBUG
+    logger.info(f"Параметры для запроса: {params}")
 
     async with AsyncDatabase(path_db) as cursor:
         try:
