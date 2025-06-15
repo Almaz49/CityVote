@@ -246,7 +246,7 @@ async def voting_task(club_id) -> None:
 
         variants = await list_of_variants(voting_id,'valid')
         if not variants:
-            logger.error(f"В голосовании {voting_id} нет действительных вариантов")
+            logger.warning(f"В голосовании {voting_id} нет действительных вариантов")
             amount_variants = 0
         else:
             amount_variants = len(variants)
