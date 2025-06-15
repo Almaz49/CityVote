@@ -70,16 +70,16 @@ def schedule_jobs():
         tz = ZoneInfo("UTC")
         logger.warning(f"Неизвестный часовой пояс '{tz_name}'. Используется UTC.")
 
-    # scheduler.add_job(
-    #     voting_task,
-    #     'cron',
-    #     hour=0,
-    #     minute=0,
-    #     timezone=tz,
-    #     id='voting_task',
-    #     args=[club_id]
-    # )
-    scheduler.add_job(voting_task, 'interval', seconds=60, args=[club_id])  # раз в 60 секунд
+    scheduler.add_job(
+        voting_task,
+        'cron',
+        hour=0,
+        minute=0,
+        timezone=tz,
+        id='voting_task',
+        args=[club_id]
+    )
+    # scheduler.add_job(voting_task, 'interval', seconds=60, args=[club_id])  # раз в 60 секунд
 
 
 # --- Подключаем хуки старта и завершения работы ---
