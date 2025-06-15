@@ -4,6 +4,7 @@
 import datetime
 import logging
 from typing import Dict, Optional, Any
+from data_base.db_func import list_of_variants
 from keyboards.keyboards import create_inline_kb
 from services.services import send_notification_to_user, send_notification_to_chat_or_channel, not_votist_because_proxy_quit
 from data_base.data_base import (
@@ -243,6 +244,14 @@ async def voting_task(club_id) -> None:
             logger.error(f"Идентификатор голосования отсутствует")
             continue
 
+        variants = await list_of_variants(voting_id,'valid')
+        if not variants:
+            logger.error(f"В голосовании {voting_id} нет действительных вариантов")
+            amount_variants = 0
+        else:
+            amount_variants = len(variants)
+
+
         voting_status = voting.get('voting_status')
         time_create_str = voting.get('time_create')
 
@@ -286,10 +295,12 @@ async def voting_task(club_id) -> None:
             time_delta_start = (time_now - time_start).days
 
             total_duration = duration_first_stage + duration_final
-            if time_delta_start >= total_duration:
+            if time_delta_start >= duration_first_stage and amount_variants <= 2:
                 stage_type = 'complete'
-            elif time_delta_start >= duration_first_stage:
+            elif time_delta_start >= duration_first_stage and amount_variants > 2:
                 stage_type = 'final'
+            elif time_delta_start >= total_duration:
+                stage_type = 'complete'
             else:
                 stage_type = 'stage'
 
