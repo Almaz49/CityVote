@@ -19,3 +19,4 @@ bot_error.log
 bot*.py
 .env_*
 *.log
+.pre-commit-config.yaml
