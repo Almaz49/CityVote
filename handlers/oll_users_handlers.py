@@ -366,7 +366,7 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
                         f"<i>Выберите это голосование для просмотра вариантов.</i>"
                     ),
                     parse_mode="HTML",
-                    reply_markup=create_inline_kb(1, **{f'show_oll_variants:{voting.get('id')}': 'Посмотреть варианты'})
+                    reply_markup=create_inline_kb(1, **{f"show_oll_variants:{voting.get('id')}": 'Посмотреть варианты'})
                 )
 
             # В последнем сообщении добавляем кнопку "Вернуться в главное меню"
