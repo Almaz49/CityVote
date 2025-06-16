@@ -1,24 +1,26 @@
 # Модуль main.py - основной цикл бота
 
-import logging
 import asyncio
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import logging
 from zoneinfo import ZoneInfo
+
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from config_data.config import Config, load_config
+from handlers import (admin_handlers, chat_member_handlers, delegate_handlers,
+                      last_handlers, member_handlers, oll_users_handlers,
+                      owner_handlers, reg_process_handlers,
+                      registrator_handlers)
+from manager.manager import check_votist_status_for_all_members, voting_task
+from middlewares import (LoggingAndErrorHandlingMiddleware, SafeEditMiddleware,
+                         StatusMiddleware)
 from utils import setup_logger
-from middlewares import LoggingAndErrorHandlingMiddleware, SafeEditMiddleware, StatusMiddleware
-from handlers import (
-    admin_handlers, member_handlers, delegate_handlers, owner_handlers,
-    registrator_handlers, oll_users_handlers, reg_process_handlers,
-    chat_member_handlers, last_handlers
-)
-from manager.manager import voting_task, check_votist_status_for_all_members
 
 # Загружаем конфигурацию из файла .env
 
-config: Config = load_config('.env')
+config: Config = load_config(".env")
 
 # Проверяем наличие обязательных параметров в конфигурации
 if not config.tg_bot.token or not config.db.path_db or not config.tg_bot.club_id:
@@ -33,17 +35,16 @@ bot = Bot(token=config.tg_bot.token)
 dp = Dispatcher(storage=MemoryStorage())
 
 # Записываем путь к базе данных и id группы в словарь-хранилище диспетчера для доступа в других модулях
-dp['path_db'] = path_db
-dp['club_id'] = club_id
-
+dp["path_db"] = path_db
+dp["club_id"] = club_id
 
 
 # Настройка логгирования
 logger = setup_logger(
-    info_log_path='info.log',
-    warning_log_path='warning.log',
-    console_level=logging.WARNING, #Здесь менять уровень вывода логов в консоль
-    file_encoding='utf-8'
+    info_log_path="info.log",
+    warning_log_path="warning.log",
+    console_level=logging.WARNING,  # Здесь менять уровень вывода логов в консоль
+    file_encoding="utf-8",
 )
 
 # # Тестовое сообщение
@@ -54,7 +55,6 @@ logger = setup_logger(
 # logger.warning("Это warning-сообщение")
 # logger.error("Это error-сообщение")
 logger.warning("Бот начал работу")
-
 
 
 # --- Инициализируем планировщик ---
@@ -70,16 +70,18 @@ def schedule_jobs():
         tz = ZoneInfo("UTC")
         logger.warning(f"Неизвестный часовой пояс '{tz_name}'. Используется UTC.")
 
-    scheduler.add_job(check_votist_status_for_all_members, 'interval', hours=1, args=[club_id])  # раз в час
+    scheduler.add_job(
+        check_votist_status_for_all_members, "interval", hours=1, args=[club_id]
+    )  # раз в час
 
     scheduler.add_job(
         voting_task,
-        'cron',
+        "cron",
         hour=0,
         minute=0,
         timezone=tz,
-        id='voting_task',
-        args=[club_id]
+        id="voting_task",
+        args=[club_id],
     )
 
     # scheduler.add_job(voting_task, 'interval', seconds=60, args=[club_id])  # раз в 60 секунд
@@ -99,8 +101,6 @@ async def on_shutdown():
     scheduler.shutdown()
 
 
-
-
 # Регистрируем middleware
 dp.update.middleware(LoggingAndErrorHandlingMiddleware())  # Первым идет логгирование
 dp.update.middleware(StatusMiddleware())
@@ -116,7 +116,7 @@ routers = [
     reg_process_handlers.router,
     oll_users_handlers.router,
     chat_member_handlers.router,
-    last_handlers.router
+    last_handlers.router,
 ]
 
 
@@ -124,16 +124,24 @@ for router in routers:
     if router is not None:
         dp.include_router(router)
 
+
 async def main():
     try:
         await dp.start_polling(
-        bot,
-        allowed_updates=["message", "callback_query", "chat_member",  "my_chat_member","commands"]
+            bot,
+            allowed_updates=[
+                "message",
+                "callback_query",
+                "chat_member",
+                "my_chat_member",
+                "commands",
+            ],
         )
     except Exception as e:
         logger.error(f"Ошибка при запуске бота: {e}")
     finally:
         await bot.session.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     asyncio.run(main())

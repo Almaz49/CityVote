@@ -3,20 +3,23 @@
 # Вообще-то нарушает логику разделения скрипта на скрипт телеграм-бота и скрипт базы данных.
 # Может пределаю позже.
 
-import logging
-from aiogram import Bot
-import aiosqlite
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
-from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
 import html
-from data_base.db_func import get_club_info, get_profile
+import logging
+
+import aiosqlite
+from aiogram import Bot
+from aiogram.exceptions import (TelegramAPIError, TelegramBadRequest,
+                                TelegramForbiddenError)
+from aiogram.types import (CallbackQuery, InlineKeyboardButton,
+                           InlineKeyboardMarkup)
+
+from config_data.config import Config, load_config
 # from data_base.telegram_bot_logic import AsyncDatabase, is_votist
 from data_base.data_base import *
-from keyboards.keyboards import main_menu_markup, create_inline_kb
-from config_data.config import Config, load_config
-from utils import log_function_call
+from data_base.db_func import get_club_info, get_profile
+from keyboards.keyboards import create_inline_kb, main_menu_markup
 from LEXICON.LEXICON import LEXICON
+from utils import log_function_call
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -447,7 +450,7 @@ async def club_info(club_id:int):
         raise  Exception( 'Ошибка. Не найдена информация о группе')
     amount = await count_member(club_id)
     text = (
-        f'Название группы: {info.get("name","Отсутствует")}\n\n'
+        f'Название группы: {info.get("name", "Отсутствует")}\n\n'
         f"Описание группы:\n{info.get('description','Отсутсвует')}\n\n"
         f"Условия участия в группе (кто может быть участником):\n{info.get('conditions_of_entry', 'Отсутствуют')}\n\n"
         f"Количество участников: {amount}"

@@ -1,33 +1,36 @@
 # Модуль admin_handlers , сожержит хэндлеры для админов и владельца группы
 
 import logging
-from aiogram import Bot, Router, F
+
+from aiogram import Bot, F, Router
 from aiogram.filters import Command, StateFilter
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
+from aiogram.types import (CallbackQuery, InlineKeyboardButton,
+                           InlineKeyboardMarkup, Message)
+
+from config_data.config import Config, load_config
+from data_base.telegram_bot_logic import *
 from filters.filters import StatusFilter
 from FSMs.FSMs import FSMNewRegistrator
-from data_base.telegram_bot_logic import *
-from utils import log_handler_call
-from services.services import send_notification_to_user
 from keyboards.keyboards import *
-from config_data.config import Config, load_config
 from manager.manager import *
+from services.services import send_notification_to_user
+from utils import log_handler_call
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
 # Загружаем конфиг в переменную config
-config: Config = load_config('.env')
+config: Config = load_config(".env")
 bot = Bot(token=config.tg_bot.token)
 path_db = config.db.path_db  # путь к базе данных
 club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
 
 # Инициализируем роутер уровня модуля
 router = Router()
-router.message.filter(StatusFilter(required_status = ['admin','owner']))
-router.callback_query.filter(StatusFilter(required_status = ['admin','owner']))
+router.message.filter(StatusFilter(required_status=["admin", "owner"]))
+router.callback_query.filter(StatusFilter(required_status=["admin", "owner"]))
 
 # # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии по умолчанию
 # # и сообщать, что эта команда работает внутри машины состояний
@@ -56,9 +59,11 @@ router.callback_query.filter(StatusFilter(required_status = ['admin','owner']))
 """
 Хэндлеры FSM создания нового регистратора
 """
+
+
 # Этот хэндлер будет срабатывать на команду /new_registrator
 # и переводить бота в состояние ожидания ввода ID нового регистратора
-@router.message(Command(commands='new_registrator'), StateFilter(default_state))
+@router.message(Command(commands="new_registrator"), StateFilter(default_state))
 @log_handler_call
 async def process_new_registrator(message: Message, state: FSMContext):
     if message.from_user is None:
@@ -66,28 +71,35 @@ async def process_new_registrator(message: Message, state: FSMContext):
         await message.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
         return
 
-    logger.info(f"Команда /new_registrator сработала для пользователя {message.from_user.id}")
-    await message.answer(text='''Пожалуйста, введите телеграм-ID участника,
-которому вы хотите присвоить новый статус или отправьте контакт с ID''')
+    logger.info(
+        f"Команда /new_registrator сработала для пользователя {message.from_user.id}"
+    )
+    await message.answer(
+        text="""Пожалуйста, введите телеграм-ID участника,
+которому вы хотите присвоить новый статус или отправьте контакт с ID"""
+    )
     # Устанавливаем состояние ожидания ввода ID
     await state.set_state(FSMNewRegistrator.fill_ID_NewRegistrator)
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки "новый регистратор" в меню админа
-@router.callback_query(StateFilter(default_state), F.data == 'new_registrator')
+@router.callback_query(StateFilter(default_state), F.data == "new_registrator")
 @log_handler_call
-async def process_new_registrator_cb(callback: CallbackQuery, state: FSMContext, data: dict):
+async def process_new_registrator_cb(
+    callback: CallbackQuery, state: FSMContext, data: dict
+):
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Добавляем данные для SafeEditMiddleware
-    data['response_text'] = '''Пожалуйста, введите телеграм-ID участника,
-которому вы хотите присвоить новый статус или отправьте контакт с ID'''
-    data['reply_markup'] = None  # Если клавиатура не нужна, устанавливаем None
+    data[
+        "response_text"
+    ] = """Пожалуйста, введите телеграм-ID участника,
+которому вы хотите присвоить новый статус или отправьте контакт с ID"""
+    data["reply_markup"] = None  # Если клавиатура не нужна, устанавливаем None
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text( # type: ignore
-        text=data['response_text'],
-        reply_markup=data['reply_markup']
+    await callback.message.edit_text(  # type: ignore
+        text=data["response_text"], reply_markup=data["reply_markup"]
     )
     # Устанавливаем состояние ожидания ввода ID
     await state.set_state(FSMNewRegistrator.fill_ID_NewRegistrator)
@@ -96,7 +108,9 @@ async def process_new_registrator_cb(callback: CallbackQuery, state: FSMContext,
 # Этот хэндлер будет срабатывать, если введен корректный ID (число)
 # или отправлен контакт с ID
 # и переводить в состояние подтверждения
-@router.message(StateFilter(FSMNewRegistrator.fill_ID_NewRegistrator), (lambda x: x.text.isdigit()))
+@router.message(
+    StateFilter(FSMNewRegistrator.fill_ID_NewRegistrator), (lambda x: x.text.isdigit())
+)
 @log_handler_call
 async def process_registrator_id_sent(message: Message, state: FSMContext, data: dict):
     # Проверяем, что message.text существует и является строкой
@@ -119,13 +133,14 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
 
     if flag:
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = f'Данные участника, которого вы назначаете регитратором:\n{ans_str}\nВсё верно?'
-        data['reply_markup'] = markup
+        data["response_text"] = (
+            f"Данные участника, которого вы назначаете регитратором:\n{ans_str}\nВсё верно?"
+        )
+        data["reply_markup"] = markup
 
         # Отправляем пользователю сообщение с клавиатурой
         await message.answer(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         # Устанавливаем состояние ожидания подтверждения
@@ -133,27 +148,31 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
 
     else:
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = ans_str
-        data['reply_markup'] = main_menu_markup
+        data["response_text"] = ans_str
+        data["reply_markup"] = main_menu_markup
 
         # Отправляем сообщение об ошибке
         await message.answer(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         # Сбрасываем состояние и очищаем данные
         await state.clear()
 
+
 # Этот хэндлер будет срабатывать, если отправлен контакт с ID
 # и переводить в состояние подтверждения
 @router.message(StateFilter(FSMNewRegistrator.fill_ID_NewRegistrator), F.contact)
 @log_handler_call
-async def process_registrator_contact_sent(message: Message, state: FSMContext, data: dict):
+async def process_registrator_contact_sent(
+    message: Message, state: FSMContext, data: dict
+):
     # Проверяем, что контакт существует
     if message.contact is None:
         logger.warning("Получено сообщение без контакта")
-        await message.answer("Произошла ошибка. Пожалуйста, отправьте корректный контакт.")
+        await message.answer(
+            "Произошла ошибка. Пожалуйста, отправьте корректный контакт."
+        )
         return
 
     contact = message.contact
@@ -164,25 +183,26 @@ async def process_registrator_contact_sent(message: Message, state: FSMContext, 
         await message.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
         return
 
-
-
     logger.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
     member_tg_id = contact.user_id
 
-    flag, ans_str = await extract_new_registrator_data(member_tg_id)  # извлекаем данные о новом регистраторе
+    flag, ans_str = await extract_new_registrator_data(
+        member_tg_id
+    )  # извлекаем данные о новом регистраторе
 
     # Создаем объект инлайн-клавиатуры
     markup = confirm_markup
 
     if flag:
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = f'Данные участника, которого вы назначаете регитратором:\n{ans_str}\nВсё верно?'
-        data['reply_markup'] = markup
+        data["response_text"] = (
+            f"Данные участника, которого вы назначаете регитратором:\n{ans_str}\nВсё верно?"
+        )
+        data["reply_markup"] = markup
 
         # Отправляем пользователю сообщение с клавиатурой
         await message.answer(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         # Устанавливаем состояние ожидания подтверждения
@@ -190,13 +210,12 @@ async def process_registrator_contact_sent(message: Message, state: FSMContext, 
 
     else:
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = ans_str
-        data['reply_markup'] = None  # Клавиатура не нужна
+        data["response_text"] = ans_str
+        data["reply_markup"] = None  # Клавиатура не нужна
 
         # Отправляем сообщение об ошибке
         await message.answer(
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         # Сбрасываем состояние и очищаем данные
@@ -204,26 +223,32 @@ async def process_registrator_contact_sent(message: Message, state: FSMContext, 
 
 
 # Хэндлер для обработки нажатии кнопки ВСЁ ВЕРНО
-@router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == 'ConfirmOK')
+@router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == "ConfirmOK")
 @log_handler_call
-async def process_yes_registrator_press(callback: CallbackQuery, state: FSMContext, data: dict):
+async def process_yes_registrator_press(
+    callback: CallbackQuery, state: FSMContext, data: dict
+):
     logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Меняем в базе данных статус пользователя по ключу tg_id пользователя и tg_id регистратора
     fsm_data = await state.get_data()
-    member_tg_id = fsm_data['ID']
+    member_tg_id = fsm_data["ID"]
     admin_tg_id = callback.from_user.id
-    admin_id = data['member_id']
+    admin_id = data["member_id"]
 
     try:
-        ans_str = await new_status_tg(admin_tg_id, member_tg_id, 'pre-registrator')  # Вызов функции присвоения нового статуса
-        if isinstance(ans_str, str) and 'Ошибка' in ans_str:
+        ans_str = await new_status_tg(
+            admin_tg_id, member_tg_id, "pre-registrator"
+        )  # Вызов функции присвоения нового статуса
+        if isinstance(ans_str, str) and "Ошибка" in ans_str:
             # Добавляем данные для SafeEditMiddleware
-            data['response_text'] = f'Произошла ошибка: {ans_str}'
-            data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+            data["response_text"] = f"Произошла ошибка: {ans_str}"
+            data["reply_markup"] = await user_menu(
+                callback.from_user.id, data["user_status"]
+            )
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(text=data['response_text'], reply_markup=data['reply_markup']) # type: ignore
+            await callback.message.edit_text(text=data["response_text"], reply_markup=data["reply_markup"])  # type: ignore
             return
 
         # Завершаем машину состояний
@@ -231,30 +256,39 @@ async def process_yes_registrator_press(callback: CallbackQuery, state: FSMConte
 
         # Формируем и отправляем запрос кандидату в регистраторы - согласен ли он
 
-        notification = 'Здравствуйте! Администрация группы назначила вас регистратором.\n' \
-        'Это означает, что вам будут приходить заявки на вступления в группу, ' \
-        'которые вы можете подтверждать или игнорировать.\n' \
-        'Если вы согласны на роль Регистратора, нажмите кнопку "Согласен".\n' \
-        'Если не согласны - кнопку "Не согласен"'
+        notification = (
+            "Здравствуйте! Администрация группы назначила вас регистратором.\n"
+            "Это означает, что вам будут приходить заявки на вступления в группу, "
+            "которые вы можете подтверждать или игнорировать.\n"
+            'Если вы согласны на роль Регистратора, нажмите кнопку "Согласен".\n'
+            'Если не согласны - кнопку "Не согласен"'
+        )
 
-        keyboard = {f'pre_registrator_yes:{admin_id}:{member_tg_id}':'Согласен',
-                    f'pre_registrator_no:{admin_id}:{member_tg_id}':'Не согласен'}
+        keyboard = {
+            f"pre_registrator_yes:{admin_id}:{member_tg_id}": "Согласен",
+            f"pre_registrator_no:{admin_id}:{member_tg_id}": "Не согласен",
+        }
 
         pre_reg_markup = create_inline_kb(2, **keyboard)
 
-        response = await send_notification_to_user(member_tg_id, notification, pre_reg_markup   )
+        response = await send_notification_to_user(
+            member_tg_id, notification, pre_reg_markup
+        )
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Спасибо! Кандидат в Регистраторы добавлен!\n' \
-        'Результат отправки сообщения кандидату:\n' \
-        f'{response}' \
-        '\nВы вышли из машины состояний'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = (
+            "Спасибо! Кандидат в Регистраторы добавлен!\n"
+            "Результат отправки сообщения кандидату:\n"
+            f"{response}"
+            "\nВы вышли из машины состояний"
+        )
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Отправляем в чат сообщение о выходе из машины состояний
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
@@ -263,10 +297,13 @@ async def process_yes_registrator_press(callback: CallbackQuery, state: FSMConte
         # так как LoggingAndErrorHandlingMiddleware уже позаботится об этом.
         raise  # Передаем исключение middleware для обработки
 
+
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕВЕРНО"
-@router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == 'ConfirmNotOK')
+@router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == "ConfirmNotOK")
 @log_handler_call
-async def process_no_registrator_press(callback: CallbackQuery, state: FSMContext, data: dict):
+async def process_no_registrator_press(
+    callback: CallbackQuery, state: FSMContext, data: dict
+):
     logger.info(f"Кнопка 'НЕВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
@@ -274,25 +311,27 @@ async def process_no_registrator_press(callback: CallbackQuery, state: FSMContex
     await state.clear()
 
     # Добавляем данные для SafeEditMiddleware
-    data['response_text'] = 'Спасибо! Регистратор не добавлен!\nПопробуйте еще раз.\nВы вышли из машины состояний'
-    data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+    data["response_text"] = (
+        "Спасибо! Регистратор не добавлен!\nПопробуйте еще раз.\nВы вышли из машины состояний"
+    )
+    data["reply_markup"] = await user_menu(callback.from_user.id, data["user_status"])
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text( # type: ignore
-        text=data['response_text'],
-        reply_markup=data['reply_markup']
+    await callback.message.edit_text(  # type: ignore
+        text=data["response_text"], reply_markup=data["reply_markup"]
     )
+
 
 # Этот хэндлер будет срабатывать, если во время подтверждения
 # регистратора будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSMNewRegistrator.fill_OK))
 @log_handler_call
 async def warning_registrator(message: Message):
-    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewRegistrator.fill_OK}") # type: ignore
+    logger.warning(f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMNewRegistrator.fill_OK}")  # type: ignore
     await message.answer(
-        text='Пожалуйста, воспользуйтесь кнопками!\n\n'
-             'Если вы хотите прервать назначение регистратора - '
-             'отправьте команду /cancel'
+        text="Пожалуйста, воспользуйтесь кнопками!\n\n"
+        "Если вы хотите прервать назначение регистратора - "
+        "отправьте команду /cancel"
     )
 
 
@@ -300,8 +339,9 @@ async def warning_registrator(message: Message):
 Хэндлеры создани списка регистраторов (суперрегистраторов) и редактирования и статусов
 """
 
+
 # Добавляем обработку нажатия кнопки "список регистраторов" в меню администратора
-@router.callback_query(F.data == 'registrators_list')
+@router.callback_query(F.data == "registrators_list")
 @log_handler_call
 async def process_registrators_list(callback: CallbackQuery, data: dict):
     # Проверяем, что callback.from_user существует
@@ -320,57 +360,89 @@ async def process_registrators_list(callback: CallbackQuery, data: dict):
             return
         await callback.bot.send_message(
             chat_id=callback.from_user.id,
-            text="Произошла ошибка при формировании списка регистраторов. Попробуйте снова."
+            text="Произошла ошибка при формировании списка регистраторов. Попробуйте снова.",
         )
         return
 
     # Здесь будет логика получения и отображения списка регистраторов и суперрегистраторов
-    registrators = await list_of_members(data['club_id'], status='registrator')  # Функция для получения списка регистраторов
-    super_registrators = await list_of_members(data['club_id'], status='superregistrator')  # Функция для получения списка суперрегистраторов
+    registrators = await list_of_members(
+        data["club_id"], status="registrator"
+    )  # Функция для получения списка регистраторов
+    super_registrators = await list_of_members(
+        data["club_id"], status="superregistrator"
+    )  # Функция для получения списка суперрегистраторов
 
     if not registrators and not super_registrators:
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'В данный момент нет регистраторов.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "В данный момент нет регистраторов."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Редактируем сообщение
         await callback.message.edit_text(  # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
         return
 
     for registrator in registrators:
         # Отправляем сообщение про каждого регистратора
         await callback.message.answer(
-            text=(f"Регистратор: {registrator['username']} "
-                  f"{registrator['first_name'] if registrator['first_name'] else ''} "
-                  f"{registrator['last_name'] if registrator['last_name'] else ''}"),
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Удалить из регистраторов", callback_data=f"remove_registrator:{registrator['member_id']}")],
-                [InlineKeyboardButton(text="Сделать суперрегистратором", callback_data=f"promote_to_super:{registrator['member_id']}")]
-            ])
+            text=(
+                f"Регистратор: {registrator['username']} "
+                f"{registrator['first_name'] if registrator['first_name'] else ''} "
+                f"{registrator['last_name'] if registrator['last_name'] else ''}"
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="Удалить из регистраторов",
+                            callback_data=f"remove_registrator:{registrator['member_id']}",
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            text="Сделать суперрегистратором",
+                            callback_data=f"promote_to_super:{registrator['member_id']}",
+                        )
+                    ],
+                ]
+            ),
         )
 
     for super_registrator in super_registrators:
         # Отправляем сообщение про каждого суперрегистратора
         await callback.message.answer(
-            text=(f"Суперегистратор: {super_registrator['username']} \n"
-                  f"{super_registrator['first_name'] if super_registrator['first_name'] else ''} "
-                  f"{super_registrator['last_name'] if super_registrator['last_name'] else ''}"),
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Удалить из суперрегистраторов", callback_data=f"remove_superregistrator:{super_registrator['member_id']}")],
-                [InlineKeyboardButton(text="Разжаловать в простые регистраторы", callback_data=f"demote_to_registrator:{super_registrator['member_id']}")]
-            ])
+            text=(
+                f"Суперегистратор: {super_registrator['username']} \n"
+                f"{super_registrator['first_name'] if super_registrator['first_name'] else ''} "
+                f"{super_registrator['last_name'] if super_registrator['last_name'] else ''}"
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="Удалить из суперрегистраторов",
+                            callback_data=f"remove_superregistrator:{super_registrator['member_id']}",
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            text="Разжаловать в простые регистраторы",
+                            callback_data=f"demote_to_registrator:{super_registrator['member_id']}",
+                        )
+                    ],
+                ]
+            ),
         )
 
     await callback.message.answer(
-        text="Вернуться в основное меню",
-        reply_markup=return_to_main_menu_markup
+        text="Вернуться в основное меню", reply_markup=return_to_main_menu_markup
     )
 
 
-@router.callback_query(F.data.regexp(r'^remove_registrator:\d+$'))
+@router.callback_query(F.data.regexp(r"^remove_registrator:\d+$"))
 @log_handler_call
 async def process_remove_registrator(callback: CallbackQuery, data: dict):
     """
@@ -383,15 +455,19 @@ async def process_remove_registrator(callback: CallbackQuery, data: dict):
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
 
-        logger.info(f"Пользователь {callback.from_user.id} удаляет регистратора: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} удаляет регистратора: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         # Извлекаем member_id из callback.data
-        member_id = int(callback.data.split(':')[1])
+        member_id = int(callback.data.split(":")[1])
         registrator = callback.from_user.id
 
         # Выполняем операцию изменения статуса
-        result1 = await new_status(registrator=registrator, member_id=member_id, status='not_registrator')
+        result1 = await new_status(
+            registrator=registrator, member_id=member_id, status="not_registrator"
+        )
 
         if result1:
             success1, text = result1
@@ -399,32 +475,32 @@ async def process_remove_registrator(callback: CallbackQuery, data: dict):
         markup = None
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+        data["response_text"] = text
+        data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при удалении регистратора: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при удалении регистратора.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при удалении регистратора."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки
 
 
-@router.callback_query(F.data.regexp(r'^promote_to_super:\d+$'))
+@router.callback_query(F.data.regexp(r"^promote_to_super:\d+$"))
 @log_handler_call
 async def process_promote_to_super(callback: CallbackQuery, data: dict):
     """
@@ -437,45 +513,50 @@ async def process_promote_to_super(callback: CallbackQuery, data: dict):
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
 
-        logger.info(f"Пользователь {callback.from_user.id} делает регистратора суперрегистратором: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} делает регистратора суперрегистратором: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        member_id = int(callback.data.split(':')[1])
+        member_id = int(callback.data.split(":")[1])
         registrator = callback.from_user.id
 
-        result1 = await new_status(registrator=registrator,member_id=member_id,status='superregistrator')
+        result1 = await new_status(
+            registrator=registrator, member_id=member_id, status="superregistrator"
+        )
 
         if result1:
-            success1,text = result1
+            success1, text = result1
 
         markup = None
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+        data["response_text"] = text
+        data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при  назначениии суперрегистратора: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при назначении суперрегистратора.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при назначении суперрегистратора."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки
 
-@router.callback_query(F.data.regexp(r'^remove_superregistrator:\d+$'))
+
+@router.callback_query(F.data.regexp(r"^remove_superregistrator:\d+$"))
 @log_handler_call
 async def process_remove_superregistrator(callback: CallbackQuery, data: dict):
     """
@@ -488,14 +569,18 @@ async def process_remove_superregistrator(callback: CallbackQuery, data: dict):
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
 
-        logger.info(f"Пользователь {callback.from_user.id} удаляет суперрегистратора: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} удаляет суперрегистратора: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         # Извлекаем member_id из callback.data
-        member_id = int(callback.data.split(':')[1])
+        member_id = int(callback.data.split(":")[1])
         registrator = callback.from_user.id
 
-        result1 = await new_status(registrator=registrator, member_id=member_id, status='not_superregistrator')
+        result1 = await new_status(
+            registrator=registrator, member_id=member_id, status="not_superregistrator"
+        )
         print(result1)
 
         if result1:
@@ -504,32 +589,32 @@ async def process_remove_superregistrator(callback: CallbackQuery, data: dict):
         markup = None
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+        data["response_text"] = text
+        data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при удалении суперрегистратора: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при удалении суперрегистратора.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при удалении суперрегистратора."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки
 
 
-@router.callback_query(F.data.regexp(r'^demote_to_registrator:\d+$'))
+@router.callback_query(F.data.regexp(r"^demote_to_registrator:\d+$"))
 @log_handler_call
 async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
     """
@@ -541,46 +626,51 @@ async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
-        logger.info(f"Пользователь {callback.from_user.id} разжалует суперрегистратора в регистраторы: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} разжалует суперрегистратора в регистраторы: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        member_id = int(callback.data.split(':')[1])
+        member_id = int(callback.data.split(":")[1])
         registrator = callback.from_user.id
 
-        result1 = await new_status(registrator=registrator,member_id=member_id,status='not_superregistrator')
-        result2 = await new_status(registrator=registrator,member_id=member_id,status='registrator')
+        result1 = await new_status(
+            registrator=registrator, member_id=member_id, status="not_superregistrator"
+        )
+        result2 = await new_status(
+            registrator=registrator, member_id=member_id, status="registrator"
+        )
 
         if result1:
-            success1,text1 = result1
+            success1, text1 = result1
         if result2:
-            success2,text2 = result2
+            success2, text2 = result2
 
         text = f"{text1}\n{text2}"
-
 
         markup = None
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+        data["response_text"] = text
+        data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при удалении регистратора: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при удалении регистратора.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при удалении регистратора."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки
@@ -590,9 +680,10 @@ async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
 Администрирование голосования
 """
 
+
 # Хэндлер для обработки кнопки "администрирование голосования"
 # callback.data 'admin_voting':{voting_id}
-@router.callback_query(F.data.regexp(r'^admin_voting:\d+$'))
+@router.callback_query(F.data.regexp(r"^admin_voting:\d+$"))
 @log_handler_call
 async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
     try:
@@ -601,73 +692,88 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
-        logger.info(f"Пользователь {callback.from_user.id} запустил администрирование голосвания: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} запустил администрирование голосвания: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        voting_id = int(callback.data.split(':')[1])
+        voting_id = int(callback.data.split(":")[1])
         voting_info = await get_voting_info(voting_id)
         if not voting_info:
             logger.warning(f"Голосование с ID {voting_id} не найдено")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             raise  # Возвращаем ответ и прерываем обработку
-        voting_status = voting_info['status']
-        variants = await list_of_variants(voting_id, 'valid')
+        voting_status = voting_info["status"]
+        variants = await list_of_variants(voting_id, "valid")
         if variants:
             amount = len(variants)
         else:
             amount = 0
         if amount == 2:
-            voting_status = 'final'
+            voting_status = "final"
 
         dict_menu = {}
-        if voting_status == 'add_variants':
-            dict_menu[f'voting_start:{voting_id}'] = LEXICON.get('voting_start', 'voting_start')
-            dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+        if voting_status == "add_variants":
+            dict_menu[f"voting_start:{voting_id}"] = LEXICON.get(
+                "voting_start", "voting_start"
+            )
+            dict_menu[f"voting_complete:{voting_id}"] = LEXICON.get(
+                "voting_complete", "voting_complete"
+            )
         # Пока не пишу восстановление голосования - слоишком сложно "проворачивать фарш назад"
         # elif voting_status == 'completed':
         #     dict_menu[f'voting_reopen:{voting_id}'] = LEXICON.get('reopen', 'reopen')
-        elif voting_status == 'ongoing':
-            dict_menu[f'voting_stage:{voting_id}'] = LEXICON.get('voting_stage', 'voting_stage')
-            dict_menu[f'voting_final:{voting_id}'] = LEXICON.get('voting_final', 'voting_final')
-            dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
-        elif voting_status == 'final':
-            dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
-        elif voting_status =='confirmation':
-            dict_menu[f'voting_complete:{voting_id}'] = LEXICON.get('voting_complete', 'voting_complete')
+        elif voting_status == "ongoing":
+            dict_menu[f"voting_stage:{voting_id}"] = LEXICON.get(
+                "voting_stage", "voting_stage"
+            )
+            dict_menu[f"voting_final:{voting_id}"] = LEXICON.get(
+                "voting_final", "voting_final"
+            )
+            dict_menu[f"voting_complete:{voting_id}"] = LEXICON.get(
+                "voting_complete", "voting_complete"
+            )
+        elif voting_status == "final":
+            dict_menu[f"voting_complete:{voting_id}"] = LEXICON.get(
+                "voting_complete", "voting_complete"
+            )
+        elif voting_status == "confirmation":
+            dict_menu[f"voting_complete:{voting_id}"] = LEXICON.get(
+                "voting_complete", "voting_complete"
+            )
 
+        dict_menu["main_menu"] = LEXICON.get("return_to_main_menu", "main menu")
 
-        dict_menu['main_menu'] = LEXICON.get('return_to_main_menu', 'main menu')
-
-        logger.info(f'словарь меню при показе вариантов: {dict_menu}')
+        logger.info(f"словарь меню при показе вариантов: {dict_menu}")
         markup = create_inline_kb(1, **dict_menu)
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Выберите действие'
-        data['reply_markup'] = markup
+        data["response_text"] = "Выберите действие"
+        data["reply_markup"] = markup
 
         # Отправляем или редактируем сообщение
-        await callback.message.answer( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.answer(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при просмотре вариантов голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при просмотре вариантов голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при просмотре вариантов голосования."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.answer( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.answer(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки
 
 
-@router.callback_query(F.data.regexp(r'^voting_start:\d+$'))
+@router.callback_query(F.data.regexp(r"^voting_start:\d+$"))
 @log_handler_call
 async def process_voting_start_cb(callback: CallbackQuery, data: dict):
     """
@@ -680,53 +786,57 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
 
-        logger.info(f"Пользователь {callback.from_user.id} запускает голосование: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} запускает голосование: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        voting_id = int(callback.data.split(':')[1])
-        member_id = data['member_id']
-        club_id = data['club_id']
+        voting_id = int(callback.data.split(":")[1])
+        member_id = data["member_id"]
+        club_id = data["club_id"]
 
-        result = await voting_manager(voting_id, club_id=club_id, admin=member_id, stage_type='start')
+        result = await voting_manager(
+            voting_id, club_id=club_id, admin=member_id, stage_type="start"
+        )
 
         # Гарантируем, что text всегда является строкой
-        if result and 'message' in result:
-            text = result['message']
+        if result and "message" in result:
+            text = result["message"]
             logger.info(text)
         else:
-            text = 'Что-то пошло не так при запуске голосования'
-            logger.info(text + f':{voting_id}')
+            text = "Что-то пошло не так при запуске голосования"
+            logger.info(text + f":{voting_id}")
 
-        markup = await user_menu(status=data['user_status'])
+        markup = await user_menu(status=data["user_status"])
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+        data["response_text"] = text
+        data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при запуске голосования: {e}")
 
         # Гарантируем, что response_text всегда является строкой
-        data['response_text'] = 'Произошла ошибка при запуске голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при запуске голосования."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки
 
 
 # Хэндлер для промежуточного итога голосования после нажатия соотвествующей кнопки в меню администратора
-@router.callback_query(F.data.regexp(r'^voting_stage:\d+$'))
+@router.callback_query(F.data.regexp(r"^voting_stage:\d+$"))
 @log_handler_call
 async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
     """
@@ -738,53 +848,56 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
-        logger.info(f"Пользователь {callback.from_user.id} запускает промежуточный этап голосования: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} запускает промежуточный этап голосования: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        voting_id = int(callback.data.split(':')[1])
-        member_id = data['member_id']
-        club_id = data['club_id']
+        voting_id = int(callback.data.split(":")[1])
+        member_id = data["member_id"]
+        club_id = data["club_id"]
 
-        result = await voting_manager(voting_id, club_id=club_id, admin=member_id, stage_type='stage')
-
-
+        result = await voting_manager(
+            voting_id, club_id=club_id, admin=member_id, stage_type="stage"
+        )
 
         if result:
             text = result.get("message")
             logger.info(text)
         else:
-            text = 'Что-то пошло не так при подведении промежуточного итога голосования'
-            logger.info(text+f':{voting_id}')
+            text = "Что-то пошло не так при подведении промежуточного итога голосования"
+            logger.info(text + f":{voting_id}")
 
-        markup = await user_menu(status=data['user_status'])
+        markup = await user_menu(status=data["user_status"])
 
         # Гарантируем, что response_text всегда является строкой
-        data['response_text'] = text if isinstance(text, str) else 'Неизвестная ошибка'
-        data['reply_markup'] = markup
+        data["response_text"] = text if isinstance(text, str) else "Неизвестная ошибка"
+        data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при запуске голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при запуске голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при запуске голосования."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки
 
+
 # Хэндлер для перехода в финал голосования после нажатия соотвествующей кнопки в меню администратора
-@router.callback_query(F.data.regexp(r'^voting_final:\d+$'))
+@router.callback_query(F.data.regexp(r"^voting_final:\d+$"))
 @log_handler_call
 async def process_voting_final_cb(callback: CallbackQuery, data: dict):
     """
@@ -796,53 +909,56 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
-        logger.info(f"Пользователь {callback.from_user.id} запускает финальный этап голосования: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} запускает финальный этап голосования: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        voting_id = int(callback.data.split(':')[1])
-        member_id = data['member_id']
-        club_id = data['club_id']
+        voting_id = int(callback.data.split(":")[1])
+        member_id = data["member_id"]
+        club_id = data["club_id"]
 
-        result = await voting_manager(voting_id, club_id=club_id, admin=member_id, stage_type='final')
-
-
+        result = await voting_manager(
+            voting_id, club_id=club_id, admin=member_id, stage_type="final"
+        )
 
         if result:
-            text = result.get('message')
-            logger.info(f'Сообщение о результате перехода в финал: {text}')
+            text = result.get("message")
+            logger.info(f"Сообщение о результате перехода в финал: {text}")
         else:
-            text = 'Что-то пошло не так при подведении промежуточного итога голосования'
-            logger.info(text+f':{voting_id}')
+            text = "Что-то пошло не так при подведении промежуточного итога голосования"
+            logger.info(text + f":{voting_id}")
 
-        markup = await user_menu(status=data['user_status'])
+        markup = await user_menu(status=data["user_status"])
 
         # Гарантируем, что response_text всегда является строкой
-        data['response_text'] = text if isinstance(text, str) else 'Неизвестная ошибка'
-        data['reply_markup'] = markup
+        data["response_text"] = text if isinstance(text, str) else "Неизвестная ошибка"
+        data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при запуске голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при запуске голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при запуске голосования."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки
 
+
 # Хэндлер для завершения голосования после нажатия соотвествующей кнопки в меню администратора
-@router.callback_query(F.data.regexp(r'^voting_complete:\d+$'))
+@router.callback_query(F.data.regexp(r"^voting_complete:\d+$"))
 @log_handler_call
 async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
     """
@@ -854,51 +970,55 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
-        logger.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        voting_id = int(callback.data.split(':')[1])
-        member_id = data['member_id']
-        club_id = data['club_id']
+        voting_id = int(callback.data.split(":")[1])
+        member_id = data["member_id"]
+        club_id = data["club_id"]
 
-        result = await voting_manager(voting_id, club_id=club_id, admin=member_id, stage_type='complete')
+        result = await voting_manager(
+            voting_id, club_id=club_id, admin=member_id, stage_type="complete"
+        )
         if result:
-            text = result.get('message')
-            logger.info(f'Сообщение о завершении голосования: {text}')
+            text = result.get("message")
+            logger.info(f"Сообщение о завершении голосования: {text}")
         else:
-            text = 'Что-то пошло не так при завершении голосования'
-            logger.info(text+f':{voting_id}')
+            text = "Что-то пошло не так при завершении голосования"
+            logger.info(text + f":{voting_id}")
 
-        markup = await user_menu(status=data['user_status'])
+        markup = await user_menu(status=data["user_status"])
 
         # Гарантируем, что response_text всегда является строкой
-        data['response_text'] = text if isinstance(text, str) else 'Неизвестная ошибка'
-        data['reply_markup'] = markup
+        data["response_text"] = text if isinstance(text, str) else "Неизвестная ошибка"
+        data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при запуске голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при запуске голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при запуске голосования."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки
 
 
 # Хэндлер для снятия варианта после нажатия соотвествующей кнопки в меню администратора
-@router.callback_query(F.data.regexp(r'^delete_variant:\d+$'))
+@router.callback_query(F.data.regexp(r"^delete_variant:\d+$"))
 @log_handler_call
 async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
     """
@@ -910,51 +1030,53 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
-        logger.info(f"Пользователь {callback.from_user.id} удалаяет вариант: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} удалаяет вариант: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        variant_id = int(callback.data.split(':')[1])
-        member_id = data['member_id']
-        club_id = data['club_id']
+        variant_id = int(callback.data.split(":")[1])
+        member_id = data["member_id"]
+        club_id = data["club_id"]
 
         result = await delete_variant(variant_id, admin=member_id)
         if result:
             text = result[0]
             logger.info(text)
         else:
-            text = 'Что-то пошло не так при удалении варианта'
-            logger.info(text+f':{variant_id}')
+            text = "Что-то пошло не так при удалении варианта"
+            logger.info(text + f":{variant_id}")
 
         markup = None
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+        data["response_text"] = text
+        data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при удалении варианта: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при удалении варианта.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при удалении варианта."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки
 
 
 # Хэндлер для завершения утверждения голосования после нажатия соотвествующей кнопки в меню администратора
-@router.callback_query(F.data.regexp(r'^confirmation_of_voting_results_stop:\d+$'))
+@router.callback_query(F.data.regexp(r"^confirmation_of_voting_results_stop:\d+$"))
 @log_handler_call
 async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
     """
@@ -966,44 +1088,51 @@ async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
-        logger.info(f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}"
+        )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        voting_id = int(callback.data.split(':')[1])
-        member_id = data['member_id']
-        club_id = data['club_id']
+        voting_id = int(callback.data.split(":")[1])
+        member_id = data["member_id"]
+        club_id = data["club_id"]
 
-        result = await confirmation_of_voting_results_stop (voting_id, finisher=member_id)
+        result = await confirmation_of_voting_results_stop(
+            voting_id, finisher=member_id
+        )
         if result:
-            text = result.get('message','Произошла непредвиденная ошибка при звершении утверждения голосования')
+            text = result.get(
+                "message",
+                "Произошла непредвиденная ошибка при звершении утверждения голосования",
+            )
             logger.info(text)
         else:
-            text = 'Что-то пошло не так при завершении утверждения голосования'
-            logger.info(text+f':{voting_id}')
+            text = "Что-то пошло не так при завершении утверждения голосования"
+            logger.info(text + f":{voting_id}")
 
-        markup = await user_menu(status=data['user_status'])
+        markup = await user_menu(status=data["user_status"])
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = text
-        data['reply_markup'] = markup
+        data["response_text"] = text
+        data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
     except Exception as e:
         logger.error(f"Ошибка при запуске голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data['response_text'] = 'Произошла ошибка при запуске голосования.'
-        data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
+        data["response_text"] = "Произошла ошибка при запуске голосования."
+        data["reply_markup"] = await user_menu(
+            callback.from_user.id, data["user_status"]
+        )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text( # type: ignore
-            text=data['response_text'],
-            reply_markup=data['reply_markup']
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
         raise  # Передаем исключение middleware для обработки

@@ -3,21 +3,22 @@
 # с базой данных
 # This is a file with functions that are used by other files that work with
 # the database.
-from typing import List, Optional, Dict
-import aiosqlite
 import datetime
-from aiosqlite import Connection, Cursor  # type: ignore # <-- Явно импортируем типы
 import logging  # Добавляем импорт модуля logging
+from typing import Dict, List, Optional
+
+import aiosqlite
+from aiosqlite import (Connection,  # type: ignore # <-- Явно импортируем типы
+                       Cursor)
+
 from config_data.config import Config, load_config
-from utils import log_function_call, fetch_as_dict
-
-
+from utils import fetch_as_dict, log_function_call
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
 # Загружаем конфиг в переменную config
-config: Config = load_config('.env')
+config: Config = load_config(".env")
 path_db = config.db.path_db  # путь к базе данных
 
 
@@ -30,10 +31,14 @@ class AsyncDatabase:
         try:
             self.conn = await aiosqlite.connect(self.db_name)
             self.cursor = await self.conn.cursor()
-            logger.debug(f"Асинхронное соединение с базой данных {self.db_name} установлено.")
+            logger.debug(
+                f"Асинхронное соединение с базой данных {self.db_name} установлено."
+            )
             return self.cursor
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при установке асинхронного соединения с базой данных: {e}")
+            logger.error(
+                f"Ошибка при установке асинхронного соединения с базой данных: {e}"
+            )
             raise
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -55,15 +60,14 @@ class AsyncDatabase:
             logger.error(f"Ошибка при закрытии асинхронного соединения: {e}")
 
 
-
 # Функция редактирования полей в таблице table в строке где столбец key равен value.
 # В поля вставляются значения словаря **cv,
 # где ключ - имя столбца, а значение - значение поля
 @log_function_call
 async def db_update(table, key, value, **cv):
     params = list(cv.values()) + [value]
-    columns = ', '.join([f"{k} = ?" for k in cv.keys()])
-    qwery = f'UPDATE {table} SET {columns} WHERE {key} = ?'
+    columns = ", ".join([f"{k} = ?" for k in cv.keys()])
+    qwery = f"UPDATE {table} SET {columns} WHERE {key} = ?"
 
     logger.info(f"Выполняется запрос: {qwery}")
     logger.info(f"Данные для запроса: {params}")
@@ -76,6 +80,7 @@ async def db_update(table, key, value, **cv):
             logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
+
 @log_function_call
 async def extract_user_id(tg_id):
     """
@@ -87,13 +92,14 @@ async def extract_user_id(tg_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 SELECT id FROM Users WHERE tg_id = ?
-                ''', (tg_id,)
+                """,
+                (tg_id,),
             )
             result = await cursor.fetchone()
             if result:
-                user_id, = result
+                (user_id,) = result
                 logger.info(f"Найден user_id={user_id} для tg_id={tg_id}")
                 return user_id
             else:
@@ -102,6 +108,7 @@ async def extract_user_id(tg_id):
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при извлечении user_id для tg_id={tg_id}: {e}")
             raise
+
 
 @log_function_call
 async def get_club_info(club_id):
@@ -114,10 +121,11 @@ async def get_club_info(club_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 SELECT *
                 FROM Clubs WHERE id = ?
-                ''', (club_id,)
+                """,
+                (club_id,),
             )
             result = await fetch_as_dict(cursor)
             if result:
@@ -127,7 +135,9 @@ async def get_club_info(club_id):
                 logger.info(f"Информация о группе club_id={club_id} не найдено.")
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при извлечении информации о группе club_id={club_id}: {e}")
+            logger.error(
+                f"Ошибка при извлечении информации о группе club_id={club_id}: {e}"
+            )
             raise
 
 
@@ -143,36 +153,44 @@ async def extract_member_id(club_id, user_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 SELECT id FROM Members
                 WHERE club_id = ? AND user_id = ?
-                ''', (club_id, user_id)
+                """,
+                (club_id, user_id),
             )
             result = await cursor.fetchone()
             if result:
-                member_id, = result
-                logger.info(f"Найден member_id={member_id} для club_id={club_id}, user_id={user_id}")
+                (member_id,) = result
+                logger.info(
+                    f"Найден member_id={member_id} для club_id={club_id}, user_id={user_id}"
+                )
                 return member_id
             else:
-                logger.info(f"Участник с club_id={club_id}, user_id={user_id} не найден.")
+                logger.info(
+                    f"Участник с club_id={club_id}, user_id={user_id} не найден."
+                )
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при извлечении member_id для club_id={club_id}, user_id={user_id}: {e}")
+            logger.error(
+                f"Ошибка при извлечении member_id для club_id={club_id}, user_id={user_id}: {e}"
+            )
             raise
+
 
 # Функция извлечения информации об участниках группы.
 # Опционально можно указать статус участников, информация о которых требуется.
 @log_function_call
-async def list_of_members(club_id, status:str|list[str]='all'):
+async def list_of_members(club_id, status: str | list[str] = "all"):
     if isinstance(status, str):
-        if status != 'all':
+        if status != "all":
             status = [status]
     elif isinstance(status, list):
         pass
     else:
         raise ValueError("Параметр status должен быть строкой или списком строк")
     # Получаем список участников с дополнительным полем info_level из таблицы Members
-    query = '''
+    query = """
     SELECT
         Users.first_name,
         Users.last_name,
@@ -186,18 +204,18 @@ async def list_of_members(club_id, status:str|list[str]='all'):
     FROM Users
     INNER JOIN Members ON Users.id = Members.user_id
     WHERE Members.club_id = ?
-    '''
+    """
     params = (club_id,)
     # Подзапрос проверяет, есть ли у участника указанный статус в таблице Status
-    if status != 'all':
-        placeholders = ', '.join('?' for _ in status)
-        query += f'''
+    if status != "all":
+        placeholders = ", ".join("?" for _ in status)
+        query += f"""
         AND Members.id IN (
             SELECT member_id
             FROM Status
             WHERE status IN ({placeholders})
         )
-        '''
+        """
         params += tuple(status)
 
     logger.info(f"Выполняется запрос: {query}")
@@ -213,6 +231,7 @@ async def list_of_members(club_id, status:str|list[str]='all'):
             logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
+
 @log_function_call
 async def list_of_proxy(club_id: int):
     """
@@ -225,7 +244,8 @@ async def list_of_proxy(club_id: int):
     async with AsyncDatabase(path_db) as cursor:
         try:
             logger.info(f"Запрос списка представителей для club_id={club_id}")
-            await cursor.execute('''
+            await cursor.execute(
+                """
                 SELECT u.username, m.id AS member_id, m.description, COUNT(p.proxy) AS trusted_votes
                 FROM Members m
                 INNER JOIN Users u ON m.user_id = u.id
@@ -234,7 +254,9 @@ async def list_of_proxy(club_id: int):
                 WHERE m.club_id = ? AND s.status = 'proxy'
                 GROUP BY m.id
                 ORDER BY trusted_votes DESC
-            ''', (club_id,))
+            """,
+                (club_id,),
+            )
             proxies = await fetch_as_dict(cursor)
             return proxies
         except aiosqlite.Error as e:
@@ -254,7 +276,8 @@ async def get_profile(member_id: int):
     async with AsyncDatabase(path_db) as cursor:
         try:
             logger.info(f"Запрос информации о профиле для member_id={member_id}")
-            await cursor.execute('''
+            await cursor.execute(
+                """
                 SELECT
                     u.id AS user_id,
                     u.username AS username,
@@ -268,13 +291,14 @@ async def get_profile(member_id: int):
                 INNER JOIN Users u ON m.user_id = u.id
                 LEFT JOIN Users proxy_user ON m.proxy = proxy_user.id
                 WHERE m.id = ?
-            ''', (member_id,))
+            """,
+                (member_id,),
+            )
             profile = await fetch_as_dict(cursor)
             return profile[0] if profile else {}
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при получении информации о профиле: {e}")
             raise
-
 
 
 # Функция выявления всех статусов, использующихся в группе.
@@ -298,10 +322,11 @@ async def all_status():
     #     # Преобразуем список кортежей просто в список
     #     all_st = [status[0] for status in all_st]
 
-        all_st = ['admin','registrator', 'member','delegate', 'proxy', 'pre-registrator']
+    all_st = ["admin", "registrator", "member", "delegate", "proxy", "pre-registrator"]
 
-        logger.info(f"Все статусы: {all_st}")
-        return all_st
+    logger.info(f"Все статусы: {all_st}")
+    return all_st
+
 
 # Функция извлечения списка идущих голосований.
 # В качестве аргументов принимает номер группы и список статусов голосований.
@@ -310,17 +335,17 @@ async def all_status():
 @log_function_call
 async def list_of_votings(club_id, *voting_status):
     if voting_status:
-        placeholders = ', '.join('?' for _ in voting_status)
-        query = f'''
+        placeholders = ", ".join("?" for _ in voting_status)
+        query = f"""
             SELECT * FROM Votings
             WHERE club_id = ? AND voting_status IN ({placeholders})
-            '''
+            """
         params = (club_id,) + voting_status
     else:
-        query = '''
+        query = """
             SELECT id, title, text FROM Votings
             WHERE club_id = ?
-            '''
+            """
         params = (club_id,)
 
     logger.info(f"Выполняется запрос: {query}")
@@ -336,12 +361,15 @@ async def list_of_votings(club_id, *voting_status):
             logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
+
 # Функция извлечения списка вариантов голосования.
 # В качестве аргументов принимает id голосования и список статусов вариантов.
 # Извлекаются голосования имеющие эти статусы.
 # Возвращает cписок кортежей из ID, названий вариантов и статусов вариантов
 @log_function_call
-async def list_of_variants(voting_id: int, *variant_status: str) -> Optional[List[Dict]]:
+async def list_of_variants(
+    voting_id: int, *variant_status: str
+) -> Optional[List[Dict]]:
     """
     Возвращает список вариантов голосования на основе voting_id и необязательного фильтра по variant_status.
 
@@ -350,19 +378,19 @@ async def list_of_variants(voting_id: int, *variant_status: str) -> Optional[Lis
     :return: Список словарей с информацией о вариантах или None в случае ошибки.
     """
     if variant_status:
-        placeholders = ', '.join('?' for _ in variant_status)
-        query = f'''
+        placeholders = ", ".join("?" for _ in variant_status)
+        query = f"""
             SELECT *
             FROM Variants
             WHERE voting_id = ? AND variant_status IN ({placeholders})
-        '''
+        """
         params = (voting_id,) + variant_status
     else:
-        query = '''
+        query = """
             SELECT *
             FROM Variants
             WHERE voting_id = ?
-        '''
+        """
         params = (voting_id,)
 
     logger.info(f"Выполняется запрос: {query}")
@@ -378,16 +406,17 @@ async def list_of_variants(voting_id: int, *variant_status: str) -> Optional[Lis
             logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
+
 # Функция извлечения названия и текста варианта по его ID
 @log_function_call
 async def extract_variant_data(variant_id):
     async with AsyncDatabase(path_db) as cursor:
-        ins_str = '''
+        ins_str = """
             SELECT title, text, variant_status FROM Variants
             WHERE id = ?
-        '''
+        """
         try:
-            await cursor.execute(ins_str,(variant_id,))
+            await cursor.execute(ins_str, (variant_id,))
             result = await cursor.fetchone()
             logger.info("Запрос успешно выполнен.")
             return result
@@ -396,28 +425,27 @@ async def extract_variant_data(variant_id):
             raise
 
 
-
-
 @log_function_call
 async def extract_status(member_id):
     async with AsyncDatabase(path_db) as cursor:
         await cursor.execute(
-            'SELECT status FROM Status WHERE member_id = ?',
-            (member_id,)
+            "SELECT status FROM Status WHERE member_id = ?", (member_id,)
         )
         result = await cursor.fetchall()
 
-        logger.info(f"Выполняется запрос: SELECT status FROM Status WHERE member_id = {member_id}")
+        logger.info(
+            f"Выполняется запрос: SELECT status FROM Status WHERE member_id = {member_id}"
+        )
         logger.info(f"Полученные данные: {result}")
 
         if result:
             # Преобразуем результат в список уникальных статусов
             statuses = list(set(status[0] for status in result))
-            if 'member' not in statuses and 'candidate' not in statuses:
-                statuses.append('user')
+            if "member" not in statuses and "candidate" not in statuses:
+                statuses.append("user")
 
             # Упорядочиваю статусы для будущего меню
-            st_sort = ['member', 'delegate', 'admin', 'owner', 'proxy']
+            st_sort = ["member", "delegate", "admin", "owner", "proxy"]
             ordered_statuses = []
 
             for item in st_sort:
@@ -432,24 +460,25 @@ async def extract_status(member_id):
             return ordered_statuses
         else:
             logger.info("Статусы не найдены, возвращается ['user']")
-            return ['user']
+            return ["user"]
+
 
 # Функция проверяет уникальность присланного username. Возвращает True если он уникален
 @log_function_call
-async def is_username_uniq(username:str):
+async def is_username_uniq(username: str):
     async with AsyncDatabase(path_db) as cursor:
-        await cursor.execute(
-            'SELECT username FROM Users'
-        )
+        await cursor.execute("SELECT username FROM Users")
         result = await cursor.fetchall()
         if result is None:
             return True
         username_list = [item[0] for item in result]
         return username not in username_list
 
+
 """
 Функции администрирования бота
 """
+
 
 @log_function_call
 async def update_club_name(club_id: int, new_name: str):
@@ -463,15 +492,21 @@ async def update_club_name(club_id: int, new_name: str):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 UPDATE Clubs SET name = ? WHERE id = ?
-                ''', (new_name, club_id)
+                """,
+                (new_name, club_id),
             )
-            logger.info(f"Имя группы успешно обновлено на '{new_name}' для club_id={club_id}")
+            logger.info(
+                f"Имя группы успешно обновлено на '{new_name}' для club_id={club_id}"
+            )
             return f"Имя группы успешно изменено на '{new_name}'."
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при обновлении имени группы для club_id={club_id}: {e}")
+            logger.error(
+                f"Ошибка при обновлении имени группы для club_id={club_id}: {e}"
+            )
             return "Произошла ошибка при изменении имени группы."
+
 
 @log_function_call
 async def update_club_description(club_id: int, new_description: str):
@@ -485,15 +520,19 @@ async def update_club_description(club_id: int, new_description: str):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 UPDATE Clubs SET description = ? WHERE id = ?
-                ''', (new_description, club_id)
+                """,
+                (new_description, club_id),
             )
             logger.info(f"Описание группы успешно обновлено для club_id={club_id}")
             return "Описание группы успешно изменено."
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при обновлении описания группы для club_id={club_id}: {e}")
+            logger.error(
+                f"Ошибка при обновлении описания группы для club_id={club_id}: {e}"
+            )
             return "Произошла ошибка при изменении описания группы."
+
 
 @log_function_call
 async def update_club_conditions(club_id: int, new_conditions: str):
@@ -507,15 +546,19 @@ async def update_club_conditions(club_id: int, new_conditions: str):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 UPDATE Clubs SET conditions_of_entry = ? WHERE id = ?
-                ''', (new_conditions, club_id)
+                """,
+                (new_conditions, club_id),
             )
             logger.info(f"Условия участия успешно обновлены для club_id={club_id}")
             return "Условия участия успешно изменены."
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при обновлении условий участия для club_id={club_id}: {e}")
+            logger.error(
+                f"Ошибка при обновлении условий участия для club_id={club_id}: {e}"
+            )
             return "Произошла ошибка при изменении условий участия."
+
 
 @log_function_call
 async def update_quenstios_for_the_candidate(club_id: int, new_questions: str):
@@ -529,20 +572,30 @@ async def update_quenstios_for_the_candidate(club_id: int, new_questions: str):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 UPDATE Clubs SET quenstios_for_the_candidate = ? WHERE id = ?
-                ''', (new_questions, club_id)
+                """,
+                (new_questions, club_id),
             )
-            logger.info(f"Вопросы для кандидатов успешно обновлены для club_id={club_id}")
+            logger.info(
+                f"Вопросы для кандидатов успешно обновлены для club_id={club_id}"
+            )
             return "Вопросы для кандидатов успешно изменены."
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при обновлении вопросов для кандидатов для club_id={club_id}: {e}")
+            logger.error(
+                f"Ошибка при обновлении вопросов для кандидатов для club_id={club_id}: {e}"
+            )
             return "Произошла ошибка при изменении вопросов для кандидатов."
 
+
 @log_function_call
-async def update_stage_duration(club_id: int, duration_add_variants = 2,
-                                duration_first_stage = 2, duration_final = 1,
-                                duration_confirmation = 1):
+async def update_stage_duration(
+    club_id: int,
+    duration_add_variants=2,
+    duration_first_stage=2,
+    duration_final=1,
+    duration_confirmation=1,
+):
     """
     Обновляет продолжительность этапов голосования (в сутках) в группе в таблице Clubs.
     :param club_id: ID группы.
@@ -556,18 +609,32 @@ async def update_stage_duration(club_id: int, duration_add_variants = 2,
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 UPDATE Clubs SET duration_add_variants = ?, duration_first_stage = ?, duration_final = ?, duration_confirmation =? WHERE id = ?
-                ''', (duration_add_variants, duration_first_stage, duration_final, duration_confirmation, club_id)
+                """,
+                (
+                    duration_add_variants,
+                    duration_first_stage,
+                    duration_final,
+                    duration_confirmation,
+                    club_id,
+                ),
             )
-            logger.info(f"Продолжительность этапов успешно обновлена для club_id={club_id}")
+            logger.info(
+                f"Продолжительность этапов успешно обновлена для club_id={club_id}"
+            )
             return "Продолжительность этапов успешно изменена."
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при обновлении продолжительность этапов для club_id={club_id}: {e}")
+            logger.error(
+                f"Ошибка при обновлении продолжительность этапов для club_id={club_id}: {e}"
+            )
             return "Произошла ошибка при изменении продолжительности этапов."
 
+
 @log_function_call
-async def update_thresholds(club_id: int, threshold_in_voices = None, threshold_in_percent = None):
+async def update_thresholds(
+    club_id: int, threshold_in_voices=None, threshold_in_percent=None
+):
     """
     Обновляет пороги доверенных голосов для группы в таблице Clubs.
     :param club_id: ID группы.
@@ -580,23 +647,29 @@ async def update_thresholds(club_id: int, threshold_in_voices = None, threshold_
         try:
             if threshold_in_voices is not None and threshold_in_percent is not None:
                 await cursor.execute(
-                    '''
+                    """
                     UPDATE Clubs
                     SET threshold_in_voices = ?, threshold_in_percent = ?
                     WHERE id = ?
-                    ''', (threshold_in_voices, threshold_in_percent, club_id)
+                    """,
+                    (threshold_in_voices, threshold_in_percent, club_id),
                 )
                 logger.info(f"Пороги успешно обновлены для club_id={club_id}")
                 return "Пороги доверенных голосов успешно изменены."
             else:
-                logger.error(f"Ошибка: Необходимо указать оба параметра для club_id={club_id}")
+                logger.error(
+                    f"Ошибка: Необходимо указать оба параметра для club_id={club_id}"
+                )
                 return "Произошла ошибка: Необходимо указать оба порога."
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при обновлении порогов для club_id={club_id}: {e}")
             return "Произошла ошибка при изменении порогов."
 
+
 @log_function_call
-async def add_telegram_channel(club_id: int, tg_id: int, name: str, type: str, invite_link = None):
+async def add_telegram_channel(
+    club_id: int, tg_id: int, name: str, type: str, invite_link=None
+):
     """
     Добавляет телеграм-канал или чат в таблицу TgChats.
     :param club_id: ID группы.
@@ -606,31 +679,34 @@ async def add_telegram_channel(club_id: int, tg_id: int, name: str, type: str, i
     :param invite_link: Ссылка на канал или чат
     :return: Сообщение об успешности или неудачности операции.
     """
-    logger.info(f"Добавление телеграм-канала/чата с tg_id={tg_id} для club_id={club_id}")
+    logger.info(
+        f"Добавление телеграм-канала/чата с tg_id={tg_id} для club_id={club_id}"
+    )
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 INSERT OR IGNORE INTO TgChats (club_id, tg_id, name, channel_type, invite_link) VALUES (?, ?, ?, ?, ?)
-                ''', (club_id, tg_id, name, type, invite_link)
+                """,
+                (club_id, tg_id, name, type, invite_link),
             )
-            logger.info(f"Телеграм-канал/чат с tg_id={tg_id} успешно добавлен для club_id={club_id}")
-            return {
-                "success": True,
-                "message": "Телеграм-канал/чат успешно добавлен."
-            }
+            logger.info(
+                f"Телеграм-канал/чат с tg_id={tg_id} успешно добавлен для club_id={club_id}"
+            )
+            return {"success": True, "message": "Телеграм-канал/чат успешно добавлен."}
         except aiosqlite.IntegrityError as e:
             logger.error(f"Ошибка при добавлении телеграм-канала/чата: {e}")
             return {
                 "success": False,
-                "message":"Такой телеграм-канал/чат уже существует."
+                "message": "Такой телеграм-канал/чат уже существует.",
             }
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при добавлении телеграм-канала/чата: {e}")
             return {
                 "success": False,
-                "message":"Произошла ошибка при добавлении телеграм-канала/чата."
+                "message": "Произошла ошибка при добавлении телеграм-канала/чата.",
             }
+
 
 @log_function_call
 async def remove_telegram_channel(club_id: int, tg_id: int):
@@ -643,28 +719,27 @@ async def remove_telegram_channel(club_id: int, tg_id: int):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 DELETE FROM TgChats WHERE club_id = ? AND tg_id = ?
-                ''', (club_id, tg_id)
+                """,
+                (club_id, tg_id),
             )
             if cursor.rowcount > 0:
                 logger.info(f"Телеграм-канал/чат с tg_id={tg_id} успешно удален.")
                 return {
-                "success": True,
-                "message": "Телеграм-канал/чат успешно удален."
+                    "success": True,
+                    "message": "Телеграм-канал/чат успешно удален.",
                 }
             else:
                 logger.info(f"Телеграм-канал/чат с tg_id={tg_id} не найден.")
-                return {
-                "success": False,
-                "message":"Телеграм-канал/чат не найден."
-                }
+                return {"success": False, "message": "Телеграм-канал/чат не найден."}
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при удалении телеграм-канала/чата: {e}")
             return {
                 "success": False,
-                "message":"Произошла ошибка при удалении телеграм-канала/чата."
+                "message": "Произошла ошибка при удалении телеграм-канала/чата.",
             }
+
 
 @log_function_call
 async def set_main_channel(club_id: int, channel_link: str):
@@ -679,21 +754,22 @@ async def set_main_channel(club_id: int, channel_link: str):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
-                '''
+                """
                 UPDATE Clubs SET channel_link = ? WHERE id = ?
-                ''', (channel_link, club_id)
+                """,
+                (channel_link, club_id),
             )
             logger.info(f"Основной канал успешно установлен для club_id={club_id}")
-            return {
-                "success": True,
-                "message": "Основной канал успешно установлен."
-            }
+            return {"success": True, "message": "Основной канал успешно установлен."}
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при установке основного канала для club_id={club_id}: {e}")
+            logger.error(
+                f"Ошибка при установке основного канала для club_id={club_id}: {e}"
+            )
             return {
                 "success": False,
-                "message":"Произошла ошибка при установке основного канала."
+                "message": "Произошла ошибка при установке основного канала.",
             }
+
 
 @log_function_call
 async def list_of_channel(club_id: int):
@@ -703,10 +779,10 @@ async def list_of_channel(club_id: int):
     :return: список словарей с информацией о каналах
     """
 
-    query = '''
+    query = """
     SELECT *  FROM TgChats
     WHERE club_id = ?
-    '''
+    """
     params = (club_id,)
 
     logger.info(f"Выполняется запрос: {query}")
@@ -716,14 +792,19 @@ async def list_of_channel(club_id: int):
         try:
             await cursor.execute(query, params)
             result = await fetch_as_dict(cursor)
-            logger.debug(f"Извлечение списка каналов и чатов, связанных с группой club_id={club_id}: {result}")
+            logger.debug(
+                f"Извлечение списка каналов и чатов, связанных с группой club_id={club_id}: {result}"
+            )
             logger.info("Запрос успешно выполнен.")
             return result
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
-async def registration_entry(registrator, object_type, object_id, status, token_id=None):
+
+async def registration_entry(
+    registrator, object_type, object_id, status, token_id=None
+):
     """
     Функция записи в журнал регистраций.
     :param registrator: ID регистратора в таблице Members
@@ -739,15 +820,16 @@ async def registration_entry(registrator, object_type, object_id, status, token_
         try:
             # Делаем запись в таблице регистраций
             await cursor.execute(
-                '''INSERT INTO Registrations(registrator, object_type, object_id, status, token_id, time_reg)
-                VALUES (?, ?, ?, ?, ?, ?)''',
-                (registrator, object_type, object_id, status, token_id, time_reg)
+                """INSERT INTO Registrations(registrator, object_type, object_id, status, token_id, time_reg)
+                VALUES (?, ?, ?, ?, ?, ?)""",
+                (registrator, object_type, object_id, status, token_id, time_reg),
             )
             return True
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при работе со статусом: {e}")
             return False
             raise
+
 
 # Функция подсчета числа членов группы
 @log_function_call
@@ -759,23 +841,29 @@ async def count_member(club_id):
     """
     async with AsyncDatabase(path_db) as cursor:
         try:
-            await cursor.execute('''
+            await cursor.execute(
+                """
                 SELECT COUNT(*)
                 FROM Members m
                 INNER JOIN Status s ON m.id = s.member_id
                 WHERE m.club_id = ? AND s.status = 'member'
-            ''', (club_id,))
+            """,
+                (club_id,),
+            )
             result = await cursor.fetchone()
             if result:
-                amount, = result
+                (amount,) = result
                 logger.info(f"Количество участников в группе {club_id}: {amount}")
                 return int(amount)
             else:
                 logger.info(f"В группе {club_id} нет участников.")
                 return None
         except aiosqlite.Error as e:
-            logger.error(f"Ошибка при подсчете количества участников с правом голоса: {e}")
+            logger.error(
+                f"Ошибка при подсчете количества участников с правом голоса: {e}"
+            )
             raise
+
 
 @log_function_call
 async def threshold_in_voices(club_id):
@@ -786,14 +874,19 @@ async def threshold_in_voices(club_id):
     """
     async with AsyncDatabase(path_db) as cursor:
         try:
-            await cursor.execute('''
+            await cursor.execute(
+                """
                 SELECT threshold_in_voices, threshold_in_percent FROM Clubs WHERE id = ?
-            ''', (club_id,))
+            """,
+                (club_id,),
+            )
             result = await cursor.fetchone()
             if result:
                 threshold_in_voices, threshold_in_percent = result
             else:
-                logger.info(f"Не определен электоральный порог для делегатов в группе {club_id}")
+                logger.info(
+                    f"Не определен электоральный порог для делегатов в группе {club_id}"
+                )
                 return 0
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при извлечении электорального порога: {e}")
@@ -815,7 +908,7 @@ async def check_member_status(member_id: int, target_status: str) -> bool:
     :return: True, если статус найден, иначе False.
     """
     # Используем контекстный менеджер для работы с базой данных
-    async with AsyncDatabase('your_database_name.db') as cursor:
+    async with AsyncDatabase("your_database_name.db") as cursor:
         try:
             # SQL-запрос для проверки наличия статуса
             query = """

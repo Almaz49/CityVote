@@ -1,17 +1,18 @@
-import sqlite3
 import logging
 import os
+import sqlite3
 
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
-    encoding='utf-8',  # Указываем кодировку UTF-8
+    encoding="utf-8",  # Указываем кодировку UTF-8
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("db_migration.log", encoding='utf-8'),  # Лог в файл
-        logging.StreamHandler()  # Лог в консоль
-    ]
+        logging.FileHandler("db_migration.log", encoding="utf-8"),  # Лог в файл
+        logging.StreamHandler(),  # Лог в консоль
+    ],
 )
+
 
 def main():
     sql_file = "change.sql"
@@ -52,6 +53,7 @@ def main():
     except Exception as e:
         logging.error(f"Критическая ошибка: {e}")
         raise  # Можно убрать, если не нужно прерывать выполнение при ошибке
+
 
 if __name__ == "__main__":
     try:

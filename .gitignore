@@ -1,3 +1,38 @@
+# Виртуальное окружение
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+env.bak/
+venv.bak/
+
+# Локальные файлы VS Code
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Логи и временные файлы
+*.log
+*.sqlite3
+*.csv
+*.DS_Store
+
+# Тестовые артефакты
+test/__pycache__/
+test/*.pyc
+test/*.pyo
+
+# Системные файлы
+Thumbs.db
+desktop.ini
+Icon?
+*.swp
+*.swo
+*~
+
 .env
 dbg1.db
 test.py

@@ -1,14 +1,15 @@
 # Модуль chat_member_handlers
 # В нем хэндлеры, которые работают для изменения статуса бота в чатах и телеграм - каналах
 # либо статусов пользователей
-from aiogram import Router
-from aiogram.types import ChatMemberUpdated
-from aiogram.filters import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
-from data_base.data_base import *
 import logging
+
+from aiogram import Router
+from aiogram.filters import (JOIN_TRANSITION, LEAVE_TRANSITION,
+                             ChatMemberUpdatedFilter)
+from aiogram.types import ChatMemberUpdated
+
+from data_base.data_base import *
 from utils import log_handler_call
-
-
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -19,10 +20,9 @@ logger = logging.getLogger(__name__)
 # Инициализируем роутер уровня модуля
 router = Router()
 
+
 # Хэндлер для события изменения статуса члена чата
-@router.my_chat_member(
-    ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION)
-)
+@router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
 @log_handler_call
 async def handle_user_unblock(event: ChatMemberUpdated):
     """
@@ -34,10 +34,9 @@ async def handle_user_unblock(event: ChatMemberUpdated):
     # Обновляем статус пользователя в базе данных
     await mark_user_as_available(tg_id)
 
+
 # Хэндлер для события блокировки бота
-@router.my_chat_member(
-    ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION)
-)
+@router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION))
 @log_handler_call
 async def handle_user_block(event: ChatMemberUpdated):
     """

@@ -1,12 +1,16 @@
 # Модуль keyboards
 # Содержит кнопки, клавиатуры и функции для их создания
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from LEXICON.LEXICON import *
-from data_base.telegram_bot_logic import extract_status_tg
-from utils import log_function_call
 import logging
+
+from aiogram.types import (InlineKeyboardButton, InlineKeyboardMarkup,
+                           KeyboardButton, ReplyKeyboardMarkup,
+                           ReplyKeyboardRemove)
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from data_base.telegram_bot_logic import extract_status_tg
+from LEXICON.LEXICON import *
+from utils import log_function_call
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -14,6 +18,7 @@ logger = logging.getLogger(__name__)
 """
 КНОПКИ И КЛАВИАТУРЫ
 """
+
 
 # Функция для формирования инлайн-клавиатуры на лету
 @log_function_call
@@ -36,18 +41,12 @@ def create_inline_kb(width: int, *args: str, **kwargs: str) -> InlineKeyboardMar
                 text = LEXICON.get(button, button)  # Пытаемся найти текст в LEXICON
                 if not text:  # Если текст не найден ни в LEXICON, ни в callback_data
                     text = button  # Используем callback_data как текст
-                buttons.append(InlineKeyboardButton(
-                    text=text,
-                    callback_data=button
-                ))
+                buttons.append(InlineKeyboardButton(text=text, callback_data=button))
 
         # Добавляем кнопки из kwargs
         if kwargs:
             for button, text in kwargs.items():
-                buttons.append(InlineKeyboardButton(
-                    text=text,
-                    callback_data=button
-                ))
+                buttons.append(InlineKeyboardButton(text=text, callback_data=button))
 
         # Распаковываем кнопки в билдер
         kb_builder.row(*buttons, width=width)
@@ -59,7 +58,7 @@ def create_inline_kb(width: int, *args: str, **kwargs: str) -> InlineKeyboardMar
 
 # Функция создания инлайн-кнопки
 @log_function_call
-def button(button: str, text: str|None = None) -> InlineKeyboardButton:
+def button(button: str, text: str | None = None) -> InlineKeyboardButton:
     """
     Создает инлайн-кнопку.
     :param button: Callback_data кнопки.
@@ -80,24 +79,40 @@ def button(button: str, text: str|None = None) -> InlineKeyboardButton:
 
 
 buttons = {
-    'votings': {  # Категория: Голосования
-        'user': ['completed_votings'],                  # Для статуса 'user'
-        'member': ['ongoing_votings', 'completed_votings', 'future_votings'],  # Для статуса 'member'
-        'candidate': ['ongoing_votings', 'completed_votings'],                  # Для статуса 'candidate'
-        'admin': ['ongoing_votings', 'completed_votings', 'future_votings'],  # Для статуса 'admin'
-        'owner': ['ongoing_votings', 'completed_votings', 'future_votings']  # Для статуса 'owner'
+    "votings": {  # Категория: Голосования
+        "user": ["completed_votings"],  # Для статуса 'user'
+        "member": [
+            "ongoing_votings",
+            "completed_votings",
+            "future_votings",
+        ],  # Для статуса 'member'
+        "candidate": [
+            "ongoing_votings",
+            "completed_votings",
+        ],  # Для статуса 'candidate'
+        "admin": [
+            "ongoing_votings",
+            "completed_votings",
+            "future_votings",
+        ],  # Для статуса 'admin'
+        "owner": [
+            "ongoing_votings",
+            "completed_votings",
+            "future_votings",
+        ],  # Для статуса 'owner'
     },
-    'actions': {  # Категория: Действия
-        'user':['registration'],                                      #Для статуса 'user'
-        'candidate':['profile'],                             #Для статуса 'candidate'
-        'member': ['profile'],      # Для статуса 'member'
-        'delegate': ['new_voting'],          # Для статуса 'delegate'
+    "actions": {  # Категория: Действия
+        "user": ["registration"],  # Для статуса 'user'
+        "candidate": ["profile"],  # Для статуса 'candidate'
+        "member": ["profile"],  # Для статуса 'member'
+        "delegate": ["new_voting"],  # Для статуса 'delegate'
     },
-    'settings': {  # Категория: Настройки
-        'admin': ['new_registrator','registrators_list'],                         # Для статуса 'admin'
-        'owner': ['new_status', 'admin_bot']                          # Для статуса 'owner'
-    }
+    "settings": {  # Категория: Настройки
+        "admin": ["new_registrator", "registrators_list"],  # Для статуса 'admin'
+        "owner": ["new_status", "admin_bot"],  # Для статуса 'owner'
+    },
 }
+
 
 @log_function_call
 def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton]]:
@@ -105,9 +120,8 @@ def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton
     unique_buttons = set()
     keyboard = []
 
-
     # Список категорий в порядке приоритета
-    categories_order = ['votings', 'actions', 'settings']
+    categories_order = ["votings", "actions", "settings"]
 
     for category in categories_order:
         if category not in buttons:
@@ -118,27 +132,34 @@ def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton
                 current_buttons = []
                 for btn in buttons[category][item]:
                     # Исключаем "Стать представителем", если есть 'proxy'
-                    if btn == 'become_proxy' and 'proxy' in status:
+                    if btn == "become_proxy" and "proxy" in status:
                         continue
 
                     # Переименовываем "Выбрать представителя" для 'proxy'
-                    if btn == 'select_proxy' and 'proxy' in status:
+                    if btn == "select_proxy" and "proxy" in status:
                         text = "Выбрать заместителя"
                     else:
-                        text = LEXICON.get(btn, btn)  # Используем текст из LEXICON или callback_data
+                        text = LEXICON.get(
+                            btn, btn
+                        )  # Используем текст из LEXICON или callback_data
 
                     # Добавляем кнопку, если её callback_data уникальна
                     if btn not in unique_buttons:
                         unique_buttons.add(btn)
-                        current_buttons.append(InlineKeyboardButton(text=text, callback_data=btn))
+                        current_buttons.append(
+                            InlineKeyboardButton(text=text, callback_data=btn)
+                        )
 
                 # Добавляем текущие кнопки в клавиатуру
                 keyboard.extend([[btn] for btn in current_buttons])
 
     return keyboard
 
+
 @log_function_call
-async def user_menu(tg_id: int|None = None, status:list[str]|None = None) -> InlineKeyboardMarkup | None:
+async def user_menu(
+    tg_id: int | None = None, status: list[str] | None = None
+) -> InlineKeyboardMarkup | None:
     try:
         if not status:
             status = await extract_status_tg(tg_id)
@@ -162,11 +183,15 @@ async def user_menu(tg_id: int|None = None, status:list[str]|None = None) -> Inl
         keyboard = get_keyboard_for_status(status)
 
         # Добавляем кнопку "Информация"
-        info_button = InlineKeyboardButton(text=LEXICON.get('info', 'Информация'), callback_data='info')
+        info_button = InlineKeyboardButton(
+            text=LEXICON.get("info", "Информация"), callback_data="info"
+        )
         keyboard.append([info_button])
 
         # Добавляем кнопку "помощь"
-        help_button = InlineKeyboardButton(text=LEXICON.get('help', 'Помощь'), callback_data='help')
+        help_button = InlineKeyboardButton(
+            text=LEXICON.get("help", "Помощь"), callback_data="help"
+        )
         keyboard.append([help_button])
 
         kb_builder = InlineKeyboardBuilder()
@@ -177,6 +202,7 @@ async def user_menu(tg_id: int|None = None, status:list[str]|None = None) -> Inl
         logger.error(f"Ошибка при создании меню для пользователя {tg_id}: {e}")
         raise
 
+
 # Функция для создания клавиатуры администрирования бота
 @log_function_call
 def get_admin_menu_keyboard():
@@ -184,21 +210,23 @@ def get_admin_menu_keyboard():
     # Основные кнопки администрирования
     builder.button(text="Изменить имя группы", callback_data="edit_club_name")
     builder.button(text="Изменить описание", callback_data="edit_club_description")
-    builder.button(text="Изменить условия участия", callback_data="edit_club_conditions")
+    builder.button(
+        text="Изменить условия участия", callback_data="edit_club_conditions"
+    )
     builder.button(text="Добавить канал", callback_data="add_channel")
     builder.button(text="Удалить канал", callback_data="remove_channel")
     builder.button(text="Установить основной канал", callback_data="set_main_channel")
     builder.button(
-    text=LEXICON.get("set_stage_durations", "Установить продолжительность этапов"),
-    callback_data="set_stage_durations"
+        text=LEXICON.get("set_stage_durations", "Установить продолжительность этапов"),
+        callback_data="set_stage_durations",
     )
     builder.button(
-    text=LEXICON.get("set_threshold", "Установить порог для делегатов"),
-    callback_data="set_threshold"
+        text=LEXICON.get("set_threshold", "Установить порог для делегатов"),
+        callback_data="set_threshold",
     )
     builder.button(
-        text=LEXICON.get('return_to_main_menu', 'Назад в главное меню'),
-        callback_data='main_menu'
+        text=LEXICON.get("return_to_main_menu", "Назад в главное меню"),
+        callback_data="main_menu",
     )
 
     # # Создаем кнопку "Назад" отдельно
@@ -215,84 +243,87 @@ def get_admin_menu_keyboard():
 
     return builder.as_markup()
 
+
 # Функция для создания клавиатуры профиля пользователя
 @log_function_call
-def get_profile_menu_keyboard(status:list):
+def get_profile_menu_keyboard(status: list):
     builder = InlineKeyboardBuilder()
     # Основные кнопки профиля
     builder.button(
-    text=LEXICON.get("edit_username", "Изменить псевдоним"),
-    callback_data="edit_username"
+        text=LEXICON.get("edit_username", "Изменить псевдоним"),
+        callback_data="edit_username",
     )
     builder.button(
-    text=LEXICON.get("edit_description", "О себе"),
-    callback_data="edit_description"
+        text=LEXICON.get("edit_description", "О себе"), callback_data="edit_description"
     )
     builder.button(
-    text=LEXICON.get("change_info_level", "Изменить уровень информирования"),
-    callback_data="change_info_level"
+        text=LEXICON.get("change_info_level", "Изменить уровень информирования"),
+        callback_data="change_info_level",
     )
     # Кнопки в зависимости от статуса
     # Представитель
-    if 'proxy' in status:
+    if "proxy" in status:
         builder.button(
-    text=LEXICON.get("resign_from_proxy", "Уйти из представителей"),
-    callback_data="resign_from_proxy"
-    )
+            text=LEXICON.get("resign_from_proxy", "Уйти из представителей"),
+            callback_data="resign_from_proxy",
+        )
         builder.button(
-    text=LEXICON.get("select_subproxy", "Выбрать заместителя"),
-    callback_data="select_subproxy"
-    )
+            text=LEXICON.get("select_subproxy", "Выбрать заместителя"),
+            callback_data="select_subproxy",
+        )
     else:
         builder.button(
-    text=LEXICON.get("select_proxy", "Выбрать представителя"),
-    callback_data="select_proxy"
-    )
+            text=LEXICON.get("select_proxy", "Выбрать представителя"),
+            callback_data="select_proxy",
+        )
         builder.button(
-    text=LEXICON.get("become_proxy", "Стать представителем"),
-    callback_data="become_proxy"
-    )
+            text=LEXICON.get("become_proxy", "Стать представителем"),
+            callback_data="become_proxy",
+        )
 
     # Админ
-    if 'admin' in status:
+    if "admin" in status:
         builder.button(
-    text=LEXICON.get("resign_from_admin", "Отказаться от роли администратора"),
-    callback_data="resign_from_admin"
-    )
+            text=LEXICON.get("resign_from_admin", "Отказаться от роли администратора"),
+            callback_data="resign_from_admin",
+        )
 
     # Регистратор
-    if 'registrator' in status:
+    if "registrator" in status:
         builder.button(
-    text=LEXICON.get("resign_from_registrator", "Отказаться от роли регистратора"),
-    callback_data="resign_from_registrator"
-    )
+            text=LEXICON.get(
+                "resign_from_registrator", "Отказаться от роли регистратора"
+            ),
+            callback_data="resign_from_registrator",
+        )
 
     # Кандидат в регистраторы
-    if 'pre-registrator' in status:
+    if "pre-registrator" in status:
         builder.button(
-    text=LEXICON.get("become_registrator", "Стать регистратором"),
-    callback_data="become_registrator"
-    )
+            text=LEXICON.get("become_registrator", "Стать регистратором"),
+            callback_data="become_registrator",
+        )
         builder.button(
-    text=LEXICON.get("resign_from_registrator", "Отказаться от роли регистратора"),
-    callback_data="resign_from_registrator"
-    )
+            text=LEXICON.get(
+                "resign_from_registrator", "Отказаться от роли регистратора"
+            ),
+            callback_data="resign_from_registrator",
+        )
 
     # Кандидат в участники
-    if 'candidate' in status:
+    if "candidate" in status:
         builder.button(
-    text=LEXICON.get("registration", "Повторить регистрацию"),
-    callback_data="registration"
+            text=LEXICON.get("registration", "Повторить регистрацию"),
+            callback_data="registration",
+        )
+
+    builder.button(
+        text=LEXICON.get("leave_the_group", "Покинуть группу"),
+        callback_data="leave_the_group",
     )
 
     builder.button(
-        text=LEXICON.get('leave_the_group', 'Покинуть группу'),
-        callback_data='leave_the_group'
-    )
-
-    builder.button(
-        text=LEXICON.get('main_menu', 'Назад в главное меню'),
-        callback_data='main_menu'
+        text=LEXICON.get("main_menu", "Назад в главное меню"), callback_data="main_menu"
     )
 
     # Настройка расположения кнопок ( по 2)
@@ -303,7 +334,7 @@ def get_profile_menu_keyboard(status:list):
 
 # Функция для создания клавиатуры справочной информации
 @log_function_call
-def get_info_menu_keyboard(exc: str|None = None):
+def get_info_menu_keyboard(exc: str | None = None):
     builder = InlineKeyboardBuilder()
 
     # Список кнопок с их текстами и callback_data
@@ -313,7 +344,7 @@ def get_info_menu_keyboard(exc: str|None = None):
         ("bot_info", LEXICON.get("bot_info", "О боте")),
         # ("status_info", LEXICON.get("status_info", "Статусы")),
         ("about", LEXICON.get("about", "Общие принципы")),
-        ("main_menu", LEXICON.get('main_menu', 'Назад в главное меню')),
+        ("main_menu", LEXICON.get("main_menu", "Назад в главное меню")),
     ]
 
     # Добавляем кнопки, если их callback_data не совпадает с exc
@@ -326,58 +357,50 @@ def get_info_menu_keyboard(exc: str|None = None):
 
     return builder.as_markup()
 
+
 """
 ИНЛАЙН-КЛАВИАТУРЫ
 """
 
 # Инлайн-клавиатура для регистрации
 reg_button_1 = InlineKeyboardButton(
-    text='ЗАРЕГИСТРИРОВАТЬСЯ',
-    callback_data='reg_button_pressed'
+    text="ЗАРЕГИСТРИРОВАТЬСЯ", callback_data="reg_button_pressed"
 )
 reg_markup = InlineKeyboardMarkup(inline_keyboard=[[reg_button_1]])
 
 # Клавиатура для подтверждения
-ok_mod_button = InlineKeyboardButton(
-    text='ВСЁ ВЕРНО',
-    callback_data='ConfirmOK'
-)
-no_mod_button = InlineKeyboardButton(
-    text='НЕВЕРНО',
-    callback_data='ConfirmNotOK'
-)
+ok_mod_button = InlineKeyboardButton(text="ВСЁ ВЕРНО", callback_data="ConfirmOK")
+no_mod_button = InlineKeyboardButton(text="НЕВЕРНО", callback_data="ConfirmNotOK")
 back_to_menu_button = InlineKeyboardButton(
-    text = LEXICON.get('main_menu','Назад в главное меню'),
-    callback_data='main_menu'
-    )
+    text=LEXICON.get("main_menu", "Назад в главное меню"), callback_data="main_menu"
+)
 
 confirm_markup = InlineKeyboardMarkup(
-    inline_keyboard=[[ok_mod_button, no_mod_button],[back_to_menu_button]],
-    one_time_keyboard=True
+    inline_keyboard=[[ok_mod_button, no_mod_button], [back_to_menu_button]],
+    one_time_keyboard=True,
 )
 
 # Клавиатура для возврата в главное меню (для прерывания какого-то процесса)
 
-return_to_main_menu_keyboards = {'main_menu' : LEXICON.get('return_to_main_menu','Назад в главное меню')}
+return_to_main_menu_keyboards = {
+    "main_menu": LEXICON.get("return_to_main_menu", "Назад в главное меню")
+}
 return_to_main_menu_markup = create_inline_kb(1, **return_to_main_menu_keyboards)
 
 # Клавиатура для вызова главного меню
 
-main_menu_keyboards = {'main_menu' : LEXICON.get('main_menu','Главное меню')}
+main_menu_keyboards = {"main_menu": LEXICON.get("main_menu", "Главное меню")}
 main_menu_markup = create_inline_kb(1, **return_to_main_menu_keyboards)
 
 # Клавиатура для добавления вариантов голосования
 ok_var_button = InlineKeyboardButton(
-    text='Добавить еще вариант',
-    callback_data='NewVariant'
+    text="Добавить еще вариант", callback_data="NewVariant"
 )
 finish_var_button = InlineKeyboardButton(
-    text='Завершить добавление вариантов',
-    callback_data='main_menu'
+    text="Завершить добавление вариантов", callback_data="main_menu"
 )
 variant_markup = InlineKeyboardMarkup(
-    inline_keyboard=[[ok_var_button, finish_var_button]],
-    one_time_keyboard=True
+    inline_keyboard=[[ok_var_button, finish_var_button]], one_time_keyboard=True
 )
 
 
@@ -386,14 +409,9 @@ variant_markup = InlineKeyboardMarkup(
 """
 
 # Клавиатура для отправки контакта
-contact_btn = KeyboardButton(
-    text='Отправить телефон',
-    request_contact=True
-)
+contact_btn = KeyboardButton(text="Отправить телефон", request_contact=True)
 contact_markup = ReplyKeyboardMarkup(
-    resize_keyboard=True,
-    one_time_keyboard=True,
-    keyboard=[[contact_btn]]
+    resize_keyboard=True, one_time_keyboard=True, keyboard=[[contact_btn]]
 )
 
 # Клавиатура для удаления предыдущей клавиатуры
