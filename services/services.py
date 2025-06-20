@@ -251,54 +251,7 @@ async def notify_super_registrator_short(candidate_tg_id, user_dict):
         logger.error(f"Ошибка при отправке уведомления регистратору: {e}")
         return False, str(e)
 
-#Функция уведомления регистратора при подробной регистрации. Возможно, ее надо будет вписать в  хэндлер.
-@log_function_call
-async def notify_registrator(registrator_tg_id, candidate_tg_id, user_dict):
-    try:
-        # Создаем объекты инлайн-кнопок
-        confirm_button = InlineKeyboardButton(
-            text='Подтверждаю',
-            callback_data=f"yes_registration:{candidate_tg_id}"
-        )
-        not_confirm_button = InlineKeyboardButton(
-            text='Не подтверждаю',
-            callback_data=f"no_registration:{candidate_tg_id}"
-        )
-        # Добавляем кнопки в клавиатуру в один ряд
-        keyboard: list[list[InlineKeyboardButton]] = [
-            [confirm_button, not_confirm_button]
-        ]
-        # Создаем объект инлайн-клавиатуры
-        markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-        # Формируем сообщение для регистратора
-        message_text = (
-            f"Пользователь с данными:\n"
-            f'Имя: {user_dict["first_name"]}\n'
-            f'Фамилия: {user_dict["last_name"]}\n'
-            f'Возраст: {user_dict["birth_year"]}\n'
-            f'Пол: {user_dict["gender"]}\n'
-            f'Город: {user_dict["city"]}\n'
-            f'Улица: {user_dict["street"]}\n'
-            f'Дом: {user_dict["house"]}\n'
-            f'Истинность контакта: {user_dict["tg_true"]}\n'
-            f'Номер телефона: {user_dict["tg_phone_number"]}\n'
-            f"Просит вас подтвердить его право\n"
-            f"стать членом клуба.\n"
-            f"Подтверждаете?"
-        )
-
-        # Отправляем сообщение регистратору
-        await send_notification_to_user(
-            registrator_tg_id,
-            message_text,
-            markup  # клавиатура подтверждения
-        )
-
-        return True, "Уведомление отправлено."
-    except Exception as e:
-        logger.error(f"Ошибка при отправке уведомления регистратору: {e}")
-        return False, str(e)
 
 # Функция уведомления и лишения статуса 'votist' тех пользователей, чей представитель утратил этот статус
 @log_function_call
@@ -306,6 +259,7 @@ async def not_votist_because_proxy_quit(proxy:int):
     logger.info(f"Лишаем статуса гоосующих тех, чей представитель {proxy} сложил полномочия")
     async with AsyncDatabase(path_db) as cursor:
         try:
+            # Получаем имя представителя
             await cursor.execute('''SELECT username FROM Users WHERE id IN
                                  (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
             username_result = await cursor.fetchone()
@@ -314,6 +268,7 @@ async def not_votist_because_proxy_quit(proxy:int):
             else:
                 proxy_name = 'Имя неизвестно'
 
+            # Получаем id всех доверителей
             await cursor.execute(
                 'SELECT id FROM Members WHERE proxy = ?',
                 (proxy,)
@@ -325,8 +280,10 @@ async def not_votist_because_proxy_quit(proxy:int):
 
     for item in result:
         member_id, = item
+        # Проверяем, является ли пользователь голосующим
         flag = await is_votist(member_id)
         if not flag:
+            # Получаем телеграм id пользователя
             async with AsyncDatabase(path_db) as cursor:
                 try:
                     await cursor.execute(

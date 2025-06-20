@@ -82,7 +82,7 @@ def schedule_jobs():
         timezone=tz,
         id="voting_task",
         args=[club_id],
-    )
+    ) # раз в сутки
 
     # scheduler.add_job(voting_task, 'interval', seconds=60, args=[club_id])  # раз в 60 секунд
 
