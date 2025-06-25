@@ -39,14 +39,14 @@ async def status_member(tg_id):
         logger.info(f"Создание нового пользователя с tg_id={tg_id}")
         await new_user_tg(tg_id)
         user_id = await extract_user_id(tg_id)
-        await new_member(club_id, user_id)
+        await new_premember(club_id, user_id)
         status = ["user"]
     else:
         member_id = await extract_member_id(club_id, user_id)
 
         if not member_id:
             logger.info(f"Добавление пользователя с tg_id={tg_id} в группу")
-            await new_member(club_id, user_id)
+            await new_premember(club_id, user_id)
             status = ["user"]
         else:
             status = await extract_status(member_id)

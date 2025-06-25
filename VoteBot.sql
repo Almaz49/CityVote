@@ -77,34 +77,32 @@ CREATE TABLE IF NOT EXISTS `Members` (
 	`number_of_votes` REAL,
 	`description` TEXT,
 	`resume`     TEXT,
+	`token` INTEGER REFERENCES Tokens (id),
 FOREIGN KEY(`club_id`) REFERENCES `Clubs`(`id`),
 FOREIGN KEY(`user_id`) REFERENCES `Users`(`id`),
 FOREIGN KEY(`proxy`) REFERENCES `Members`(`id`),
 UNIQUE (club_id, user_id)
 );
-CREATE TABLE IF NOT EXISTS `Tokens` (
-	`id` integer primary key NOT NULL,
-	`token` TEXT NOT NULL UNIQUE,
-	`club_id` INTEGER NOT NULL,
-	`creator` INTEGER,
-	`status` INTEGER,
-	`validity` TEXT,
-	`time_of_action` TEXT,
-	`number_of_possible` INTEGER DEFAULT 1,
-	`sity` TEXT,
-	`district` TEXT,
-	`street` TEXT,
-	`house` TEXT,
-	`entrance` INTEGER,
-	`apartment` INTEGER,
-	`telephone_number` TEXT,
-	`first_name` TEXT,
-	`lust_name` TEXT,
-	`polling_station` INTEGER,
-	`lot` INTEGER,
-	`number_in_lot` INTEGER,
-FOREIGN KEY(`club_id`) REFERENCES `Clubs`(`id`),
-FOREIGN KEY(`creator`) REFERENCES `Members`(`id`)
+CREATE TABLE Tokens (
+    `id`             INTEGER PRIMARY KEY
+                           NOT NULL,
+    `token`          TEXT    NOT NULL
+                           UNIQUE,
+    `club_id`        INTEGER NOT NULL,
+    `creator`        INTEGER,
+    `status`         TEXT    DEFAULT valid,
+    `validity`       TEXT,
+    `time_of_action` TEXT,
+    `lot`            INTEGER,
+    `number_in_lot`  INTEGER,
+    FOREIGN KEY (
+        club_id
+    )
+    REFERENCES Clubs (id),
+    FOREIGN KEY (
+        creator
+    )
+    REFERENCES Members (id)
 );
 CREATE TABLE IF NOT EXISTS `Registrations` (
 	`id` integer primary key NOT NULL UNIQUE,
@@ -153,4 +151,12 @@ CREATE TABLE TgChats (
 	`available`    TEXT,
 	`info_level`   TEXT,
 	UNIQUE (`club_id`, `tg_id`)
+);
+
+CREATE TABLE IF NOT EXISTS TokenAttempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id INTEGER NOT NULL,
+    club_id INTEGER NOT NULL,
+    attempt_time TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(club_id) REFERENCES Clubs(id)
 );

@@ -9,6 +9,9 @@
 │   └── create_db.py
 │   └── db_migration.log
 │   └── dbg1.db
+│   └── debug.log
+│   └── error.log
+│   └── info.log
 │   └── initial_data_setup.py
 │   └── main.py
 │   └── print_structure.py
@@ -16,12 +19,14 @@
 │   └── structure.txt
 │   └── test.py
 │   └── test_script.py
+│   └── warning.log
 │   ├── config_data/
 │   │   └── config.py
 │   ├── data_base/
 │   │   └── data_base.py
 │   │   └── db_func.py
 │   │   └── db_member.py
+│   │   └── db_token_service.py
 │   │   └── db_vote.py
 │   │   └── telegram_bot_logic.py
 │   ├── docs/
@@ -46,11 +51,10 @@
 │   │   └── member_handlers.py
 │   │   └── oll_users_handlers.py
 │   │   └── owner_handlers.py
+│   │   └── reg_process_handlers copy.py
 │   │   └── reg_process_handlers.py
 │   │   └── registrator_handlers.py
-│   │   ├── registration_variants/
-│   │   │   └── reg_process_handlers_1.py
-│   │   │   └── reg_process_handlers_2.py
+│   │   └── token_handlers.py
 │   ├── keyboards/
 │   │   └── keyboards.py
 │   ├── LEXICON/
@@ -67,6 +71,7 @@
 │   │   └── services.py
 │   ├── test/
 │   │   └── draft.py
+│   │   └── for_AI.txt
 │   │   └── message_json.py
 │   │   └── names.txt
 │   │   └── readf.py

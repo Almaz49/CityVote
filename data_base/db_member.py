@@ -25,9 +25,9 @@ async def new_user_tg(tg_id):
             raise
 
 
-# Запись нового участника в группу
+# Запись нового участника в группу без присвоения статуса
 @log_function_call
-async def new_member(club_id, user_id):
+async def new_premember(club_id, user_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -51,6 +51,14 @@ async def new_member(club_id, user_id):
 @log_function_call
 async def new_status(registrator, member_id, status, token_id=None):
     time_reg = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    """
+    Записывает новый статус пользователя.
+    :param registrator: ID пользователя, который придал статус
+    :param member_id: ID участника, которому придался статус
+    :param status: Статус, который придался участнику
+    :param token_id: ID токена, если он использовался
+    :return: True, если запись прошла успешно, False - в противном случае, + текст сообщения
+    """
     logger.info(
         f"Запись нового статуса: registrator={registrator}, member_id={member_id}, status={status}, token_id={token_id}, time_reg={time_reg}"
     )
@@ -98,6 +106,27 @@ async def new_status(registrator, member_id, status, token_id=None):
                     )
                     logger.info(
                         f"Статус '{'candidate'}' удален для member_id: {member_id}"
+                    )
+                    # TODO: Проверить, был ли уже записан токэн. Если да, то старому токену присваивается статус 'old'
+                    await cursor.execute(
+                        """SELECT token FROM Members WHERE id = ?""",
+                        (member_id,),
+                    )
+                    result = await cursor.fetchone()
+                    if result and result[0] is not None:
+                        await cursor.execute(
+                            """UPDATE Tokens SET status = ? WHERE id = ?""",
+                            ("old", result[0]),
+                        )
+                    # Записываем токен в таблицу Members
+                    await cursor.execute(
+                        """UPDATE Members SET token = ? WHERE id = ?""",
+                        (token_id, member_id),
+                    )
+                    # Записываем member_id в таблицу Tokens
+                    await cursor.execute(
+                        """UPDATE Tokens SET member_id = ? WHERE id = ?""",
+                        (member_id, token_id),
                     )
                 # Если присваевается статус candidate, удаляем статус member
                 if new_st == "candidate":

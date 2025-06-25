@@ -108,8 +108,9 @@ buttons = {
         "delegate": ["new_voting"],  # Для статуса 'delegate'
     },
     "settings": {  # Категория: Настройки
-        "admin": ["new_registrator", "registrators_list"],  # Для статуса 'admin'
+        "admin": ["new_registrator", "registrators_list","tokens"],  # Для статуса 'admin'
         "owner": ["new_status", "admin_bot"],  # Для статуса 'owner'
+        "superregistrator": ["tokens"],  # Для статуса 'superregistrator'"
     },
 }
 
@@ -390,7 +391,7 @@ return_to_main_menu_markup = create_inline_kb(1, **return_to_main_menu_keyboards
 # Клавиатура для вызова главного меню
 
 main_menu_keyboards = {"main_menu": LEXICON.get("main_menu", "Главное меню")}
-main_menu_markup = create_inline_kb(1, **return_to_main_menu_keyboards)
+main_menu_markup = create_inline_kb(1, **main_menu_keyboards)
 
 # Клавиатура для добавления вариантов голосования
 ok_var_button = InlineKeyboardButton(

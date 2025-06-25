@@ -19,9 +19,9 @@ from utils import check_fsm_data, log_handler_call
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# Загружаем конфиг в переменную config
-config: Config = load_config(".env")
-bot = Bot(token=config.tg_bot.token)
+# # Загружаем конфиг в переменную config
+# config: Config = load_config(".env")
+# bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()

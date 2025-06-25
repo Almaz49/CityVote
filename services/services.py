@@ -7,11 +7,12 @@ import html
 import logging
 
 import aiosqlite
+import os
 from aiogram import Bot
 from aiogram.exceptions import (TelegramAPIError, TelegramBadRequest,
                                 TelegramForbiddenError)
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup)
+                           InlineKeyboardMarkup, FSInputFile)
 
 from config_data.config import Config, load_config
 # from data_base.telegram_bot_logic import AsyncDatabase, is_votist
@@ -156,6 +157,53 @@ async def send_notification_to_chat_or_channel(
 
     return response
 
+@log_function_call
+async def send_file_to_user(tg_id: int, file_path: str, caption: str = "Файл", reply_markup=None):
+    """
+    Отправляет файл пользователю по его tg_id.
+
+    :param tg_id: ID пользователя в Telegram
+    :param file_path: Путь к файлу на сервере
+    :param caption: Подпись к файлу (опционально)
+    :param reply_markup: Клавиатура (опционально)
+    :return: Результат отправки
+    """
+    is_available = await is_user_available(tg_id)
+    if not is_available:
+        return f"Пользователь {tg_id} недоступен для отправки."
+
+    try:
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Файл {file_path} не найден.")
+
+        # Создаем объект файла для отправки
+        document = FSInputFile(path=file_path)
+
+        # Отправляем документ
+        await bot.send_document(
+            chat_id=tg_id,
+            document=document,
+            caption=caption,
+            reply_markup=reply_markup
+        )
+        response = f"Файл успешно отправлен пользователю {tg_id}"
+    except TelegramForbiddenError:
+        logger.warning(f"Пользователь {tg_id} заблокировал бота.")
+        response = f"Пользователь {tg_id} заблокировал бота."
+        await mark_user_as_unavailable(tg_id, reason="bot blocked")
+    except TelegramBadRequest as e:
+        if "chat not found" in str(e).lower():
+            logger.warning(f"Пользователь {tg_id} удалил аккаунт или чат не существует.")
+            response = f"Пользователь {tg_id} удалил аккаунт или чат не существует."
+            await mark_user_as_unavailable(tg_id, reason="user lost")
+        else:
+            logger.error(f"Ошибка при отправке файла пользователю {tg_id}: {e}")
+            response = f"Ошибка при отправке файла пользователю {tg_id}: {e}"
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка при отправке файла пользователю {tg_id}: {e}")
+        response = f"Неизвестная ошибка при отправке файла пользователю {tg_id}: {e}"
+
+    return response
 #Функция уведомления регистратора при краткой регистрации.
 @log_function_call
 async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict):

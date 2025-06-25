@@ -12,7 +12,7 @@ from config_data.config import Config, load_config
 from handlers import (admin_handlers, chat_member_handlers, delegate_handlers,
                       last_handlers, member_handlers, oll_users_handlers,
                       owner_handlers, reg_process_handlers,
-                      registrator_handlers)
+                      registrator_handlers, token_handlers)
 from manager.manager import check_votist_status_for_all_members, voting_task
 from middlewares import (LoggingAndErrorHandlingMiddleware, SafeEditMiddleware,
                          StatusMiddleware)
@@ -116,7 +116,8 @@ routers = [
     reg_process_handlers.router,
     oll_users_handlers.router,
     chat_member_handlers.router,
-    last_handlers.router,
+    token_handlers.router,
+    last_handlers.router # После него не ставить роутеров
 ]
 
 

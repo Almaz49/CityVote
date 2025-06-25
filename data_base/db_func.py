@@ -8,8 +8,6 @@ import logging  # Добавляем импорт модуля logging
 from typing import Dict, List, Optional
 
 import aiosqlite
-from aiosqlite import (Connection,  # type: ignore # <-- Явно импортируем типы
-                       Cursor)
 
 from config_data.config import Config, load_config
 from utils import fetch_as_dict, log_function_call

@@ -55,6 +55,7 @@ class FSMRegistration(StatesGroup):
     fill_range_num = State()  # Состояние ожидания выбора диапазона номеров
     fill_confirm2 = State()  # Состояние ожидания подтверждения адреса
     fill_registrator = State()  # Состояние ожидания выбора модератора
+    fill_comment = State()  # Новое состояние для ввода комментария
 
 
 # FSM повторной регистрации
@@ -79,6 +80,7 @@ class FSM_short_registration(StatesGroup):
     fill_resume = State()  # Состояние ожидания ввода имени
     fill_contact = State()  # Состояние ожидания отправки контакта
     fill_registrator = State()  # Состояние ожидания выбора модератора
+    enter_token = State()  # Состояние ожидания ввода токена
 
 
 # FSM создания нового голосования
@@ -171,3 +173,10 @@ class FSM_profile(StatesGroup):
     fill_description = State()  # Состояние ожидания ввода описания пользователя
     fill_OK = State()  # Состояние ожидания подтверждения
     fill_info_level = State()  # Состояние ожидания уровня информирования
+
+# FSM токенов
+class FSMTokenManagement(StatesGroup):
+    fill_lot_number = State()
+    fill_token_count = State()
+    fill_token_value = State()
+    fill_token_comment = State()

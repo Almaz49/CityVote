@@ -1,0 +1,519 @@
+# db_token_service.py
+import datetime
+import pandas as pd
+import os
+import secrets
+from data_base.db_func import AsyncDatabase, extract_member_id, extract_user_id, path_db
+from typing import List, Optional
+from collections import defaultdict
+# Логирование (замените на ваш логгер)
+import logging
+
+from data_base.db_member import new_status
+logger = logging.getLogger(__name__)
+
+
+def generate_numeric_token(length=9):
+    return ''.join(secrets.choice('0123456789') for _ in range(length))
+
+async def is_token_unique(cursor, token: str) -> bool:
+    await cursor.execute(
+        "SELECT 1 FROM Tokens WHERE token = ?",
+        (token,)
+    )
+    result = await cursor.fetchone()
+    return result is None
+
+def format_token(token: str) -> str:
+    """
+    Форматирует токен с разделителями: XX-XXX-XXX-XXX
+    Например: 123456789012 → 12-345-678-901-2
+    """
+    token = token[::-1]  # Обратный порядок
+    chunks = []
+    for i in range(0, len(token), 3):
+        chunk = token[i:i+3][::-1]
+        chunks.append(chunk)
+    return "-".join(chunks[::-1])
+
+
+
+async def get_token_attempts_count(tg_id: int, club_id: int) -> int:
+    """
+    Возвращает число попыток ввода токена за последние 24 часа.
+
+    :param tg_id: Telegram ID пользователя.
+    :param club_id: ID группы.
+    :return: Число попыток.
+    """
+    twenty_four_hours_ago = (datetime.datetime.now() - datetime.timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute(
+            """
+            SELECT COUNT(*) FROM TokenAttempts
+            WHERE tg_id = ? AND club_id = ? AND attempt_time > ?
+            """,
+            (tg_id, club_id, twenty_four_hours_ago)
+        )
+        result = await cursor.fetchone()
+        return result[0] if result else 0
+
+
+async def add_token_attempt(tg_id: int, club_id: int) -> None:
+    """
+    Добавляет запись о попытке ввода токена.
+
+    :param tg_id: Telegram ID пользователя.
+    :param club_id: ID группы.
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute(
+            "INSERT INTO TokenAttempts (tg_id, club_id) VALUES (?, ?)",
+            (tg_id, club_id)
+        )
+
+
+async def clear_old_attempts(tg_id: int, club_id: int) -> None:
+    """
+    Удаляет попытки ввода токена старше 24 часов.
+
+    :param tg_id: Telegram ID пользователя.
+    :param club_id: ID группы.
+    """
+    twenty_four_hours_ago = (datetime.datetime.now() - datetime.timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute(
+            """
+            DELETE FROM TokenAttempts
+            WHERE tg_id = ? AND club_id = ? AND attempt_time < ?
+            """,
+            (tg_id, club_id, twenty_four_hours_ago)
+        )
+
+
+async def auto_approve_by_token(tg_id: int, club_id: int, token_id: int) -> tuple[bool, str]:
+    """
+    Привязывает токен к пользователю и автоматически регистрирует его как member.
+
+    :param tg_id: Telegram ID пользователя.
+    :param club_id: ID группы.
+    :param token_id: ID валидного токена.
+    :return: (success, message)
+    """
+        # Получаем user_id
+    user_id = await extract_user_id(tg_id)
+    if not user_id:
+        return False, "Пользователь не найден"
+
+    # Получаем member_id
+    member_id = await extract_member_id(club_id, user_id)
+    if not member_id:
+        return False, "Участник не найден"
+
+
+
+    try:
+        async with AsyncDatabase(path_db) as cursor:
+            # Обновляем статус токена
+            await cursor.execute(
+                "UPDATE Tokens SET status = 'used' WHERE id = ?", (token_id,)
+            )
+
+        # Обновляем статус пользователя на 'member'
+        _, msg = await new_status(registrator=None, member_id=member_id, status="member", token_id=token_id)
+
+        if not _:
+            return False, f"Не удалось обновить статус: {msg}"
+
+        return True, "Автоматическая регистрация успешна"
+    except Exception as e:
+        logger.error(f"Ошибка при автоматической регистрации: {e}")
+        return False, f"Ошибка: {e}"
+
+async def is_valid_token(token: str, club_id: int):
+    """
+    Проверяет, валиден ли токен для указанной группы.
+
+    :param token: Токен для проверки (строка).
+    :param club_id: ID группы, для которой нужно проверить токен.
+    :return: словарь {'token_id': ID токена, 'status': статус токена } или None, если токен не найден.
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(
+                """
+                SELECT id, status, validity, time_of_action FROM Tokens
+                WHERE token = ? AND club_id = ?
+                """,
+                (token, club_id)
+            )
+            row = await cursor.fetchone()
+            if not row:
+                return None  # Токен не найден
+
+            token_id, status, validity, time_of_action = row
+            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            if status == 'valid':
+                if validity and validity < now:
+                    # Обновляем статус токена на 'old'
+                    await cursor.execute(
+                        "UPDATE Tokens SET status = 'old' WHERE id = ?", (token_id,)
+                    )
+                    return {'token_id': token_id, 'status': 'old'}
+                else:
+                    return {'token_id': token_id, 'status': 'valid'}  # Токен еще валиден и не использован
+            elif status == 'used':
+                if time_of_action and time_of_action < now:
+                    # Обновляем статус токена на 'old'
+                    await cursor.execute(
+                        "UPDATE Tokens SET status = 'old' WHERE id = ?", (token_id,)
+                    )
+                    return {'token_id': token_id, 'status': 'old'}  # Токен уже устарел
+                else:
+                    return {'token_id': token_id, 'status': 'used'}  # Токен уже использован но еще не устарел
+            elif status == 'old':
+                return {'token_id': token_id, 'status': 'old'}  # Токен устарел
+            else:
+                logger.error(f"Неизвестный статус токен: {status}")
+                return None
+
+
+        except Exception as e:
+            logger.error(f"Ошибка при проверке токена: {e}")
+            return None
+
+
+
+async def create_tokens_for_lot(
+    club_id: int,
+    lot: Optional[int] = None,
+    count: int = 100,
+    token_length: int = 9,
+    validity_days: int = 30,
+    time_of_action_months: int = 60,
+    creator_id: Optional[int] = None,
+    comment: str = ""  # Добавлен параметр
+) -> dict:
+    """
+    Создаёт указанное количество токенов для заданного лота или следующего свободного номера.
+    :param club_id: ID клуба
+    :param lot: Номер лота (если None — будет найден первый доступный)
+    :param count: Количество токенов
+    :param token_length: Длина токена
+    :param validity_days: Срок действия в днях
+    :param time_of_action_months: Срок действия действия по токену
+    :param creator_id: Кто создал токен (ID пользователя)
+    :param comment: Комментарий к токенам этого лота
+    :return: {'tokens': [...], 'lot': ...}
+    """
+    if not comment.strip():
+        raise ValueError("Комментарий обязателен при создании токенов")
+
+    created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    validity = (
+        datetime.datetime.now() + datetime.timedelta(days=validity_days)
+    ).strftime("%Y-%m-%d %H:%M:%S")
+    time_of_action = (
+        datetime.datetime.now() + datetime.timedelta(days=time_of_action_months*30.44)
+    ).strftime("%Y-%m-%d %H:%M:%S")
+    tokens = []
+    async with AsyncDatabase(path_db) as cursor:
+        # Если номер лота не указан — найти первый доступный
+        if lot is None:
+            await cursor.execute("""
+                SELECT DISTINCT lot FROM Tokens WHERE club_id = ?
+            """, (club_id,))
+            rows = await cursor.fetchall()
+            existing_lots = set(row[0] for row in rows)
+            next_lot = 1
+            while next_lot in existing_lots:
+                next_lot += 1
+            lot = next_lot
+            max_number_in_lot = 0
+        else:
+            await cursor.execute("""
+                SELECT number_in_lot FROM Tokens WHERE club_id = ? AND lot = ?
+            """, (club_id, lot))
+            result = await cursor.fetchall()
+            max_number_in_lot = max([row[0] for row in result]) if result else 0
+
+        for i in range(max_number_in_lot, count + max_number_in_lot):
+            attempts = 0
+            while attempts < 100:
+                token = generate_numeric_token(token_length)
+                if await is_token_unique(cursor, token):
+                    break
+                attempts += 1
+            else:
+                raise RuntimeError(f"Не удалось сгенерировать уникальный токен для {i}-го элемента")
+            await cursor.execute("""
+                INSERT INTO Tokens (
+                    token, club_id, creator, status, validity, time_of_action,
+                    lot, number_in_lot, created_at, comment
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                token, club_id, creator_id, 'valid', validity,
+                time_of_action, lot, i, created_at, comment
+            ))
+            tokens.append(token)
+    return {
+        'tokens': tokens,
+        'lot': lot
+    }
+
+async def create_tokens_without_lot(
+    club_id: int,
+    count: int = 100,
+    token_length: int = 9,
+    validity_days: int = 30,
+    creator_id: Optional[int] = None,
+    comment: str = ""  # Добавлен параметр
+) -> List[str]:
+    """
+    Создаёт токены, не привязывая к лоту (поле lot = NULL).
+    :param club_id: ID клуба
+    :param count: Количество токенов
+    :param token_length: Длина токена
+    :param validity_days: Срок действия в днях
+    :param creator_id: Кто создал токен
+    :param comment: Комментарий к каждому токену
+    :return: Список созданных токенов
+    """
+    if not comment.strip():
+        raise ValueError("Комментарий обязателен при создании токенов")
+
+    tokens = []
+    created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    time_of_action = (
+        datetime.datetime.now() + datetime.timedelta(days=validity_days)
+    ).strftime("%Y-%m-%d %H:%M:%S")
+    async with AsyncDatabase(path_db) as cursor:
+        for i in range(1, count + 1):
+            attempts = 0
+            while attempts < 100:
+                token = generate_numeric_token(token_length)
+                if await is_token_unique(cursor, token):
+                    break
+                attempts += 1
+            else:
+                raise RuntimeError(f"Не удалось сгенерировать уникальный токен для {i}-го элемента")
+            await cursor.execute("""
+                INSERT INTO Tokens (
+                    token, club_id, creator, status, validity, time_of_action,
+                    created_at, comment
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                token, club_id, creator_id, 'valid', f'{validity_days} days',
+                time_of_action, created_at, comment
+            ))
+            tokens.append(token)
+    return tokens
+
+
+
+async def get_lot_info(club_id: int, lot_number: int) -> dict:
+    """
+    Возвращает информацию о лоте: кол-во токенов по статусам и списки токенов.
+
+    :param club_id: ID клуба
+    :param lot_number: Номер лота
+    :return: {
+        'total': ...,
+        'statuses': {'valid': ..., 'used': ..., ...},
+        'tokens_by_status': {'valid': [...], 'used': [...], ...}
+    }
+    """
+    result = {
+        'total': 0,
+        'statuses': {},
+        'tokens_by_status': defaultdict(list),
+    }
+
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute("""
+            SELECT token, status FROM Tokens
+            WHERE club_id = ? AND lot = ?
+        """, (club_id, lot_number))
+
+        rows = await cursor.fetchall()
+        if not rows:
+            return {'error': 'Лот не найден или пуст'}
+
+        rows = list(rows)  # <-- Явное преобразование в list
+        result['total'] = len(rows)
+
+        for token, status in rows:
+            result['tokens_by_status'][status].append(token)
+            result['statuses'][status] = result['statuses'].get(status, 0) + 1
+
+    # Преобразуем defaultdict в обычный dict
+    result['tokens_by_status'] = dict(result['tokens_by_status'])
+    return result
+
+async def issue_tokens(
+    club_id: int,
+    lot_number: Optional[int] = None,
+    count: int = 1,
+    create_new_if_needed: bool = True,
+    token_length: int = 9,
+    validity_days: int = 30,
+    creator_id: Optional[int] = None,
+    comment: Optional[str] = None
+) -> str|List[str]:
+    """
+    Выдаёт заданное количество токенов со статусом 'valid'.
+
+    :param club_id: ID клуба
+    :param lot_number: Номер лота (если None — ищем вне лотов)
+    :param count: Сколько токенов нужно выдать
+    :param create_new_if_needed: Создать новые токены, если не хватает
+    :param token_length: Длина токена
+    :param validity_days: Срок действия новых токенов
+    :param creator_id: Кто создаёт новые токены
+    :param comment: Комментарий
+    :return: строка или список отформатированных токенов
+    """
+    tokens_to_issue = []
+
+    async with AsyncDatabase(path_db) as cursor:
+        # Шаг 1: Получаем доступные токены
+        if lot_number is not None:
+            query = """
+                SELECT id, token FROM Tokens
+                WHERE club_id = ? AND lot = ? AND status = 'valid'
+                ORDER BY number_in_lot
+                LIMIT ?
+            """
+            params = (club_id, lot_number, count)
+        else:
+            query = """
+                SELECT id, token FROM Tokens
+                WHERE club_id = ? AND lot IS NULL AND status = 'valid'
+                LIMIT ?
+            """
+            params = (club_id, count)
+
+        await cursor.execute(query, params)
+        available_tokens = list(await cursor.fetchall())
+
+        if len(available_tokens) < count and create_new_if_needed:
+            needed = count - len(available_tokens)
+            if lot_number is not None:
+                new_tokens_info = await create_tokens_for_lot(
+                    club_id=club_id,
+                    lot=lot_number,
+                    count=needed,
+                    token_length=token_length,
+                    validity_days=validity_days,
+                    creator_id=creator_id
+                )
+                new_tokens = new_tokens_info['tokens']
+            else:
+                new_tokens = await create_tokens_without_lot(
+                    club_id=club_id,
+                    count=needed,
+                    token_length=token_length,
+                    validity_days=validity_days,
+                    creator_id=creator_id
+                )
+
+            # Переводим новые токены в список (id будет None, но их нужно добавить)
+            new_tokens_with_ids = []
+            for token in new_tokens:
+                await cursor.execute("""
+                    SELECT id FROM Tokens WHERE token = ? AND club_id = ?
+                """, (token, club_id))
+                row = await cursor.fetchone()
+                if row:
+                    new_tokens_with_ids.append((row[0], token))
+
+            available_tokens += new_tokens_with_ids
+
+        elif len(available_tokens) < count:
+            raise ValueError(f"Недостаточно токенов. Запрошено: {count}, доступно: {len(available_tokens)}")
+
+        issued_ids = []
+        formatted_tokens = []
+
+        for token_id, token in available_tokens[:count]:
+            issued_ids.append(token_id)
+            formatted_tokens.append(format_token(token))
+
+
+    if count == 1:
+        return formatted_tokens[0]
+    else:
+        return formatted_tokens
+
+
+async def export_tokens_to_excel(
+    club_id: int,
+    lot_number: Optional[int] = None,
+    creator_id: Optional[int] = None,
+    filename: str = "tokens_export.xlsx"
+) -> str:
+    """
+    Экспортирует токены в Excel-файл.
+
+    :param club_id: ID клуба
+    :param lot_number: Номер лота (если указан — берём только этот лот)
+    :param creator_id: ID создателя (если указан — фильтруем по нему)
+    :param filename: Имя файла для сохранения
+    :return: Путь к файлу
+    """
+
+    query = """
+        SELECT id, token, validity, time_of_action, status, number_in_lot
+        FROM Tokens
+        WHERE club_id = ?
+    """
+    params = [club_id]
+
+    if lot_number is not None:
+        query += " AND lot = ?"
+        params.append(lot_number)
+
+    if creator_id is not None:
+        query += " AND creator = ?"
+        params.append(creator_id)
+
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute(query, tuple(params))
+        rows = await cursor.fetchall()
+
+    if not rows:
+        raise ValueError("Нет токенов для экспорта.")
+
+    df = pd.DataFrame(rows, columns=[
+        'ID', 'Token', 'Validity', 'Time of Action', 'Status', 'Number in Lot'
+    ])
+
+    # Сохраняем в Excel
+    df.to_excel(filename, index=False)
+    return os.path.abspath(filename)
+async def mark_token_as_old(token: str) -> bool:
+    """
+    Помечает токен как устаревший.
+    :param token: строка токена без разделителей
+    :return: True, если токен был обновлён
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute("""
+            UPDATE Tokens SET status = 'old'
+            WHERE token = ?
+        """, (token,))
+        return cursor.rowcount > 0
+
+async def mark_token_as_used(token: str, memder_id: int) -> bool:
+    """
+    Помечает токен как использованный.
+    :param token: строка токена без разделителей
+    :return: True, если токен был обновлён
+    """
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute("""
+            UPDATE Tokens SET status = 'used', member_id = ?
+            WHERE token = ?
+        """, (memder_id, token))
+        return cursor.rowcount > 0

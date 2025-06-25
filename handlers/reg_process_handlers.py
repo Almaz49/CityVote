@@ -2,23 +2,21 @@
 # Содержит хэндлеры процесса регистрации
 
 import logging
-
 from aiogram import Bot, F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message)
-
+from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from config_data.config import Config, load_config
-from data_base.telegram_bot_logic import (get_club_info, list_of_members,
-                                          new_status_tg, update_member_data,
-                                          update_user_data)
+from data_base.db_token_service import (clear_old_attempts, get_token_attempts_count,
+                                        add_token_attempt, auto_approve_by_token, is_valid_token)
+from data_base.telegram_bot_logic import get_club_info, list_of_members, new_status_tg, update_member_data, update_user_data
+from data_base.db_func import extract_user_id, extract_member_id
+from services.services import notify_registrator_short, notify_super_registrator_short
 from FSMs.FSMs import FSM_short_registration
-from keyboards.keyboards import return_to_main_menu_markup, user_menu
+from keyboards.keyboards import  user_menu
 from LEXICON.LEXICON import LEXICON
-from services.services import (notify_registrator_short,
-                               notify_super_registrator_short)
 from utils import log_handler_call
+
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -29,246 +27,222 @@ bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
-
 # -------------------------------------------
-# Хэндлеры самой упрощенной регистрации участника
-# Не запрашивается даже контакт.
-# -------------------------------------------
-
-
 # Хэндлер для кнопки 'registration'
+# -------------------------------------------
+
 @router.callback_query(F.data == "registration")
 @log_handler_call
 async def process_registration(callback: CallbackQuery, state: FSMContext, data: dict):
     if not callback.message:
         raise ValueError("Нет сообщения для ответа")
-    try:
-        logger.info(
-            f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}"
-        )
-        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        if "member" in data["user_status"]:
-            await callback.message.answer(  # type: ignore
-                text="Вы уже зарегистрированы в группе",
-                reply_markup=return_to_main_menu_markup,
-            )
-            return
+    logger.info(f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        tg_id = callback.from_user.id
-        club_id = data["club_id"]
-        club_info = await get_club_info(club_id)
-        if not club_info:
-            logger.error("Нет информации о группе")
-            await callback.message.answer(text="Ошибка. Не найдена информация о группе")  # type: ignore
-            return
+    if "member" in data["user_status"]:
+        await callback.message.answer(text="Вы уже зарегистрированы в группе.")
+        return
 
-        # Логируем club_info для отладки
-        logger.debug(f"Club info: {club_info}")
+    tg_id = callback.from_user.id
+    club_id = data["club_id"]
 
-        text0 = LEXICON.get("registration_message", "Напишите о себе")
-        text1 = LEXICON.get("reg_cancel_info")
+    club_info = await get_club_info(club_id)
+    if not club_info:
+        logger.error("Нет информации о группе")
+        await callback.message.answer(text="Ошибка. Не найдена информация о группе")
+        return
 
-        # Проверяем, что club_info содержит вопросы
-        questions = club_info.get("questions_for_the_candidate")
-        if questions is None:
-            questions = text0  # Используем текст по умолчанию, если вопроса нет
+    # Очистка старых попыток ввода токена
+    await clear_old_attempts(tg_id, club_id)
+    attempts = await get_token_attempts_count(tg_id, club_id)
+    if attempts >= 3:
+        await callback.message.answer("Превышено количество попыток ввода токена.")
+        return
 
-        text = questions + "\n" + text1
-        markup = None  # Не нужна клавиатура
+    # Формируем сообщение: ввести токен ИЛИ ответить на вопросы
+    questions = club_info.get("questions_for_the_candidate") or LEXICON.get("registration_message", "Напишите о себе")
+    text = (
+        "Введите уникальный токен (если он у вас есть).\n"
+        "Если нет — ответьте на вопросы администрации.\n\n"
+        f"{questions}"
+    )
 
-        # Добавляем данные для SafeEditMiddleware
-        data["response_text"] = text
-        data["reply_markup"] = markup
+    markup = None  # Клавиатура пока не нужна
 
-        # Убеждаемся, что это доступное сообщение
-        if not isinstance(callback.message, Message):
-            logger.warning("Сообщение недоступно (InaccessibleMessage)")
-            await callback.answer("Сообщение недоступно")
-            return
+    # Сохраняем данные в middleware или контекст
+    data["response_text"] = text
+    data["reply_markup"] = markup
 
-        # Теперь можно безопасно использовать .text и .reply_markup
+    if isinstance(callback.message, Message):
         current_text = callback.message.text
         current_markup = callback.message.reply_markup
-        if (
-            current_text != data["response_text"]
-            or current_markup != data["reply_markup"]
-        ):
-            await callback.message.edit_text(
-                text=data["response_text"],
-                reply_markup=data["reply_markup"],
-                parse_mode="HTML",
-            )
+        if current_text != text or current_markup != markup:
+            await callback.message.edit_text(text=text, reply_markup=markup, parse_mode="HTML")
+    else:
+        await callback.message.answer(text=text, reply_markup=markup)
+
+    await state.set_state(FSM_short_registration.enter_token)
+
+
+# -------------------------------------------
+# Хэндлер ввода токена или резюме
+# -------------------------------------------
+
+@router.message(StateFilter(FSM_short_registration.enter_token))
+@log_handler_call
+async def process_entered_token_or_resume(message: Message, state: FSMContext, data: dict):
+    if not message.text:
+        await message.answer("Введите текст.")
+        return
+    if not message.from_user:
+        raise ValueError("Отправтель сообщения отсутствует (from_user == None)")
+    token_input = message.text.strip()
+    tg_id = message.from_user.id
+    club_id = data["club_id"]
+
+    # Проверяем, похож ли ввод на токен
+    clean_token = token_input.replace(" ", "").replace("-", "")
+    if clean_token.isdigit():
+        # Это токен — проверяем его валидность
+        result = await is_valid_token(clean_token, club_id)
+        if not result or result.get("status") not in ["valid"]:
+            await message.answer("Токен не действителен. Попробуйте снова или продолжите анкету.")
+            await add_token_attempt(tg_id, club_id)
+            return
+        token_id = result.get("token_id")
+        if token_id:
+            success, msg = await auto_approve_by_token(tg_id, club_id, token_id)
+            if success:
+                await message.answer("Авторизация успешна! Вы участник группы.")
+                await state.clear()
+                return
+            else:
+                await message.answer(msg)
+                await add_token_attempt(tg_id, club_id)
+                return
         else:
-            logger.info("Сообщение не изменено, так как содержимое совпадает.")
+            await message.answer("Токен недействителен. Попробуйте снова или продолжите анкету.")
+            await add_token_attempt(tg_id, club_id)
+            return
+    else:
+        # Это не токен → считаем, что это резюме
+        logger.info(f"Введено резюме кандидата: {token_input} от пользователя {tg_id}")
 
-        # Устанавливаем состояние
-        await state.set_state(FSM_short_registration.fill_resume)
+        # Сохраняем введенное значение как resume
+        user_id = await extract_user_id(tg_id)
+        if not user_id:
+            await message.answer("Произошла ошибка: не найден ваш профиль.")
+            return
+        member_id = await extract_member_id(club_id, user_id)
 
-    except Exception as e:
-        logger.error(f"Ошибка при обработке кнопки 'registration': {e}")
-        logger.error(f"Текущие данные: {data}")
+        if not member_id:
+            await message.answer("Произошла ошибка: не удалось найти ваш профиль.")
+            return
 
-        # Добавляем данные для SafeEditMiddleware
-        data["response_text"] = "Произошла ошибка при начале процесса регистрации."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
+        await state.update_data(
+            resume=token_input,
+            tg_id=tg_id,
+            tg_first_name=message.from_user.first_name,
+            tg_last_name=message.from_user.last_name,
         )
 
-        # Пытаемся отредактировать сообщение
+        # Обновляем данные в БД
+        await update_user_data(user_id, tg_first_name=message.from_user.first_name, tg_last_name=message.from_user.last_name)
+        await update_member_data(member_id, resume=token_input)
+
+        # Меняем статус на candidate
+        success, result = await new_status_tg(None, tg_id, "candidate")
+        if not success:
+            await message.answer(result)
+            return
+
+        # Предлагаем выбрать регистратора
+        registrators = await list_of_members("registrator")
+        buttons = []
+        for item in registrators:
+            buttons.append([InlineKeyboardButton(text=item.get("username", "Unknown"), callback_data=str(item.get("tg_id")))])
+        buttons.append([InlineKeyboardButton(text="Никого из регистраторов не знаю", callback_data="stranger")])
+        markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+        await message.answer(
+            text="Спасибо!\nВыберите регистратора, которого знаете,\nчтобы он мог подтвердить вашу личность.\n"
+                 "Если никого не знаете — нажмите 'Никого не знаю'",
+            reply_markup=markup
+        )
+        await state.set_state(FSM_short_registration.fill_registrator)
+
+        # Удаляем сообщение с инструкцией, если это возможно
         try:
-            await callback.message.edit_text(  # type: ignore
-                text=data["response_text"], reply_markup=data["reply_markup"]
-            )
-        except Exception as edit_error:
-            logger.error(f"Ошибка при редактировании сообщения: {edit_error}")
-
-        raise  # Передаем исключение middleware для обработки
+            await message.delete()
+        except Exception as e:
+            logger.warning(f"Не удалось удалить сообщение: {e}")
 
 
-# Этот хэндлер будет срабатывать, если введено корректное резюме
-@router.message(StateFilter(FSM_short_registration.fill_resume))
-@log_handler_call
-async def process_resume_sent(message: Message, state: FSMContext, data: dict):
-    if not message.from_user:
-        raise ValueError("Отправитель сообщения отсутствует (from_user.id == None)")
-    logger.info(
-        f"Введено резюме кандидата: {message.text} от пользователя {message.from_user.id}"
-    )
-    # Сохраняем введенное имя в контексте состояния
-    await state.update_data(
-        resume=message.text,
-        tg_id=message.from_user.id,
-        tg_first_name=message.from_user.first_name,
-        tg_last_name=message.from_user.last_name,
-    )
+# -------------------------------------------
+# Хэндлер для выбора регистратора
+# -------------------------------------------
 
-    # Создаем инлайн-кнопки для выбора регистратора
-    registrators = await list_of_members("registrator")
-    buttons: list[list[InlineKeyboardButton]] = []
-    for item in registrators:
-        username = item.get("username", "Unknown")
-        tg_id = item.get("tg_id")
-        buttons.append([InlineKeyboardButton(text=username, callback_data=str(tg_id))])
-
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                text="Никого из регистраторов не знаю", callback_data="stranger"
-            )
-        ]
-    )
-
-    markup = InlineKeyboardMarkup(inline_keyboard=buttons)
-
-    # Отправляем пользователю клавиатуру для выбора регистратора
-    await message.answer(
-        text="Спасибо!\nВыберите регистратора, которого знаете,\nчтобы он смог подтвердить вашу личность\nЕсли никого не знаете,\nНажмите кнопку 'Никого не знаю'",
-        reply_markup=markup,  # клавиатура подтверждения
-    )
-    # Устанавливаем состояние ожидания выбора регистратора
-    await state.set_state(FSM_short_registration.fill_registrator)
-
-
-# Этот хэндлер будет срабатывать на выбор регистратора
 @router.callback_query(
     StateFilter(FSM_short_registration.fill_registrator),
     lambda x: x.data.isdigit() or x.data == "stranger",
 )
 @log_handler_call
-async def process_registrator_choise(
-    callback: CallbackQuery, state: FSMContext, data: dict
-):
+async def process_registrator_choise(callback: CallbackQuery, state: FSMContext, data: dict):
     try:
-        logger.info(
-            f"Выбран регистратор {callback.data} пользователем {callback.from_user.id}"
-        )
-
-        # Удаляем сообщение с кнопками подтверждения, если доступно
+        logger.info(f"Выбран регистратор {callback.data} пользователем {callback.from_user.id}")
+        if not callback.message:
+            raise Exception("Сообщение не найдено")
+        if not callback.data:
+            logger.info(f"Пользователь {callback.from_user.id} не выбрал регистратора")
+            raise
         if callback.message and isinstance(callback.message, Message):
             try:
                 await callback.message.delete()
             except Exception as del_err:
                 logger.warning(f"Не удалось удалить сообщение: {del_err}")
-        else:
-            logger.warning(
-                "Сообщение недоступно для удаления (InaccessibleMessage или None)"
-            )
 
-        # Сохраняем знакомого модератора (callback.data нажатой кнопки) в контексте состояния по ключу "familiar"
         await state.update_data(familiar=callback.data)
-        tg_id = callback.from_user.id
 
-        # Заносим данные регистрации в строку соответствующего пользователя в базе данных
         user_dict = await state.get_data()
+        tg_id = callback.from_user.id
+        member_id = data["member_id"]
 
-        # Записываем в базу данных сведения об участнике
-        user_param = {}
-        user_param["tg_phone_number"] = user_dict.get("tg_phone_number")
-        user_param["tg_first_name"] = user_dict.get("tg_first_name")
-        user_param["tg_last_name"] = user_dict.get("tg_last_name")
+        user_param = {
+            "tg_phone_number": user_dict.get("tg_phone_number"),
+            "tg_first_name": user_dict.get("tg_first_name"),
+            "tg_last_name": user_dict.get("tg_last_name"),
+        }
         await update_user_data(tg_id, **user_param)
 
-        member_id = data["member_id"]
-        member_param = {}
-        member_param["resume"] = user_dict.get("resume")
+        member_param = {"resume": user_dict.get("resume")}
         await update_member_data(member_id, **member_param)
 
-        # Меняем статус пользователя на 'candidate'
-        success, result = await new_status_tg(
-            None, tg_id, "candidate"
-        )  # меняем статус пользователя на 'candidate'
+        success, result = await new_status_tg(None, tg_id, "candidate")
         if not success:
-            await callback.message.answer(text=result)  # type: ignore
+            await callback.message.answer(text=result)
             return
 
-        # Завершаем машину состояний
         await state.clear()
 
-        # Отправляем в чат сообщение о выходе из машины состояний
-        await callback.message.answer(  # type: ignore
-            text="Спасибо! Ваши данные сохранены.\nАдминистрация их проверит и даст вам соответствующие права\nВы вышли из машины состояний",
+        await callback.message.answer(
+            text="Спасибо! Ваши данные сохранены.\n"
+                 "Администрация их проверит и даст вам соответствующие права.\n"
+                 "Вы вышли из машины состояний.",
             reply_markup=await user_menu(callback.from_user.id),
         )
 
-        # Проверяем, что callback.data существует
-        if not callback.data:
-            logger.warning("Данные callback пусты")
-            await callback.message.edit_text("Произошла ошибка: данные не найдены.")  # type: ignore
-            raise ValueError("Callback data отсутствует")
-
-        # Если выбран регистратор, отправляем ему сообщение с просьбой подтвердить регистрацию
         if callback.data.isdigit():
-            success, result = await notify_registrator_short(
-                int(callback.data), tg_id, user_dict
-            )
+            success, result = await notify_registrator_short(int(callback.data), tg_id, user_dict)
             if not success:
-                await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")  # type: ignore
+                await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")
         elif callback.data == "stranger":
-            logger.info(f"Пользователь {tg_id} выбрал 'Никого не знаю'.")
             success, result = await notify_super_registrator_short(tg_id, user_dict)
             if not success:
-                await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")  # type: ignore
-            # Здесь тоже нужна функция уведомления администрации
+                await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
+
     except Exception as e:
         logger.error(f"Ошибка при выборе регистратора: {e}")
-        await callback.message.answer(text=f"Произошла ошибка: {str(e)}")  # type: ignore
-        # Завершаем машину состояний
+        if callback.message:  # Если сообщение не пустое
+            await callback.message.answer(text=f"Произошла ошибка: {str(e)}")
         await state.clear()
-
-
-# Этот хэндлер будет срабатывать, если во время выбора регистратора
-# будет введено/отправлено что-то некорректное
-@router.message(StateFilter(FSM_short_registration.fill_registrator))
-@log_handler_call
-async def warning_not_registrator(message: Message):
-    # Проверям, существует ли message.from_user
-    if not message.from_user:
-        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
-
-    logger.warning(
-        f"Некорректный ввод при выборе модератора от пользователя {message.from_user.id}"
-    )
-    await message.answer(
-        text="Пожалуйста, пользуйтесь кнопками при выборе модератора.\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel"
-    )
