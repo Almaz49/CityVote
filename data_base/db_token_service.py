@@ -3,7 +3,7 @@ import datetime
 import pandas as pd
 import os
 import secrets
-from data_base.db_func import AsyncDatabase, extract_member_id, extract_user_id, path_db
+from data_base.db_func import AsyncDatabase, path_db
 from typing import List, Optional
 from collections import defaultdict
 # Логирование (замените на ваш логгер)
@@ -38,7 +38,7 @@ def format_token(token: str) -> str:
 
 
 
-async def get_token_attempts_count(tg_id: int, club_id: int) -> int:
+async def get_token_attempts_count(member_id: int) -> int:
     """
     Возвращает число попыток ввода токена за последние 24 часа.
 
@@ -51,15 +51,15 @@ async def get_token_attempts_count(tg_id: int, club_id: int) -> int:
         await cursor.execute(
             """
             SELECT COUNT(*) FROM TokenAttempts
-            WHERE tg_id = ? AND club_id = ? AND attempt_time > ?
+            WHERE member_id = ? AND attempt_time > ?
             """,
-            (tg_id, club_id, twenty_four_hours_ago)
+            (member_id, twenty_four_hours_ago)
         )
         result = await cursor.fetchone()
         return result[0] if result else 0
 
 
-async def add_token_attempt(tg_id: int, club_id: int) -> None:
+async def add_token_attempt(member_id: int) -> None:
     """
     Добавляет запись о попытке ввода токена.
 
@@ -68,12 +68,12 @@ async def add_token_attempt(tg_id: int, club_id: int) -> None:
     """
     async with AsyncDatabase(path_db) as cursor:
         await cursor.execute(
-            "INSERT INTO TokenAttempts (tg_id, club_id) VALUES (?, ?)",
-            (tg_id, club_id)
+            "INSERT INTO TokenAttempts (member_id) VALUES (?, ?)",
+            (member_id,)
         )
 
 
-async def clear_old_attempts(tg_id: int, club_id: int) -> None:
+async def clear_old_attempts(member_id: int) -> None:
     """
     Удаляет попытки ввода токена старше 24 часов.
 
@@ -85,32 +85,20 @@ async def clear_old_attempts(tg_id: int, club_id: int) -> None:
         await cursor.execute(
             """
             DELETE FROM TokenAttempts
-            WHERE tg_id = ? AND club_id = ? AND attempt_time < ?
+            WHERE member_id = ? AND attempt_time < ?
             """,
-            (tg_id, club_id, twenty_four_hours_ago)
+            (member_id, twenty_four_hours_ago)
         )
 
 
-async def auto_approve_by_token(tg_id: int, club_id: int, token_id: int) -> tuple[bool, str]:
+async def auto_approve_by_token(member_id: int, token_id: int) -> tuple[bool, str]:
     """
     Привязывает токен к пользователю и автоматически регистрирует его как member.
 
-    :param tg_id: Telegram ID пользователя.
-    :param club_id: ID группы.
+    :param member_id: ID пользователя.
     :param token_id: ID валидного токена.
     :return: (success, message)
     """
-        # Получаем user_id
-    user_id = await extract_user_id(tg_id)
-    if not user_id:
-        return False, "Пользователь не найден"
-
-    # Получаем member_id
-    member_id = await extract_member_id(club_id, user_id)
-    if not member_id:
-        return False, "Участник не найден"
-
-
 
     try:
         async with AsyncDatabase(path_db) as cursor:

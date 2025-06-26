@@ -154,9 +154,8 @@ CREATE TABLE TgChats (
 );
 
 CREATE TABLE IF NOT EXISTS TokenAttempts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tg_id INTEGER NOT NULL,
-    club_id INTEGER NOT NULL,
-    attempt_time TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY(club_id) REFERENCES Clubs(id)
+    `id`           INTEGER PRIMARY KEY AUTOINCREMENT,
+    `attempt_time` TEXT    NOT NULL
+                         DEFAULT (datetime('now') ),
+    `member_id`    INTEGER REFERENCES Members (id)
 );

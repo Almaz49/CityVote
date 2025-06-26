@@ -7,10 +7,10 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from config_data.config import Config, load_config
+from data_base.db_member import new_status
 from data_base.db_token_service import (clear_old_attempts, get_token_attempts_count,
                                         add_token_attempt, auto_approve_by_token, is_valid_token)
 from data_base.telegram_bot_logic import get_club_info, list_of_members, new_status_tg, update_member_data, update_user_data
-from data_base.db_func import extract_user_id, extract_member_id
 from services.services import notify_registrator_short, notify_super_registrator_short
 from FSMs.FSMs import FSM_short_registration
 from keyboards.keyboards import  user_menu
@@ -44,7 +44,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         await callback.message.answer(text="Вы уже зарегистрированы в группе.")
         return
 
-    tg_id = callback.from_user.id
+    member_id = data["member_id"]
     club_id = data["club_id"]
 
     club_info = await get_club_info(club_id)
@@ -54,8 +54,8 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         return
 
     # Очистка старых попыток ввода токена
-    await clear_old_attempts(tg_id, club_id)
-    attempts = await get_token_attempts_count(tg_id, club_id)
+    await clear_old_attempts(member_id)
+    attempts = await get_token_attempts_count(member_id)
     if attempts >= 3:
         await callback.message.answer("Превышено количество попыток ввода токена.")
         return
@@ -98,7 +98,7 @@ async def process_entered_token_or_resume(message: Message, state: FSMContext, d
     if not message.from_user:
         raise ValueError("Отправтель сообщения отсутствует (from_user == None)")
     token_input = message.text.strip()
-    tg_id = message.from_user.id
+    member_id = data["member_id"]
     club_id = data["club_id"]
 
     # Проверяем, похож ли ввод на токен
@@ -108,51 +108,45 @@ async def process_entered_token_or_resume(message: Message, state: FSMContext, d
         result = await is_valid_token(clean_token, club_id)
         if not result or result.get("status") not in ["valid"]:
             await message.answer("Токен не действителен. Попробуйте снова или продолжите анкету.")
-            await add_token_attempt(tg_id, club_id)
+            await add_token_attempt(member_id)
             return
         token_id = result.get("token_id")
         if token_id:
-            success, msg = await auto_approve_by_token(tg_id, club_id, token_id)
+            success, msg = await auto_approve_by_token(member_id, token_id)
             if success:
                 await message.answer("Авторизация успешна! Вы участник группы.")
                 await state.clear()
                 return
             else:
                 await message.answer(msg)
-                await add_token_attempt(tg_id, club_id)
+                await add_token_attempt(member_id)
                 return
         else:
             await message.answer("Токен недействителен. Попробуйте снова или продолжите анкету.")
-            await add_token_attempt(tg_id, club_id)
+            await add_token_attempt(member_id)
             return
     else:
         # Это не токен → считаем, что это резюме
-        logger.info(f"Введено резюме кандидата: {token_input} от пользователя {tg_id}")
+        logger.info(f"Введено резюме кандидата: {token_input} от пользователя {member_id}")
 
-        # Сохраняем введенное значение как resume
-        user_id = await extract_user_id(tg_id)
-        if not user_id:
-            await message.answer("Произошла ошибка: не найден ваш профиль.")
-            return
-        member_id = await extract_member_id(club_id, user_id)
-
-        if not member_id:
-            await message.answer("Произошла ошибка: не удалось найти ваш профиль.")
-            return
 
         await state.update_data(
             resume=token_input,
-            tg_id=tg_id,
+            member_id=member_id,
             tg_first_name=message.from_user.first_name,
             tg_last_name=message.from_user.last_name,
         )
 
+        user_id = data.get("user_id")
+
         # Обновляем данные в БД
-        await update_user_data(user_id, tg_first_name=message.from_user.first_name, tg_last_name=message.from_user.last_name)
-        await update_member_data(member_id, resume=token_input)
+        if user_id:
+            await update_user_data(user_id, tg_first_name=message.from_user.first_name, tg_last_name=message.from_user.last_name)
+        if member_id:
+            await update_member_data(member_id, resume=token_input)
 
         # Меняем статус на candidate
-        success, result = await new_status_tg(None, tg_id, "candidate")
+        success, result = await new_status(None, member_id, "candidate")
         if not success:
             await message.answer(result)
             return
