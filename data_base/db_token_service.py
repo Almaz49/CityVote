@@ -179,7 +179,7 @@ async def create_tokens_for_lot(
     count: int = 100,
     token_length: int = 9,
     validity_days: int = 30,
-    time_of_action_months: int = 60,
+    time_of_action_months: int = 12,
     creator_id: Optional[int] = None,
     comment: str = ""  # Добавлен параметр
 ) -> dict:
@@ -244,7 +244,7 @@ async def create_tokens_for_lot(
                 token, club_id, creator_id, 'valid', validity,
                 time_of_action, lot, i, created_at, comment
             ))
-            tokens.append(token)
+            tokens.append(format_token(token))
     return {
         'tokens': tokens,
         'lot': lot
@@ -255,6 +255,7 @@ async def create_tokens_without_lot(
     count: int = 100,
     token_length: int = 9,
     validity_days: int = 30,
+    time_of_action_months: int = 12,
     creator_id: Optional[int] = None,
     comment: str = ""  # Добавлен параметр
 ) -> List[str]:
@@ -264,6 +265,7 @@ async def create_tokens_without_lot(
     :param count: Количество токенов
     :param token_length: Длина токена
     :param validity_days: Срок действия в днях
+    :param time_of_action_months: Срок действия действия по токену
     :param creator_id: Кто создал токен
     :param comment: Комментарий к каждому токену
     :return: Список созданных токенов
@@ -273,8 +275,11 @@ async def create_tokens_without_lot(
 
     tokens = []
     created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    time_of_action = (
+    validity = (
         datetime.datetime.now() + datetime.timedelta(days=validity_days)
+    ).strftime("%Y-%m-%d %H:%M:%S")
+    time_of_action = (
+        datetime.datetime.now() + datetime.timedelta(days=time_of_action_months*30.44)
     ).strftime("%Y-%m-%d %H:%M:%S")
     async with AsyncDatabase(path_db) as cursor:
         for i in range(1, count + 1):
@@ -292,10 +297,10 @@ async def create_tokens_without_lot(
                     created_at, comment
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                token, club_id, creator_id, 'valid', f'{validity_days} days',
+                token, club_id, creator_id, 'valid', validity,
                 time_of_action, created_at, comment
             ))
-            tokens.append(token)
+            tokens.append(format_token(token))
     return tokens
 
 
@@ -339,102 +344,6 @@ async def get_lot_info(club_id: int, lot_number: int) -> dict:
     result['tokens_by_status'] = dict(result['tokens_by_status'])
     return result
 
-async def issue_tokens(
-    club_id: int,
-    lot_number: Optional[int] = None,
-    count: int = 1,
-    create_new_if_needed: bool = True,
-    token_length: int = 9,
-    validity_days: int = 30,
-    creator_id: Optional[int] = None,
-    comment: Optional[str] = None
-) -> str|List[str]:
-    """
-    Выдаёт заданное количество токенов со статусом 'valid'.
-
-    :param club_id: ID клуба
-    :param lot_number: Номер лота (если None — ищем вне лотов)
-    :param count: Сколько токенов нужно выдать
-    :param create_new_if_needed: Создать новые токены, если не хватает
-    :param token_length: Длина токена
-    :param validity_days: Срок действия новых токенов
-    :param creator_id: Кто создаёт новые токены
-    :param comment: Комментарий
-    :return: строка или список отформатированных токенов
-    """
-    tokens_to_issue = []
-
-    async with AsyncDatabase(path_db) as cursor:
-        # Шаг 1: Получаем доступные токены
-        if lot_number is not None:
-            query = """
-                SELECT id, token FROM Tokens
-                WHERE club_id = ? AND lot = ? AND status = 'valid'
-                ORDER BY number_in_lot
-                LIMIT ?
-            """
-            params = (club_id, lot_number, count)
-        else:
-            query = """
-                SELECT id, token FROM Tokens
-                WHERE club_id = ? AND lot IS NULL AND status = 'valid'
-                LIMIT ?
-            """
-            params = (club_id, count)
-
-        await cursor.execute(query, params)
-        available_tokens = list(await cursor.fetchall())
-
-        if len(available_tokens) < count and create_new_if_needed:
-            needed = count - len(available_tokens)
-            if lot_number is not None:
-                new_tokens_info = await create_tokens_for_lot(
-                    club_id=club_id,
-                    lot=lot_number,
-                    count=needed,
-                    token_length=token_length,
-                    validity_days=validity_days,
-                    creator_id=creator_id
-                )
-                new_tokens = new_tokens_info['tokens']
-            else:
-                new_tokens = await create_tokens_without_lot(
-                    club_id=club_id,
-                    count=needed,
-                    token_length=token_length,
-                    validity_days=validity_days,
-                    creator_id=creator_id
-                )
-
-            # Переводим новые токены в список (id будет None, но их нужно добавить)
-            new_tokens_with_ids = []
-            for token in new_tokens:
-                await cursor.execute("""
-                    SELECT id FROM Tokens WHERE token = ? AND club_id = ?
-                """, (token, club_id))
-                row = await cursor.fetchone()
-                if row:
-                    new_tokens_with_ids.append((row[0], token))
-
-            available_tokens += new_tokens_with_ids
-
-        elif len(available_tokens) < count:
-            raise ValueError(f"Недостаточно токенов. Запрошено: {count}, доступно: {len(available_tokens)}")
-
-        issued_ids = []
-        formatted_tokens = []
-
-        for token_id, token in available_tokens[:count]:
-            issued_ids.append(token_id)
-            formatted_tokens.append(format_token(token))
-
-
-    if count == 1:
-        return formatted_tokens[0]
-    else:
-        return formatted_tokens
-
-
 async def export_tokens_to_excel(
     club_id: int,
     lot_number: Optional[int] = None,
@@ -452,7 +361,7 @@ async def export_tokens_to_excel(
     """
 
     query = """
-        SELECT id, token, validity, time_of_action, status, number_in_lot
+        SELECT id, token, validity, time_of_action, status, lot, number_in_lot, created_at, comment
         FROM Tokens
         WHERE club_id = ?
     """
@@ -474,7 +383,7 @@ async def export_tokens_to_excel(
         raise ValueError("Нет токенов для экспорта.")
 
     df = pd.DataFrame(rows, columns=[
-        'ID', 'Token', 'Validity', 'Time of Action', 'Status', 'Number in Lot'
+        'ID', 'Token', 'Validity', 'Time of Action', 'Status', 'Lot', 'Number in Lot', 'Created at', 'Comment'
     ])
 
     # Сохраняем в Excel

@@ -180,3 +180,4 @@ class FSMTokenManagement(StatesGroup):
     fill_token_count = State()
     fill_token_value = State()
     fill_token_comment = State()
+    fill_1_token_comment = State()
