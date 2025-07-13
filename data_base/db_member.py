@@ -2,6 +2,9 @@
 # ФУНКЦИИ БАЗЫ ДАННЫХ ПО РАБОТЕ С УЧАСТНИКАМИ
 import datetime
 import logging
+import os
+
+import pandas as pd
 
 from data_base.db_func import *
 from utils import log_function_call
@@ -40,6 +43,43 @@ async def new_premember(club_id, user_id):
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при добавлении нового участника: {e}")
             raise
+
+# Функция выяснения статуса участника по tg_id.
+# Если участник с таким телеграм id не обнаружен,
+# заносит его в БД в таблицы Users и Members (в колонке club_id записывается id группы данного бота),
+# без статуса (что равнозначно статусу user). Если пользователь обнаружен, но не является участником группы -
+# он заносится в список участников группы, которую обслуживает телеграм-бот.
+# Возвращает список статусов типа ['admin', 'registrator']
+
+@log_function_call
+async def extract_status_tg_id(club_id, tg_id):
+    """
+    Brief: Извлечение статуса участника по его tg_id
+    :param club_id: id группы
+    :param tg_id: id пользователя в телеграме
+    :return: список статусов
+    """
+    logger.info(f"Проверка статуса участника по tg_id={tg_id}")
+    user_id = await extract_user_id(tg_id)
+
+    if not user_id:
+        logger.info(f"Создание нового пользователя с tg_id={tg_id}")
+        await new_user_tg(tg_id)
+        user_id = await extract_user_id(tg_id)
+        await new_premember(club_id, user_id)
+        status = ["user"]
+    else:
+        member_id = await extract_member_id(club_id, user_id)
+
+        if not member_id:
+            logger.info(f"Добавление пользователя с tg_id={tg_id} в группу")
+            await new_premember(club_id, user_id)
+            status = ["user"]
+        else:
+            status = await extract_status(member_id)
+
+    logger.info(f"Статус участника с tg_id={tg_id}: {status}")
+    return status
 
 
 # Запись нового статуса (registrator - member_id того, кто присвоил статус,
@@ -107,7 +147,7 @@ async def new_status(registrator, member_id, status, token_id=None):
                     logger.info(
                         f"Статус '{'candidate'}' удален для member_id: {member_id}"
                     )
-                    # TODO: Проверить, был ли уже записан токэн. Если да, то старому токену присваивается статус 'old'
+                    # Проверяем, был ли уже записан токэн. Если да, то старому токену присваивается статус 'old'
                     await cursor.execute(
                         """SELECT token FROM Members WHERE id = ?""",
                         (member_id,),
@@ -204,6 +244,9 @@ async def trust(member_id, proxy):
 
 @log_function_call
 async def is_votist(member_id):
+    """
+    Проверка, является ли пользователь 'votist'
+    """
     async with AsyncDatabase(path_db) as cursor:
         try:
             # Получаем все статусы пользователя
@@ -214,9 +257,16 @@ async def is_votist(member_id):
             has_member = ("member",) in user_statuses
             has_proxy = ("proxy",) in user_statuses
             has_votist = ("votist",) in user_statuses
+            has_banned = ("banned",) in user_statuses
+            has_frozen = ("frozen",) in user_statuses
+
 
             if not has_member:
                 flag = False  # Не член клуба — не голосует
+            elif has_banned:
+                flag = False  # Забанен — не голосует
+            elif has_frozen:
+                flag = False  # Заморожен — не голосует
             elif has_proxy:
                 flag = True  # Сам представитель — голосует
             else:
@@ -558,13 +608,14 @@ async def is_delegate(club_id, member_id):
     logger.debug(f"""Пользователь {member_id} не имеет право быть делегатом""")
     return False
 
-
-async def remove_status_votist_for_non_members(club_id: int):
+@log_function_call
+async def remove_status_votist_for_non_votist(club_id: int):
     """
     Проверка правильности статуса 'votist' для всех пользователей
     """
     async with AsyncDatabase(path_db) as cursor:
         # Удаляем статус 'votist' у тех, кто не имеет статус 'member'
+        # и у тех, кто имеет статус 'banned' или 'frozen'
         query_delete = """
         DELETE FROM Status
         WHERE status = 'votist'
@@ -577,17 +628,27 @@ async def remove_status_votist_for_non_members(club_id: int):
                 FROM Status
                 WHERE Status.status = 'member'
             )
+            OR Members.id IN (
+                SELECT Status.member_id
+                FROM Status
+                WHERE Status.status = 'banned' OR Status.status = 'frozen'
+            )
         )
         """
         await cursor.execute(query_delete, (club_id,))
 
 
+@log_function_call
 async def extract_list_of_full_member_ids(club_id):
     async with AsyncDatabase(path_db) as cursor:
         # Получаем членов группы с актуальным статусом 'member'
         query_select = """
-        SELECT Members.id AS member_id
-        FROM Members
+        SELECT
+        Users.tg_id AS tg_id,
+        Members.id AS member_id
+        FROM Users
+        INNER JOIN Members ON Users.id = Members.user_id
+        Members
         WHERE Members.club_id = ?
           AND Members.id IN (
             SELECT Status.member_id
@@ -596,8 +657,262 @@ async def extract_list_of_full_member_ids(club_id):
           )
         """
         await cursor.execute(query_select, (club_id,))
-        members = list(await cursor.fetchall())
+        result = await fetch_as_dict(cursor)
         logger.info(
-            f"Найдено {len(members)} участников с правом голоса. Обновляем статус 'votist'"
+            f"Найдено {len(result)} участников с правом голоса. Обновляем статус 'votist'"
         )
-        return members
+        return result
+
+@log_function_call
+async def check_token_expiration(member_id):
+    """
+    Проверяет, истел ли срок токена для пользователя с указанным member_id.
+    Если истек - пользователю присваивается статус 'frozen', а токену - статус 'old'.
+    Также у пользователя удаляется статус 'votist', если он есть.
+
+    :param member_id: ID пользователя (member_id) для проверки.
+    :return: True, если срок токена истек, и False, если срок токена не истек.
+    """
+    now = datetime.datetime.now()
+    async with AsyncDatabase(path_db) as cursor:
+        query = """
+        SELECT time_of_action, id FROM Tokens
+        WHERE id IN
+        (SELECT token FROM Members WHERE id = ?)
+        """
+        await cursor.execute(query, (member_id,))
+        result = await cursor.fetchone()
+        if result is None:
+            raise ValueError("Токен не найден")
+            return False
+        expires_at, token_id = result
+        expires_at_dt = datetime.datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
+        if expires_at_dt < now:
+            await cursor.execute(
+                "UPDATE Tokens SET status = 'old' WHERE id = ?", (token_id,)
+                )
+            await cursor.execute(
+                "INSERT OR IGNORE INTO Status (member_id, status) VALUES (?, 'frozen')",(member_id,)
+                        )
+            await cursor.execute(
+                "DELETE FROM Status WHERE member_id = ? AND status = 'votist'",(member_id,)
+                        )
+            return False
+        else:
+            return expires_at_dt
+
+@log_function_call
+async def ban_member(member_id: int, admin: int, ban_time_days: int) -> None:
+    """
+    Функция бана пользователя.
+    :param member_id: ID пользователя, которого нужно забанить
+    :param admin: ID админа,
+    :param ban_time_days: Время бана в днях.
+    """
+
+    now = datetime.datetime.now()
+    reg_time = now.strftime("%Y-%m-%d %H:%M:%S")
+    ban_expires_at = (now + datetime.timedelta(days=ban_time_days)).strftime("%Y-%m-%d %H:%M:%S")
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute(
+            "INSERT OR IGNORE INTO Status (member_id, status) VALUES (?, 'banned')",(member_id,)
+                    )
+        await cursor.execute(
+            "UPDATE Members SET ban_expires_at = ? WHERE id = ?", (ban_expires_at, member_id)
+        )
+        await cursor.execute(
+            """INSERT OR IGNORE INTO Registrations (object_type, object_id, registrator, status, time_reg)
+            VALUES ('member', ?, ?, 'banned', ?)""",
+            (member_id, admin, reg_time)
+        )
+
+
+async def check_ban_status(member_id):
+    """
+    Проверка бана пользователя.
+    Если срок бана истек, то удаляется бан
+    :param member_id: id пользователя
+    :return: Дата бана, если бан сохраняется, False если срок бана истек или бан не найден
+
+    """
+    now = datetime.datetime.now()
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute("""
+            SELECT ban_expires_at FROM Members
+            WHERE id = ?
+        """, (member_id,))
+        result = await cursor.fetchone()
+        if result is None:
+            # На всякий случай удаляем статус бана, которого не должно быть
+            await cursor.execute("""
+                DELETE FROM Status
+                WHERE member_id = ? AND status = 'banned'
+            """, (member_id,))
+            return False
+        ban_expires_at = result[0]
+        # Пытаемся распарсить дату окончания бана
+        try:
+            ban_expires_at_dt = datetime.datetime.strptime(ban_expires_at, "%Y-%m-%d %H:%M:%S")
+            ban_expires_at_date = ban_expires_at_dt.date()
+        except (ValueError, TypeError):
+            # Если дата невалидна или отсутствует, считаем бан истекшим
+            ban_expires_at_dt = None
+        if ban_expires_at_dt is None or ban_expires_at_dt < now:
+            await cursor.execute("""
+                UPDATE Members SET ban_expires_at = NULL
+                WHERE id = ?
+            """, (member_id,))
+            await cursor.execute("""
+                DELETE FROM Status
+                WHERE member_id = ? AND status = 'banned'
+            """, (member_id,))
+            await cursor.execute(
+                """INSERT OR IGNORE INTO Registration (object_type, object_id, status, time_reg)
+                VALUES ('member', ?, 'unbanned', ?)""",
+                (member_id, now)
+        )
+
+            return False
+        else:
+            return ban_expires_at_date
+
+
+@log_function_call
+async def check_ban_status_all_members(club_id: int):
+    """
+    Проверка бана у всех участников.
+    Если срок бана истёк или отсутствует (NULL или пустая строка),
+    удаляется статус 'banned', обнуляется ban_expires_at,
+    и добавляется запись в таблицу 'Registrations' со статусом 'unbanned'.
+
+    :param club_id: ID группы
+    """
+    now = datetime.datetime.now()
+    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+
+    async with AsyncDatabase(path_db) as cursor:
+        # Получаем всех участников группы
+        await cursor.execute("""
+            SELECT id, ban_expires_at FROM Members
+            WHERE club_id = ?
+        """, (club_id,))
+        rows = await cursor.fetchall()
+
+        if not rows:
+            return False
+
+        for row in rows:
+            member_id = row[0]
+            ban_expires_at = row[1]
+
+            # Пытаемся распарсить дату окончания бана
+            try:
+                ban_expires_at_dt = datetime.datetime.strptime(ban_expires_at, "%Y-%m-%d %H:%M:%S")
+            except (ValueError, TypeError):
+                # Если дата невалидна или отсутствует, считаем бан истекшим
+                ban_expires_at_dt = None
+
+            # Если бан истёк или невалиден
+            if ban_expires_at_dt is None or ban_expires_at_dt < now:
+                # Обнуляем срок бана
+                await cursor.execute("""
+                    UPDATE Members SET ban_expires_at = NULL
+                    WHERE id = ?
+                """, (member_id,))
+
+                # Логируем разбан
+                await cursor.execute(
+                    """INSERT OR IGNORE INTO Registration (object_type, object_id, status, time_reg)
+                    VALUES ('member', ?, 'unbanned', ?)""",
+                    (member_id, now_str)
+                )
+
+        # Удаляем статус 'banned' у всех, у кого истёк или отсутствует срок бана
+        await cursor.execute("""
+            DELETE FROM Status
+            WHERE member_id IN (
+                SELECT id
+                FROM Members
+                WHERE ban_expires_at IS NULL OR ban_expires_at = ''
+            ) AND status = 'banned'
+        """)
+
+@log_function_call
+async def export_list_of_members(
+    club_id: int,
+    status: str | list[str] = "all",
+    filename: str = "members_export.xlsx"
+    ):
+    """
+    Экспортирует список участников клуба в Excel-файл.
+
+    :param club_id: ID клуба
+    :param status: Статус участников (если указано "all", то выводятся все)
+    :param filename: Имя файла для сохранения
+    :return: Путь к файлу
+    """
+    if isinstance(status, str):
+        if status != "all":
+            status = [status]
+    elif isinstance(status, list):
+        pass
+    else:
+        raise ValueError("Параметр status должен быть строкой или списком строк")
+    # Получаем список участников с дополнительным полем info_level из таблицы Members
+    query = """
+    SELECT
+        Users.first_name,
+        Users.last_name,
+        Users.tg_id AS tg_id,
+        Users.tg_first_name,
+        Users.tg_last_name,
+        Users.username,
+        Users.id AS user_id,
+        Members.id AS member_id,
+        Members.resume,
+        Members.description,
+        Members.info_level,
+        Tokens.lot,
+        Tokens.number_in_lot,
+        Tokens.token,
+        Tokens.status AS token_status,
+        Tokens.comment,
+        Tokens.time_of_action
+    FROM Members
+    INNER JOIN Users ON Users.id = Members.user_id
+    LEFT JOIN Tokens ON Tokens.id = Members.token
+    WHERE Members.club_id = ?
+    """
+    params = (club_id,)
+    # Подзапрос проверяет, есть ли у участника указанный статус в таблице Status
+    if status != "all":
+        placeholders = ", ".join("?" for _ in status)
+        query += f"""
+        AND Members.id IN (
+            SELECT member_id
+            FROM Status
+            WHERE status IN ({placeholders})
+        )
+        """
+        params += tuple(status)
+
+    logger.info(f"Выполняется запрос: {query}")
+    logger.info(f"Параметры для запроса: {params}")
+
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(query, params)
+            rows = await cursor.fetchall()
+            # Получаем названия колонок автоматически
+            columns = [desc[0] for desc in cursor.description]
+
+            logger.info("Запрос успешно выполнен.")
+            df = pd.DataFrame(rows, columns=columns)
+
+            # Сохраняем в Excel
+            df.to_excel(filename, index=False)
+            return os.path.abspath(filename)
+
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при выполнении запроса: {e}")
+            raise

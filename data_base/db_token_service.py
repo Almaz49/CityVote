@@ -10,12 +10,14 @@ from collections import defaultdict
 import logging
 
 from data_base.db_member import new_status
+from utils.utils import log_function_call
 logger = logging.getLogger(__name__)
 
-
+@log_function_call
 def generate_numeric_token(length=9):
     return ''.join(secrets.choice('0123456789') for _ in range(length))
 
+@log_function_call
 async def is_token_unique(cursor, token: str) -> bool:
     await cursor.execute(
         "SELECT 1 FROM Tokens WHERE token = ?",
@@ -24,6 +26,7 @@ async def is_token_unique(cursor, token: str) -> bool:
     result = await cursor.fetchone()
     return result is None
 
+@log_function_call
 def format_token(token: str) -> str:
     """
     Форматирует токен с разделителями: XX-XXX-XXX-XXX
@@ -37,7 +40,7 @@ def format_token(token: str) -> str:
     return "-".join(chunks[::-1])
 
 
-
+@log_function_call
 async def get_token_attempts_count(member_id: int) -> int:
     """
     Возвращает число попыток ввода токена за последние 24 часа.
@@ -58,21 +61,20 @@ async def get_token_attempts_count(member_id: int) -> int:
         result = await cursor.fetchone()
         return result[0] if result else 0
 
-
+@log_function_call
 async def add_token_attempt(member_id: int) -> None:
     """
     Добавляет запись о попытке ввода токена.
 
     :param tg_id: Telegram ID пользователя.
-    :param club_id: ID группы.
     """
     async with AsyncDatabase(path_db) as cursor:
         await cursor.execute(
-            "INSERT INTO TokenAttempts (member_id) VALUES (?, ?)",
+            "INSERT INTO TokenAttempts (member_id) VALUES (?)",
             (member_id,)
         )
 
-
+@log_function_call
 async def clear_old_attempts(member_id: int) -> None:
     """
     Удаляет попытки ввода токена старше 24 часов.
@@ -90,7 +92,7 @@ async def clear_old_attempts(member_id: int) -> None:
             (member_id, twenty_four_hours_ago)
         )
 
-
+@log_function_call
 async def auto_approve_by_token(member_id: int, token_id: int) -> tuple[bool, str]:
     """
     Привязывает токен к пользователю и автоматически регистрирует его как member.
@@ -107,17 +109,33 @@ async def auto_approve_by_token(member_id: int, token_id: int) -> tuple[bool, st
                 "UPDATE Tokens SET status = 'used' WHERE id = ?", (token_id,)
             )
 
+
         # Обновляем статус пользователя на 'member'
         _, msg = await new_status(registrator=None, member_id=member_id, status="member", token_id=token_id)
 
         if not _:
             return False, f"Не удалось обновить статус: {msg}"
 
+        async with AsyncDatabase(path_db) as cursor:
+            # Удаляем статус 'frozen' у пользователя, если был
+            await cursor.execute(
+                """
+                DELETE FROM Status
+                WHERE member_id = ?
+                AND status = 'frozen'
+                """,
+                (member_id,)
+            )
+
+
+
+
         return True, "Автоматическая регистрация успешна"
     except Exception as e:
         logger.error(f"Ошибка при автоматической регистрации: {e}")
         return False, f"Ошибка: {e}"
 
+@log_function_call
 async def is_valid_token(token: str, club_id: int):
     """
     Проверяет, валиден ли токен для указанной группы.
@@ -172,7 +190,7 @@ async def is_valid_token(token: str, club_id: int):
             return None
 
 
-
+@log_function_call
 async def create_tokens_for_lot(
     club_id: int,
     lot: Optional[int] = None,
@@ -193,7 +211,7 @@ async def create_tokens_for_lot(
     :param time_of_action_months: Срок действия действия по токену
     :param creator_id: Кто создал токен (ID пользователя)
     :param comment: Комментарий к токенам этого лота
-    :return: {'tokens': [...], 'lot': ...}
+    :return: {'tokens': {ключ - номер тоена в лоте, значение - токен}, 'lot': ...}
     """
     if not comment.strip():
         raise ValueError("Комментарий обязателен при создании токенов")
@@ -218,13 +236,15 @@ async def create_tokens_for_lot(
             while next_lot in existing_lots:
                 next_lot += 1
             lot = next_lot
-            max_number_in_lot = 0
+            max_number_in_lot = 1
         else:
             await cursor.execute("""
                 SELECT number_in_lot FROM Tokens WHERE club_id = ? AND lot = ?
             """, (club_id, lot))
             result = await cursor.fetchall()
-            max_number_in_lot = max([row[0] for row in result]) if result else 0
+            max_number_in_lot = max([row[0] for row in result]) + 1 if result else 1
+
+        tokens = {} # Словарь для хранения токенов  (ключ - номер в лоте, значение - токен)
 
         for i in range(max_number_in_lot, count + max_number_in_lot):
             attempts = 0
@@ -244,12 +264,13 @@ async def create_tokens_for_lot(
                 token, club_id, creator_id, 'valid', validity,
                 time_of_action, lot, i, created_at, comment
             ))
-            tokens.append(format_token(token))
+            tokens[i] = format_token(token)
     return {
         'tokens': tokens,
         'lot': lot
     }
 
+@log_function_call
 async def create_tokens_without_lot(
     club_id: int,
     count: int = 100,
@@ -304,7 +325,7 @@ async def create_tokens_without_lot(
     return tokens
 
 
-
+@log_function_call
 async def get_lot_info(club_id: int, lot_number: int) -> dict:
     """
     Возвращает информацию о лоте: кол-во токенов по статусам и списки токенов.
@@ -344,6 +365,7 @@ async def get_lot_info(club_id: int, lot_number: int) -> dict:
     result['tokens_by_status'] = dict(result['tokens_by_status'])
     return result
 
+@log_function_call
 async def export_tokens_to_excel(
     club_id: int,
     lot_number: Optional[int] = None,
@@ -379,12 +401,14 @@ async def export_tokens_to_excel(
         await cursor.execute(query, tuple(params))
         rows = await cursor.fetchall()
 
-    if not rows:
-        raise ValueError("Нет токенов для экспорта.")
+        if not rows:
+            raise ValueError("Нет токенов для экспорта.")
 
-    df = pd.DataFrame(rows, columns=[
-        'ID', 'Token', 'Validity', 'Time of Action', 'Status', 'Lot', 'Number in Lot', 'Created at', 'Comment'
-    ])
+        # Получаем названия колонок автоматически
+        columns = [desc[0] for desc in cursor.description]
+
+        logger.info("Запрос успешно выполнен.")
+        df = pd.DataFrame(rows, columns=columns)
 
     # Сохраняем в Excel
     df.to_excel(filename, index=False)
@@ -402,6 +426,7 @@ async def mark_token_as_old(token: str) -> bool:
         """, (token,))
         return cursor.rowcount > 0
 
+@log_function_call
 async def mark_token_as_used(token: str, memder_id: int) -> bool:
     """
     Помечает токен как использованный.

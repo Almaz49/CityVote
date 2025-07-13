@@ -7,7 +7,7 @@ from pprint import pformat
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 
-from data_base.telegram_bot_logic import extract_user_member_id
+from data_base.db_func import extract_user_member_id
 from keyboards.keyboards import user_menu
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,13 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
 
             # Извлекаем club_id, user_id и member_id только если tg_id — целое число
             club_id = data.get("club_id", None)
+            if not club_id:  # type: ignore
+                logger.warning(
+                    "club_id не определён. Пропущено извлечние user_id и member_id."
+                )
+                return
             if isinstance(tg_id, int):
-                user_id, member_id = await extract_user_member_id(tg_id)
+                user_id, member_id = await extract_user_member_id(club_id, tg_id)
             else:
                 user_id, member_id = None, None
                 logger.warning(

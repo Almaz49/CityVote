@@ -180,4 +180,22 @@ class FSMTokenManagement(StatesGroup):
     fill_token_count = State()
     fill_token_value = State()
     fill_token_comment = State()
+    fill_token_count_issue = State()
+    fill_token_comment_issue = State()
     fill_1_token_comment = State()
+
+class FSMEnterToken(StatesGroup):
+    fill_token = State()
+
+# FSM процедуры отправки в бан
+class FSMBan(StatesGroup):
+    # Создаем экземпляры класса State, последовательно
+    # перечисляя возможные состояния, в которых будет находиться
+    # бот в разные моменты взаимодействия с пользователем
+    fill_ID_User = State()  # Состояние ожидания ввода ID
+    fill_OK = State()  # Состояние ожидания подтверждения
+    fill_period = State()
+
+# FSM экспорта списка участников
+class FSMExportMembers(StatesGroup):
+    fill_status = State()

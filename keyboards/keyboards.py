@@ -108,7 +108,7 @@ buttons = {
         "delegate": ["new_voting"],  # Для статуса 'delegate'
     },
     "settings": {  # Категория: Настройки
-        "admin": ["new_registrator", "registrators_list","tokens"],  # Для статуса 'admin'
+        "admin": ["new_registrator", "registrators_list","tokens","admin_members"],  # Для статуса 'admin'
         "owner": ["new_status", "admin_bot"],  # Для статуса 'owner'
         "superregistrator": ["tokens"],  # Для статуса 'superregistrator'"
     },
@@ -161,6 +161,7 @@ def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton
 async def user_menu(
     tg_id: int | None = None, status: list[str] | None = None
 ) -> InlineKeyboardMarkup | None:
+    # TODO: Поменять tg_id на member_id в функции и всех ее вызовах. Или вообще убрать tg_id
     try:
         if not status:
             status = await extract_status_tg(tg_id)

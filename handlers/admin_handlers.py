@@ -1,31 +1,28 @@
 # Модуль admin_handlers , сожержит хэндлеры для админов и владельца группы
 
 import logging
+import os
 
-from aiogram import Bot, F, Router
+from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message)
-
-from config_data.config import Config, load_config
-from data_base.telegram_bot_logic import *
+                           InlineKeyboardMarkup, Contact, Message)
+from data_base.db_func import extract_user_member_id, get_profile
+from data_base.db_member import ban_member, new_status, export_list_of_members
+from data_base.db_vote import delete_variant
+from data_base.telegram_bot_logic import extract_new_registrator_data, new_status_tg
 from filters.filters import StatusFilter
-from FSMs.FSMs import FSMNewRegistrator
+from FSMs.FSMs import FSMExportMembers, FSMNewRegistrator, FSMBan
 from keyboards.keyboards import *
 from manager.manager import *
-from services.services import send_notification_to_user
+from services.services import send_file_to_user, send_notification_to_user
 from utils import log_handler_call
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# Загружаем конфиг в переменную config
-config: Config = load_config(".env")
-bot = Bot(token=config.tg_bot.token)
-path_db = config.db.path_db  # путь к базе данных
-club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -1136,3 +1133,331 @@ async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
         )
 
         raise  # Передаем исключение middleware для обработки
+
+
+# При нажатии кнопки "Управление участниками" выдается клавиатура с кнопками "экспорт списка участников", "забанить", "разбанить", "Основное меню"
+@router.callback_query(F.data=="admin_members")
+async def admin_members(callback: CallbackQuery) -> None:
+    if not callback.message:
+        raise ValueError("Callback message is None")
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=LEXICON.get("export_members","Экспорт списка участников"), callback_data="export_members"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text=LEXICON.get("ban_member","Забанить"), callback_data="ban_member"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text=LEXICON.get("unban_member","Разбанить"), callback_data="unban_member"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=LEXICON.get("back_to_menu","Назад"), callback_data="back_to_menu"
+            )
+        ]
+    ]
+    markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await callback.message.answer(text="Выберите действие:", reply_markup=markup)
+
+
+"""
+Хэндлеры бана пользователя
+"""
+@router.callback_query(StateFilter(default_state), F.data == "ban_member")
+async def ban_user(callback: CallbackQuery, state: FSMContext, data:dict) -> None:
+    """
+    Хендлер нажатия кнопки "Забанить"
+    """
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Добавляем данные для SafeEditMiddleware
+    data[
+        "response_text"
+    ] = """Пожалуйста, введите телеграм-ID участника,
+которого вы хотите забанить или отправьте контакт с ID"""
+    data["reply_markup"] = None  # Если клавиатура не нужна, устанавливаем None
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(  # type: ignore
+        text=data["response_text"], reply_markup=data["reply_markup"]
+    )
+
+    # Устанавливаем состояние ожидания ввода ID
+    await state.set_state(FSMBan.fill_ID_User)
+    logger.info(f"Установлено состояние: {await state.get_state()}")
+
+# Этот хэндлер будет срабатывать, если введен корректный ID (число)
+# и переводить в состояние подтверждения
+@router.message(
+    StateFilter(FSMBan.fill_ID_User), ~F.contact, (lambda x: x.text.isdigit())
+)
+@log_handler_call
+async def process_ban_user_id_sent(message: Message, state: FSMContext, data: dict):
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
+    logger.info(
+        f"Введенный ID пользователя: {message.text} от пользователя {message.from_user.id}"
+    )
+    if message.text is not None:
+        try:
+            user_tg_id = int(message.text.strip())
+        except ValueError:
+            await message.answer("Пожалуйста, введите корректное числовое значение.")
+            raise ValueError("Сообщние не содержит числовое значение.")
+    else:
+        await message.answer(
+            "Сообщение не содержит текст. Пожалуйста, попробуйте снова."
+        )
+        raise ValueError("Сообщние не содержит текст")
+    await state.update_data(ID=user_tg_id)
+    club_id = data.get("club_id")
+    if not club_id:  # type: ignore
+        raise ValueError("ID группы отсутствует")
+    try:
+        user_id, user_member_id = await extract_user_member_id(club_id, user_tg_id)
+        if user_member_id:
+            user_profile = await get_profile(user_member_id)
+            if user_profile:
+                await message.answer(
+                    text=f"""Данные участника которому вы хотите забанить:\nИмя: {user_profile.get('first_name')},
+    Фамилия: {user_profile.get('last_name')}, \n Телефон: {user_profile.get('tg_phone_number')}\n
+    Псевдоним: {user_profile.get('username')} Всё верно?""",
+                    reply_markup=confirm_markup,  # клавиатура подтверждения из модуля клавиатур
+                )
+                # Устанавливаем состояние ожидания подтверждения
+                await state.set_state(FSMBan.fill_OK)
+            else:
+                await message.answer(text="Данные участника не найдены")
+                # Сбрасываем состояние и очищаем данные, полученные внутри состояний
+                await state.clear()
+        else:
+            await message.answer(text="Такой участник не найден")
+            # Сбрасываем состояние и очищаем данные, полученные внутри состояний
+            await state.clear()
+    except Exception as e:
+        logger.error(f"Ошибка при извлечении данных пользователя: {e}")
+        await message.answer(text=f"Произошла ошибка: {str(e)}")
+        await state.clear()
+
+# Этот хэндлер будет срабатывать, если  отправлен контакт с ID
+# и переводить в состояние подтверждения
+@router.message(StateFilter(FSMBan.fill_ID_User), F.contact)
+@log_handler_call
+async def process_ban_user_contact_sent(
+    message: Message, state: FSMContext, contact: Contact, data: dict
+):
+    if message.contact is None:
+        await message.answer("Пожалуйста, отправьте контакт.")
+        raise ValueError("Сообщние не содержит контакта.")
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
+    contact = message.contact
+    logger.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
+
+    if not contact.user_id:
+        await message.answer(
+            "К сожалению, ID контакта отсутствует. Попробуйте отправить просто ID"
+        )
+        raise ValueError("Сообщние не содержит ID контакта.")
+
+    user_tg_id = contact.user_id
+
+    club_id = data.get("club_id")
+    if not club_id:
+        raise ValueError("ID клуба отсутствует")
+
+    await state.update_data(ID=user_tg_id)
+    try:
+        user_id, user_member_id = await extract_user_member_id(club_id, user_tg_id)
+        if user_member_id:
+            user_profile = await get_profile(user_member_id)
+            if user_profile:
+                await message.answer(
+                    text=f"""Данные участника которого вы хотите забанить:\nИмя: {user_profile.get('first_name')},
+    Фамилия: {user_profile.get('last_name')}, \n Телефон: {user_profile.get('tg_phone_number')}\n
+    Псевдоним: {user_profile.get('username')} Всё верно?""",
+                    reply_markup=confirm_markup,  # клавиатура подтверждения из модуля клавиатур
+                )
+            else:
+                await message.answer(text="Данные участника не найдены")
+                # Сбрасываем состояние и очищаем данные, полученные внутри состояний
+                await state.clear()
+
+            # Устанавливаем состояние ожидания подтверждения
+            await state.set_state(FSMBan.fill_OK)
+        else:
+            await message.answer(text="Такой участник не найден")
+            # Сбрасываем состояние и очищаем данные, полученные внутри состояний
+            await state.clear()
+    except Exception as e:
+        logger.error(f"Ошибка при извлечении данных пользователя: {e}")
+        await message.answer(text=f"Произошла ошибка: {str(e)}")
+        await state.clear()
+
+# Этот хэндлер будет срабатывать на нажатие кнопки "ВСЁ ВЕРНО"
+@router.callback_query(StateFilter(FSMBan.fill_OK), F.data == "ConfirmOK")
+@log_handler_call
+async def process_ban_period_choice(callback: CallbackQuery, state: FSMContext, data: dict):
+    logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Формируем клавиатуру из возможных сроков бана: 3 дня, 7 дней, 15 дней, 30 дней, 90 дней, 180 дней
+    buttons = {"3":"3 дня", "7":"7 дней", "15":"15 дней", "30":"30 дней", "90":"90 дней", "180":"180 дней","back_to_main_menu":"Назад в главное меню"}
+    markup = create_inline_kb(1, **buttons)
+        # Добавляем данные для SafeEditMiddleware
+    data["response_text"] = """Выберите, какой срок бана вы хотите назначить. \nЕсли хотите прервать процедуру - наберите /cancel"""
+    data["reply_markup"] = markup
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(  # type: ignore
+        text=data["response_text"], reply_markup=data["reply_markup"]
+    )
+
+    # Устанавливаем состояние ожидания выбора статуса
+    await state.set_state(FSMBan.fill_period)
+
+
+
+
+# Этот хэндлер будет срабатывать на нажатие кнопки "НЕ ВЕРНО"
+@router.callback_query(StateFilter(FSMBan.fill_OK), F.data == "ConfirmNotOK")
+@log_handler_call
+async def process_no_confirm_ban_press(
+    callback: CallbackQuery, state: FSMContext, data: dict
+):
+    logger.info(f"Кнопка 'НЕ ВЕРНО' нажата пользователем {callback.from_user.id}")
+    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    # Завершаем машину состояний
+    await state.clear()
+
+    # Добавляем данные для SafeEditMiddleware
+    data["response_text"] = (
+        "Спасибо! Новый бан не добавлен!\nПопробуйте еще раз.\nВы вышли из машины состояний"
+    )
+    data["reply_markup"] = await user_menu(callback.from_user.id, data["user_status"])
+
+    # Пытаемся отредактировать сообщение
+    await callback.message.edit_text(  # type: ignore
+        text=data["response_text"], reply_markup=data["reply_markup"]
+    )
+
+
+# Этот хэндлер будет срабатывать, если во время подтверждения
+# данных пользователя будет введено/отправлено что-то некорректное
+@router.message(StateFilter(FSMBan.fill_OK))
+@log_handler_call
+async def warning_ban_process(message: Message):
+    # Проверям, существует ли message.from_user
+    if not message.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
+    logger.warning(
+        f"Некорректный ввод от пользователя {message.from_user.id} в состоянии {FSMBan.fill_OK}"
+    )
+    await message.answer(
+        text="Пожалуйста, воспользуйтесь кнопками!\n\n"
+        "Если вы хотите прервать выставление бана - "
+        "отправьте команду /cancel"
+    )
+
+# Обрабатываем нажатие кнопки со сроком бана. Извлекаем число дней из callback_data и отправляем в функцию для выставления бана ban_member
+@router.callback_query(StateFilter(FSMBan.fill_period), (F.data.isdigit()) )
+@log_handler_call
+async def process_ban_execute(callback: CallbackQuery, state: FSMContext, data: dict):
+    if not callback.data:
+        raise ValueError("callback.data отсутствует")
+    if not callback.message:
+        raise ValueError("Сообщение отсутствует (message == None)")
+    # Проверям, существует ли callback.from_user
+    if not callback.from_user:
+        raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
+
+    # Правильно получаем значение из callback.data
+    callback_data = callback.data
+    logger.info(f"Введенный срок бана: {callback_data} от пользователя {callback.from_user.id}")
+
+    try:
+        ban_time_days = int(callback_data)
+    except (ValueError, TypeError):
+        await callback.message.answer("Нажатая кнопка не является числом. Сообщите администратору")
+        raise ValueError("callback.data не является числом.")
+
+
+    fsm_data = await state.get_data()
+    logger.info(f"FSM data: \n{fsm_data}\n")
+    club_id = data["club_id"]
+    member_tg_id = fsm_data["ID"]
+    user_id, member_id = await extract_user_member_id(club_id, member_tg_id)
+    if not member_id:
+        raise ValueError("ID участника отсутствует")
+    admin_id = data["member_id"]
+    await ban_member(member_id, admin_id, ban_time_days)
+    await callback.message.answer(text=f"Участник забанен на {ban_time_days} дней",
+                                  reply_markup=return_to_main_menu_markup)
+
+"""
+Хэндлеры экспорта списка участников
+"""
+@router.callback_query(StateFilter(default_state), F.data == "export_members")
+@log_handler_call
+async def export_members_start(callback: CallbackQuery, state: FSMContext, data:dict) -> None:
+    """
+    Хендлер нажатия кнопки "Экспорт списка участников"
+    """
+    if not callback.message:
+        raise ValueError("Callback message is None")
+    text="Выберите, с каким статусом участников вы хотите выгрузить список:"
+    button_dict = LEXICON.get("user_status")
+    if not button_dict: button_dict = {}
+    button_dict["main_menu"] = LEXICON.get("main_menu", "Главное меню")
+    markup = create_inline_kb(2, **button_dict)
+    await callback.message.answer(text, reply_markup=markup)
+    await state.set_state(FSMExportMembers.fill_status)
+
+# Этот хэндлер будет срабатывать на выбор одного из статусов (или его отмены)
+@router.callback_query(StateFilter(FSMExportMembers.fill_status), F.data != "main_menu")
+@log_handler_call
+async def process_export_members(
+    callback: CallbackQuery, state: FSMContext, data: dict
+):
+    if not callback.data: return
+    if not callback.message: return
+    club_id = data.get('club_id')
+    if not club_id: return
+    status = callback.data
+    if status == "all members":
+        status = "all"
+    try:
+        file_path = await export_list_of_members(club_id=club_id, status=status)
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Файл {file_path} не был создан.")
+
+        # Отправляем файл через нашу функцию
+        await send_file_to_user(
+            tg_id=callback.from_user.id,
+            file_path=file_path,
+            caption="Экспорт списка участников",
+            reply_markup=main_menu_markup
+        )
+
+        # Удаляем файл после отправки
+        os.remove(file_path)
+        logger.info(f"Файл {file_path} удален после отправки.")
+
+    except Exception as e:
+        logger.error(f"Ошибка при экспорте списка участников: {e}")
+        await callback.message.answer("Не удалось экспортировать список участников.")  # type: ignore
+
+    await callback.message.answer("Главное меню:", reply_markup=main_menu_markup)  # type: ignore
+    await state.clear()

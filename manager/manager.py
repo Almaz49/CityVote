@@ -12,11 +12,10 @@ from data_base.data_base import (confirmation_of_voting_results_stop,
                                  get_club_info, get_voting_info,
                                  list_of_channel, list_of_members,
                                  list_of_votings, member_leave_club,
-                                 remove_status_votist_for_non_members,
                                  voting_complete, voting_create, voting_final,
                                  voting_stage, voting_start)
 from data_base.db_func import list_of_variants
-from data_base.db_member import is_votist
+from data_base.db_member import check_ban_status_all_members, check_token_expiration, is_votist
 from keyboards.keyboards import create_inline_kb
 from services.services import (not_votist_because_proxy_quit,
                                send_notification_to_chat_or_channel,
@@ -96,7 +95,7 @@ async def voting_create_manager(
                 chat_id = item.get("tg_id")
                 if chat_id is not None:
                     try:
-                        await send_notification_to_chat_or_channel(chat_id, notify_text)
+                        await send_notification_to_chat_or_channel(chat_id=chat_id, message_text=notify_text)
                     except Exception as e:
                         logger.error(f"Ошибка отправки в чат {chat_id}: {e}")
 
@@ -380,9 +379,33 @@ async def check_votist_status_for_all_members(club_id: int):
     """
     Проверка правильности статуса 'votist' для всех пользователей
     """
-    # удаляем статус 'votist' у тех, кто не имеет статус 'member'
-    await remove_status_votist_for_non_members(club_id)
+    # Проверяем не истек ли бан у пользователей с баном
+    await check_ban_status_all_members(club_id)
     # Получаем членов группы с актуальным статусом 'member'
     members = await extract_list_of_full_member_ids(club_id)
     # Обновляем статус 'votist' через is_votist для всех действительных участников
-    await asyncio.gather(*[is_votist(member[0]) for member in members])
+    await asyncio.gather(*[is_votist(member["member_id"]) for member in members])
+
+@log_function_call
+async def check_token_for_oll_members(club_id: int):
+    """
+    Проверка не истек ли срок действия токенов у всех участников
+    """
+    # Получаем членов группы с актуальным статусом 'member'
+    members = await extract_list_of_full_member_ids(club_id)
+    for member in members:
+        result = await check_token_expiration(member["member_id"])
+        if result:
+            token_expiries_at = result
+            now = datetime.datetime.now()
+            delta = (token_expiries_at - now).days
+            if delta in (30, 15, 7, 3, 1):
+                await send_notification_to_user(
+                    member["tg_id"],
+                    f" Срок действия вашего токена через {delta} дней заканчивается. Попросите администратора обновить его.",
+                )
+        else:
+            await send_notification_to_user(
+                member["tg_id"],
+                f"Истек срок действия вашего токена. Попрожите администратора обновить его."
+            )

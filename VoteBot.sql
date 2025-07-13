@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS `Members` (
 	`description` TEXT,
 	`resume`     TEXT,
 	`token` INTEGER REFERENCES Tokens (id),
+	`ban_expires_at` TEXT,
 FOREIGN KEY(`club_id`) REFERENCES `Clubs`(`id`),
 FOREIGN KEY(`user_id`) REFERENCES `Users`(`id`),
 FOREIGN KEY(`proxy`) REFERENCES `Members`(`id`),

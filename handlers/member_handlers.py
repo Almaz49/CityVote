@@ -8,6 +8,8 @@ from aiogram.fsm.state import default_state
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, ReplyKeyboardRemove)
 
+from data_base.db_member import trust
+
 from data_base.telegram_bot_logic import *
 from filters.filters import StatusFilter
 from FSMs.FSMs import (FSM_appoint_deputy, FSM_become_proxy,
@@ -405,6 +407,12 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
             raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
 
         user_id = message.from_user.id
+        member_id = data.get("member_id")
+        if not member_id:
+            raise ValueError("ID пользователя отсутствует")
+        club_id = data.get("club_id")
+        if not club_id:
+            raise ValueError("ID клуба отсутствует")
 
         if message.contact:
             deputy_tg_id = message.contact.user_id
@@ -413,11 +421,17 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
                 raise ValueError("Текст сообщения отсутствует")
             deputy_tg_id = int(message.text)
 
+        if not deputy_tg_id:  # type: ignore
+            raise ValueError("ID заместителя отсутствует")
+
         logger.info(
             f"Представитель {user_id} выбрал своим заместителем пользователя с tg_id {deputy_tg_id}."
         )
 
-        flag, ans_str = await trust_tg(user_id, deputy_tg_id)
+        deputy_user_id, deputy_member_id = await extract_user_member_id(club_id, deputy_tg_id)
+
+        ans_str = await trust(member_id, deputy_member_id)
+
         if not ans_str:
             ans_str = "Неизвестная ошибка при назначении заместителя."
 

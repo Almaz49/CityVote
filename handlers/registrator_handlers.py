@@ -8,7 +8,10 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 
 from config_data.config import Config, load_config
-from data_base.telegram_bot_logic import (extract_user_member_id, new_status,
+from data_base.db_func import (
+    extract_user_member_id
+)
+from data_base.telegram_bot_logic import (new_status,
                                           update_member_data)
 from filters.filters import StatusFilter
 from keyboards.keyboards import user_menu
@@ -114,7 +117,7 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
 
     try:
         # Генерируем токен с комментарием
-        tokens = await create_tokens_without_lot(
+        token = await create_tokens_without_lot(
             club_id=club_id,
             comment=comment,
             count=1,
@@ -126,7 +129,7 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
             token = token[0]
 
         # Получаем user_id и member_id
-        user_id, member_id = await extract_user_member_id(tg_id)
+        user_id, member_id = await extract_user_member_id(club_id, tg_id)
         if not member_id:
             await message.answer(f"Пользователь с ID {tg_id} не найден.")
             return
@@ -190,8 +193,13 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
             f"Регистратор {callback.from_user.id} отклоняет членство пользователя {tg_id}."
         )
 
+        club_id = data.get("club_id")
+        if not club_id:  # type: ignore
+            raise ValueError("Нет club_id")
+
+
         # Получаем member_id пользователя
-        user_id, member_id = await extract_user_member_id(tg_id)
+        user_id, member_id = await extract_user_member_id(club_id, tg_id)
         if not member_id:
             await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.")  # type: ignore
             return

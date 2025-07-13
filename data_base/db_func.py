@@ -175,6 +175,21 @@ async def extract_member_id(club_id, user_id):
             )
             raise
 
+# Функция извлечения user_id и member_id по tg_id
+@log_function_call
+async def extract_user_member_id(club_id:int, tg_id: int):  # Добавляем club_id как параметр
+    try:
+        user_id = await extract_user_id(tg_id)
+        if user_id:
+            member_id = await extract_member_id(club_id, user_id)
+            logger.info(f"Извлечен member_id={member_id} для tg_id={tg_id}")
+            return user_id, member_id
+        else:
+            logger.info(f"Пользователь с tg_id={tg_id} не найден.")
+            return None, None
+    except Exception as e:
+        logger.error(f"Ошибка при извлечении member_id: {e}")
+        return None, None
 
 # Функция извлечения информации об участниках группы.
 # Опционально можно указать статус участников, информация о которых требуется.
@@ -192,15 +207,17 @@ async def list_of_members(club_id, status: str | list[str] = "all"):
     SELECT
         Users.first_name,
         Users.last_name,
-        Users.tg_id,
+        Users.tg_id AS tg_id,
         Users.tg_first_name,
         Users.tg_last_name,
         Users.username,
         Users.id AS user_id,
         Members.id AS member_id,
         Members.info_level
-    FROM Users
-    INNER JOIN Members ON Users.id = Members.user_id
+        Tokens.token
+    FROM Members
+    INNER JOIN Users ON Users.id = Members.user_id
+    LEFT JOIN Tokens ON Tokens.id = Members.token
     WHERE Members.club_id = ?
     """
     params = (club_id,)
@@ -284,9 +301,11 @@ async def get_profile(member_id: int):
                     u.last_name AS last_name,
                     m.description,
                     m.info_level,
+                    t.token AS token,
                     proxy_user.username AS proxy_username
                 FROM Members m
                 INNER JOIN Users u ON m.user_id = u.id
+                INNER JOIN Tokens t ON m.token = t.id
                 LEFT JOIN Users proxy_user ON m.proxy = proxy_user.id
                 WHERE m.id = ?
             """,
@@ -320,7 +339,7 @@ async def all_status():
     #     # Преобразуем список кортежей просто в список
     #     all_st = [status[0] for status in all_st]
 
-    all_st = ["admin", "registrator", "member", "delegate", "proxy", "pre-registrator"]
+    all_st = ["admin", "registrator", "member", "delegate", "proxy", "pre-registrator", "banned"]
 
     logger.info(f"Все статусы: {all_st}")
     return all_st

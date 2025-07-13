@@ -5,15 +5,14 @@ import logging
 from aiogram import Router
 from aiogram.types import CallbackQuery, Message
 
-from config_data.config import Config, load_config
 from keyboards.keyboards import user_menu
 from utils import log_handler_call
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# Загружаем конфиг в переменную config
-config: Config = load_config(".env")
+# # Загружаем конфиг в переменную config
+# config: Config = load_config(".env")
 
 # Инициализируем роутер уровня модуля
 router = Router()

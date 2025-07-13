@@ -2,13 +2,12 @@
 # В нем хэндлеры пользователей, обладающих правами делегатов
 import logging
 
-from aiogram import Bot, F, Router
+from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from aiogram.types import CallbackQuery, Message
-
-from config_data.config import Config, load_config
+from data_base.db_vote import variant_create
 from data_base.telegram_bot_logic import *
 from filters.filters import StatusFilter
 from FSMs.FSMs import FSMNewVariant, FSMNewVoting
@@ -434,10 +433,13 @@ async def process_new_variant_yes_confirm_press(
         title = fsm_data["title"]
         description = fsm_data["description"]
         tg_id = callback.from_user.id
+        member_id = data.get("member_id")
+        if not member_id:
+            raise ValueError("Нет member_id")
 
         # Создаем новый вариант
-        flag, comment = await new_variant_tg(
-            voting_id=voting_id, creator_tg_id=tg_id, title=title, text=description
+        flag, comment = await variant_create(
+            voting_id=voting_id, author= member_id, title=title, text=description
         )
 
         if flag:

@@ -280,6 +280,16 @@ async def notify_super_registrator_short(candidate_tg_id, user_dict):
             f"Подтверждаете?"
         )
 
+        if user_dict.get('status') == 'member':
+            message_text = (
+                f"Пользователь с данными:\n"
+                f'Имя: {user_dict.get("tg_first_name")}\n'
+                f'Фамилия: {user_dict.get("tg_last_name")}\n'
+                f'Резюме: {user_dict.get("resume")}\n'
+                f"Просит новый тоен\n"
+        )
+
+
         super_registrators = await list_of_members(club_id,'superregistrator')
         if not super_registrators:
             super_registrators = await list_of_members(club_id,'registrator')
@@ -647,6 +657,8 @@ async def profile_message(member_id, status):
             text += f"Ваш заместитель: {profile.get('proxy_username')}\n"
         else:
             text += f"Ваш представитель: {profile.get('proxy_username')}\n"
+    if profile.get('token'):
+        text += f"Ваш токен: {profile.get('token')}\n"
     text+=LEXICON.get('profile_menu','Выберите, что хотите поменять в профиле') # Сюда вставить функцию создания текста
     return text
 

@@ -3,9 +3,9 @@ import logging
 
 from aiogram import BaseMiddleware
 
-from data_base.telegram_bot_logic import (is_user_available,
+from data_base.db_member import (is_user_available,
                                           mark_user_as_available,
-                                          status_member)
+                                          extract_status_tg_id)
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,10 @@ class StatusMiddleware(BaseMiddleware):
         # Инициализируем data['data'], если его нет
         if "data" not in data:
             data["data"] = {}
+        club_id = data.get("club_id")
+        if not club_id:
+            logger.error("club_id не найден в data")
+            return
         try:
             # Проверяем наличие user в data
 
@@ -41,7 +45,7 @@ class StatusMiddleware(BaseMiddleware):
                 await mark_user_as_available(user_id)
 
             # Получаем статус пользователя
-            status = await status_member(user_id)
+            status = await extract_status_tg_id(club_id, user_id)
             logger.debug(f"Получены статусы юзера: {status}")
 
             if status is None:

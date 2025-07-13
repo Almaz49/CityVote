@@ -76,7 +76,7 @@ async def process_new_status_cb(callback: CallbackQuery, state: FSMContext, data
     StateFilter(FSMNewStatus.fill_ID_User), ~F.contact, (lambda x: x.text.isdigit())
 )
 @log_handler_call
-async def process_user_id_sent(message: Message, state: FSMContext):
+async def process_user_id_sent(message: Message, state: FSMContext, data: dict):
     # Проверям, существует ли message.from_user
     if not message.from_user:
         raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
@@ -96,8 +96,11 @@ async def process_user_id_sent(message: Message, state: FSMContext):
         )
         raise ValueError("Сообщние не содержит текст")
     await state.update_data(ID=user_tg_id)
+    club_id = data.get("club_id")
+    if not club_id:  # type: ignore
+        raise ValueError("ID группы отсутствует")
     try:
-        user_id, user_member_id = await extract_user_member_id(user_tg_id)
+        user_id, user_member_id = await extract_user_member_id(club_id, user_tg_id)
         if user_member_id:
             user_profile = await get_profile(user_member_id)
             if user_profile:
@@ -128,7 +131,7 @@ async def process_user_id_sent(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMNewStatus.fill_ID_User), F.contact)
 @log_handler_call
 async def process_user_contact_sent(
-    message: Message, state: FSMContext, contact: Contact
+    message: Message, state: FSMContext, contact: Contact, data: dict
 ):
     if message.contact is None:
         await message.answer("Пожалуйста, отправьте контакт.")
@@ -148,9 +151,13 @@ async def process_user_contact_sent(
 
     user_tg_id = contact.user_id
 
+    club_id = data.get("club_id")
+    if not club_id:
+        raise ValueError("ID клуба отсутствует")
+
     await state.update_data(ID=user_tg_id)
     try:
-        user_id, user_member_id = await extract_user_member_id(user_tg_id)
+        user_id, user_member_id = await extract_user_member_id(club_id, user_tg_id)
         if user_member_id:
             user_profile = await get_profile(user_member_id)
             if user_profile:
@@ -187,18 +194,21 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
     fsm_data = await state.get_data()
     logger.info(f"FSM data: \n{fsm_data}\n")
     member_tg_id = fsm_data["ID"]
+    user_id, member_id = await extract_user_member_id(club_id, member_tg_id)
+    if not member_id:
+        raise ValueError("ID участника отсутствует")
 
     try:
-        status = await extract_status_tg(member_tg_id)
+        status = await extract_status(member_id)
         status = status if status else []
         all_st = await all_status()
 
         vacansy = list(
             set(all_st)
             - set(status)
-            - {"owner", "user", "candidate", "votist", "proxy", "pre-registrator"}
+            - {"owner", "user", "candidate", "votist", "proxy", "pre-registrator","banned"}
         )
-        status = list(set(status) - {"owner", "member", "user", "candidate"})
+        status = list(set(status) - {"owner", "member", "user", "candidate","frozen","votist"})
 
         logger.debug(f"Вакансии для пользователя: {vacansy}")
 
@@ -272,7 +282,7 @@ async def process_no_confirm_status_press(
 # данных пользователя будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSMNewStatus.fill_OK))
 @log_handler_call
-async def warning_registrator(message: Message):
+async def warning_new_status_process(message: Message):
     # Проверям, существует ли message.from_user
     if not message.from_user:
         raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
@@ -297,13 +307,16 @@ async def process_new_status_confirm(
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
     if not callback.data:
         raise ValueError("Нет callback.data")
+    club_id = data.get("club_id")
+    if not club_id:
+        raise ValueError("Нет club_id")
     await state.update_data(status=callback.data)
     status = callback.data
     fsm_data = await state.get_data()
     member_tg_id = fsm_data["ID"]
 
     try:
-        user_id, member_id = await extract_user_member_id(member_tg_id)
+        user_id, member_id = await extract_user_member_id(club_id, member_tg_id)
         if not member_id:
             raise ValueError("Нет member_ID пользователя")
         user_profile = await get_profile(member_id)
