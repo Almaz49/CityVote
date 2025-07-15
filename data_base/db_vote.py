@@ -5,7 +5,9 @@ import datetime
 import logging
 import traceback
 
-from data_base.db_func import *
+import aiosqlite
+
+from data_base.db_func import AsyncDatabase, extract_status, list_of_variants, path_db
 from LEXICON.LEXICON import LEXICON
 from utils import fetch_as_dict, log_function_call
 

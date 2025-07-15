@@ -189,7 +189,6 @@ async def is_valid_token(token: str, club_id: int):
             logger.error(f"Ошибка при проверке токена: {e}")
             return None
 
-
 @log_function_call
 async def create_tokens_for_lot(
     club_id: int,
@@ -264,7 +263,38 @@ async def create_tokens_for_lot(
                 token, club_id, creator_id, 'valid', validity,
                 time_of_action, lot, i, created_at, comment
             ))
-            tokens[i] = format_token(token)
+            tokens[i] = token
+    return {
+        'tokens': tokens,
+        'lot': lot
+    }
+@log_function_call
+async def create_formatted_tokens_for_lot(
+    club_id: int,
+    lot: Optional[int] = None,
+    count: int = 100,
+    token_length: int = 9,
+    validity_days: int = 30,
+    time_of_action_months: int = 12,
+    creator_id: Optional[int] = None,
+    comment: str = ""  # Добавлен параметр
+) -> dict:
+    """
+    Создаёт указанное количество токенов для заданного лота или следующего свободного номера.
+    :param club_id: ID клуба
+    :param lot: Номер лота (если None — будет найден первый доступный)
+    :param count: Количество токенов
+    :param token_length: Длина токена
+    :param validity_days: Срок действия в днях
+    :param time_of_action_months: Срок действия действия по токену
+    :param creator_id: Кто создал токен (ID пользователя)
+    :param comment: Комментарий к токенам этого лота
+    :return: {'tokens': {ключ - номер тоена в лоте, значение - токен}, 'lot': ...}
+    """
+
+    tokens,lot = await create_tokens_for_lot(club_id, lot, count, token_length, validity_days, time_of_action_months, creator_id, comment)
+    for i, token in tokens.items():
+        tokens[i] = format_token(token)
     return {
         'tokens': tokens,
         'lot': lot
@@ -273,20 +303,20 @@ async def create_tokens_for_lot(
 @log_function_call
 async def create_tokens_without_lot(
     club_id: int,
+    comment: str,
     count: int = 100,
     token_length: int = 9,
     validity_days: int = 30,
     time_of_action_months: int = 12,
-    creator_id: Optional[int] = None,
-    comment: str = ""  # Добавлен параметр
+    creator_id: Optional[int] = None
 ) -> List[str]:
     """
     Создаёт токены, не привязывая к лоту (поле lot = NULL).
     :param club_id: ID клуба
     :param count: Количество токенов
     :param token_length: Длина токена
-    :param validity_days: Срок действия в днях
-    :param time_of_action_months: Срок действия действия по токену
+    :param validity_days: Срок в течении которого можно использовать токен в днях
+    :param time_of_action_months: Срок действия действия полномочий, полученных по токену
     :param creator_id: Кто создал токен
     :param comment: Комментарий к каждому токену
     :return: Список созданных токенов
@@ -321,8 +351,37 @@ async def create_tokens_without_lot(
                 token, club_id, creator_id, 'valid', validity,
                 time_of_action, created_at, comment
             ))
-            tokens.append(format_token(token))
+            tokens.append(token)
     return tokens
+@log_function_call
+async def create_formatted_tokens_without_lot(
+    club_id: int,
+    comment: str,
+    count: int = 100,
+    token_length: int = 9,
+    validity_days: int = 30,
+    time_of_action_months: int = 12,
+    creator_id: Optional[int] = None
+) -> List[str]:
+    """
+    Создаёт форматированные токены, не привязывая к лоту (поле lot = NULL).
+    :param club_id: ID клуба
+    :param count: Количество токенов
+    :param token_length: Длина токена
+    :param validity_days: Срок в течении которого можно использовать токен в днях
+    :param time_of_action_months: Срок действия действия полномочий, полученных по токену
+    :param creator_id: Кто создал токен
+    :param comment: Комментарий к каждому токену
+    :return: Список созданных токенов
+    """
+    formatted_tokens = []
+    tokens = await create_tokens_without_lot(club_id=club_id,comment=comment,
+        count=count, token_length=token_length, validity_days=validity_days,
+        time_of_action_months=time_of_action_months, creator_id=creator_id
+    )
+    for token in tokens:
+        formatted_tokens.append(format_token(token))
+    return formatted_tokens
 
 
 @log_function_call

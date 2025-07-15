@@ -3,11 +3,11 @@
 import datetime
 import logging
 import os
-
+import aiosqlite
 import pandas as pd
-
-from data_base.db_func import *
+from data_base.db_func import AsyncDatabase, db_update, extract_member_id, extract_status, extract_user_id, path_db, threshold_in_voices
 from utils import log_function_call
+from utils.utils import fetch_as_dict
 
 # Настройка логирования
 logger = logging.getLogger(__name__)

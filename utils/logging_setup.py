@@ -20,7 +20,7 @@ def setup_logger(
     :return: logger объект
     """
     # Настройка корневого логгера
-    root_logger = logging.getLogger()  # Корневой логгер
+    root_logger = logging.getLogger(__name__)  # Корневой логгер
     root_logger.setLevel(logging.DEBUG)
 
     # Handler для записи DEBUG и выше в файл debug.log

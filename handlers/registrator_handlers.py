@@ -18,7 +18,7 @@ from keyboards.keyboards import user_menu
 from services.services import send_notification_to_user
 from utils import log_handler_call
 from FSMs.FSMs import FSMRegistration
-from data_base.db_token_service import mark_token_as_used, create_tokens_without_lot
+from data_base.db_token_service import mark_token_as_used, create_formatted_tokens_without_lot
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
 
     try:
         # Генерируем токен с комментарием
-        token = await create_tokens_without_lot(
+        token = await create_formatted_tokens_without_lot(
             club_id=club_id,
             comment=comment,
             count=1,

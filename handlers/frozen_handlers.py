@@ -6,7 +6,7 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 from aiogram.filters import StateFilter
 from data_base.db_token_service import add_token_attempt, auto_approve_by_token, clear_old_attempts, get_token_attempts_count, is_valid_token
-from data_base.db_member import get_profile
+from data_base.db_func import get_profile
 from filters.filters import StatusFilter
 from aiogram.fsm.context import FSMContext
 from FSMs.FSMs import FSMEnterToken

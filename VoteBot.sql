@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS `Users` (
 	`first_name` TEXT,
 	`middle_name` TEXT,
 	`last_name` TEXT,
-	`bithday` TEXT,
+	`birthday` TEXT,
 	`birth_year` INTEGER,
 	`photo` TEXT,
 	`email` TEXT,
@@ -77,12 +77,13 @@ CREATE TABLE IF NOT EXISTS `Members` (
 	`number_of_votes` REAL,
 	`description` TEXT,
 	`resume`     TEXT,
+    `info_level`      TEXT,
 	`token` INTEGER REFERENCES Tokens (id),
 	`ban_expires_at` TEXT,
 FOREIGN KEY(`club_id`) REFERENCES `Clubs`(`id`),
 FOREIGN KEY(`user_id`) REFERENCES `Users`(`id`),
 FOREIGN KEY(`proxy`) REFERENCES `Members`(`id`),
-UNIQUE (club_id, user_id)
+UNIQUE (`club_id`, `user_id`)
 );
 CREATE TABLE Tokens (
     `id`             INTEGER PRIMARY KEY
@@ -96,14 +97,17 @@ CREATE TABLE Tokens (
     `time_of_action` TEXT,
     `lot`            INTEGER,
     `number_in_lot`  INTEGER,
+	`member_id` INTEGER REFERENCES Members (id),
+    `comment`        TEXT,
+    `created_at`     TEXT,
     FOREIGN KEY (
-        club_id
+        `club_id`
     )
-    REFERENCES Clubs (id),
+    REFERENCES Clubs (`id`),
     FOREIGN KEY (
-        creator
+        `creator`
     )
-    REFERENCES Members (id)
+    REFERENCES Members (`id`)
 );
 CREATE TABLE IF NOT EXISTS `Registrations` (
 	`id` integer primary key NOT NULL UNIQUE,
@@ -158,5 +162,5 @@ CREATE TABLE IF NOT EXISTS TokenAttempts (
     `id`           INTEGER PRIMARY KEY AUTOINCREMENT,
     `attempt_time` TEXT    NOT NULL
                          DEFAULT (datetime('now') ),
-    `member_id`    INTEGER REFERENCES Members (id)
+    `member_id`    INTEGER REFERENCES Members (`id`)
 );

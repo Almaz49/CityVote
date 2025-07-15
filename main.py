@@ -1,5 +1,6 @@
 # Модуль main.py - основной цикл бота
 
+import os
 import asyncio
 import logging
 from zoneinfo import ZoneInfo
@@ -18,9 +19,11 @@ from middlewares import (LoggingAndErrorHandlingMiddleware, SafeEditMiddleware,
                          StatusMiddleware)
 from utils import setup_logger
 
-# Загружаем конфигурацию из файла .env
+# Получаем имя экземпляра бота из переменной окружения
+instance_name = os.getenv("BOT_INSTANCE")
 
-config: Config = load_config(".env")
+# Загружаем конфиг
+config: Config = load_config(instance_name=instance_name)
 
 # Проверяем наличие обязательных параметров в конфигурации
 if not config.tg_bot.token or not config.db.path_db or not config.tg_bot.club_id:

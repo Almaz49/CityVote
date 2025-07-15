@@ -33,6 +33,12 @@ Icon?
 *.swo
 *~
 
+# Папка configs — кроме example.env
+/configs/*
+!/configs/.gitkeep
+!/configs/example.env
+
+
 .env
 dbg1.db
 test.py

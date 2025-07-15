@@ -11,8 +11,8 @@ from aiogram.fsm.context import FSMContext
 from filters.filters import StatusFilter
 from FSMs.FSMs import FSMTokenManagement
 from data_base.db_token_service import (
-    create_tokens_for_lot,
-    create_tokens_without_lot,
+    create_formatted_tokens_for_lot,
+    create_formatted_tokens_without_lot,
     export_tokens_to_excel,
     mark_token_as_old,
 )
@@ -151,7 +151,7 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
 
 
     try:
-        result = await create_tokens_for_lot(
+        result = await create_formatted_tokens_for_lot(
             club_id=club_id,
             lot=lot_number,
             count=count,
@@ -248,10 +248,10 @@ async def process_issue_token_comment(message: Message, state: FSMContext, data:
         raise ValueError("Не удалось получить ID клуба")
 
     try:
-        tokens = await create_tokens_without_lot(
+        tokens = await create_formatted_tokens_without_lot(
             club_id=club_id,
-            count=count,
             comment=comment,
+            count=count,
             creator_id=message.from_user.id)
 
         tokens_list = "<code>" + "</code>\n<code>".join(tokens) + "</code>"
@@ -295,10 +295,10 @@ async def process_issue_1_token_comment(message: Message, state: FSMContext, dat
         raise ValueError("Не удалось получить ID клуба")
 
     try:
-        tokens = await create_tokens_without_lot(
+        tokens = await create_formatted_tokens_without_lot(
             club_id=club_id,
-            count=1,
             comment=comment,
+            count=1,
             creator_id=message.from_user.id
             )
 
@@ -347,7 +347,6 @@ async def handle_export_tokens(callback: CallbackQuery, data: dict):
         await callback.message.answer("Не удалось экспортировать токены.")  # type: ignore
 
     await callback.message.answer("Меню управления токенами:", reply_markup=main_menu_markup)  # type: ignore
-    await state.clear()
 
 
 # --- ПОМЕТКА ТОКЕНА КАК УСТАРЕВШИЙ ---
