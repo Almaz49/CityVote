@@ -29,29 +29,6 @@ router = Router()
 router.message.filter(StatusFilter(required_status=["admin", "owner"]))
 router.callback_query.filter(StatusFilter(required_status=["admin", "owner"]))
 
-# # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии по умолчанию
-# # и сообщать, что эта команда работает внутри машины состояний
-# @router.message(Command(commands='cancel'), StateFilter(default_state))
-# @log_handler_call
-# async def process_cancel_command(message: Message):
-#     logger.info(f"Команда /cancel сработала для пользователя {message.from_user.id} в состоянии по умолчанию")
-#     await message.answer(
-#         text='Отменять нечего. Вы вне машины состояний',
-#         reply_markup=remove_markup
-#     )
-
-# # Этот хэндлер будет срабатывать на команду "/cancel" в любых состояниях,
-# # кроме состояния по умолчанию, и отключать машину состояний
-# @router.message(Command(commands='cancel'), ~StateFilter(default_state))
-# @log_handler_call
-# async def process_cancel_command_state(message: Message, state: FSMContext):
-#     logger.info(f"Команда /cancel сработала для пользователя {message.from_user.id} в состоянии {await state.get_state()}")
-#     await message.answer(
-#         text='Вы вышли из машины состояний',
-#         reply_markup=await user_menu(message.from_user.id)
-#     )
-#     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
-#     await state.clear()
 
 """
 Хэндлеры FSM создания нового регистратора
@@ -123,7 +100,8 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
     await state.update_data(ID=member_tg_id)
 
     # Извлекаем данные о новом регистраторе
-    flag, ans_str = await extract_new_registrator_data(member_tg_id)
+    club_id = data.get
+    flag, ans_str = await extract_new_registrator_data(club_id,member_tg_id)
 
     # Создаем объект инлайн-клавиатуры
     markup = confirm_markup
@@ -182,9 +160,10 @@ async def process_registrator_contact_sent(
 
     logger.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
     member_tg_id = contact.user_id
+    club_id = data.get("club_id")
 
     flag, ans_str = await extract_new_registrator_data(
-        member_tg_id
+       club_id, member_tg_id
     )  # извлекаем данные о новом регистраторе
 
     # Создаем объект инлайн-клавиатуры
@@ -233,16 +212,18 @@ async def process_yes_registrator_press(
     member_tg_id = fsm_data["ID"]
     admin_tg_id = callback.from_user.id
     admin_id = data["member_id"]
+    club_id = data["club_id"]
+    instance_name = data["instance_name"]
 
     try:
-        ans_str = await new_status_tg(
+        ans_str = await new_status_tg(club_id,
             admin_tg_id, member_tg_id, "pre-registrator"
         )  # Вызов функции присвоения нового статуса
         if isinstance(ans_str, str) and "Ошибка" in ans_str:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = f"Произошла ошибка: {ans_str}"
             data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
+                status= data["user_status"]
             )
             # Пытаемся отредактировать сообщение
             await callback.message.edit_text(text=data["response_text"], reply_markup=data["reply_markup"])  # type: ignore
@@ -269,7 +250,7 @@ async def process_yes_registrator_press(
         pre_reg_markup = create_inline_kb(2, **keyboard)
 
         response = await send_notification_to_user(
-            member_tg_id, notification, pre_reg_markup
+            member_tg_id, notification, pre_reg_markup, instance_name=instance_name
         )
 
         # Добавляем данные для SafeEditMiddleware
@@ -280,7 +261,7 @@ async def process_yes_registrator_press(
             "\nВы вышли из машины состояний"
         )
         data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
+            status= data["user_status"]
         )
 
         # Отправляем в чат сообщение о выходе из машины состояний
@@ -311,7 +292,7 @@ async def process_no_registrator_press(
     data["response_text"] = (
         "Спасибо! Регистратор не добавлен!\nПопробуйте еще раз.\nВы вышли из машины состояний"
     )
-    data["reply_markup"] = await user_menu(callback.from_user.id, data["user_status"])
+    data["reply_markup"] = await user_menu(status= data["user_status"])
 
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(  # type: ignore
@@ -373,7 +354,7 @@ async def process_registrators_list(callback: CallbackQuery, data: dict):
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "В данный момент нет регистраторов."
         data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
+            status= data["user_status"]
         )
 
         # Редактируем сообщение
@@ -486,7 +467,7 @@ async def process_remove_registrator(callback: CallbackQuery, data: dict):
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при удалении регистратора."
         data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
+            status= data["user_status"]
         )
 
         # Пытаемся отредактировать сообщение
@@ -542,7 +523,7 @@ async def process_promote_to_super(callback: CallbackQuery, data: dict):
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при назначении суперрегистратора."
         data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
+            status= data["user_status"]
         )
 
         # Пытаемся отредактировать сообщение
@@ -600,7 +581,7 @@ async def process_remove_superregistrator(callback: CallbackQuery, data: dict):
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при удалении суперрегистратора."
         data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
+            status= data["user_status"]
         )
 
         # Пытаемся отредактировать сообщение
@@ -662,7 +643,7 @@ async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при удалении регистратора."
         data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
+            status= data["user_status"]
         )
 
         # Пытаемся отредактировать сообщение
@@ -759,7 +740,7 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при просмотре вариантов голосования."
         data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
+            status= data["user_status"]
         )
 
         # Редактируем сообщение в случае ошибки
@@ -791,9 +772,10 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
         voting_id = int(callback.data.split(":")[1])
         member_id = data["member_id"]
         club_id = data["club_id"]
+        instance_name = data["instance_name"]
 
         result = await voting_manager(
-            voting_id, club_id=club_id, admin=member_id, stage_type="start"
+            voting_id, instance_name=instance_name ,club_id=club_id, admin=member_id, stage_type="start"
         )
 
         # Гарантируем, что text всегда является строкой
@@ -821,7 +803,7 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
         # Гарантируем, что response_text всегда является строкой
         data["response_text"] = "Произошла ошибка при запуске голосования."
         data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
+            status= data["user_status"]
         )
 
         # Пытаемся отредактировать сообщение
@@ -853,9 +835,10 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
         voting_id = int(callback.data.split(":")[1])
         member_id = data["member_id"]
         club_id = data["club_id"]
+        instance_name = data["instance_name"]
 
         result = await voting_manager(
-            voting_id, club_id=club_id, admin=member_id, stage_type="stage"
+            voting_id, instance_name=instance_name, club_id=club_id, admin=member_id, stage_type="stage"
         )
 
         if result:
@@ -881,9 +864,7 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при запуске голосования."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -914,9 +895,10 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
         voting_id = int(callback.data.split(":")[1])
         member_id = data["member_id"]
         club_id = data["club_id"]
+        instance_name = data["instance_name"]
 
         result = await voting_manager(
-            voting_id, club_id=club_id, admin=member_id, stage_type="final"
+            voting_id, instance_name=instance_name, club_id=club_id, admin=member_id, stage_type="final"
         )
 
         if result:
@@ -942,9 +924,7 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при запуске голосования."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -975,9 +955,10 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
         voting_id = int(callback.data.split(":")[1])
         member_id = data["member_id"]
         club_id = data["club_id"]
+        instance_name = data["instance_name"]
 
         result = await voting_manager(
-            voting_id, club_id=club_id, admin=member_id, stage_type="complete"
+            voting_id, club_id=club_id, admin=member_id, stage_type="complete", instance_name=instance_name
         )
         if result:
             text = result.get("message")
@@ -1002,9 +983,7 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при запуске голосования."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -1060,9 +1039,7 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при удалении варианта."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -1123,9 +1100,8 @@ async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при запуске голосования."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
+
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -1345,7 +1321,7 @@ async def process_no_confirm_ban_press(
     data["response_text"] = (
         "Спасибо! Новый бан не добавлен!\nПопробуйте еще раз.\nВы вышли из машины состояний"
     )
-    data["reply_markup"] = await user_menu(callback.from_user.id, data["user_status"])
+    data["reply_markup"] = await user_menu(status= data["user_status"])
 
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(  # type: ignore
@@ -1435,6 +1411,8 @@ async def process_export_members(
     if not callback.message: return
     club_id = data.get('club_id')
     if not club_id: return
+    instance_name = data.get('instance_name')
+    if not instance_name: return
     status = callback.data
     if status == "all members":
         status = "all"
@@ -1446,6 +1424,7 @@ async def process_export_members(
         # Отправляем файл через нашу функцию
         await send_file_to_user(
             tg_id=callback.from_user.id,
+            instance_name=instance_name,
             file_path=file_path,
             caption="Экспорт списка участников",
             reply_markup=main_menu_markup

@@ -8,7 +8,7 @@ from aiogram.types import (InlineKeyboardButton, InlineKeyboardMarkup,
                            ReplyKeyboardRemove)
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_base.telegram_bot_logic import extract_status_tg
+
 from LEXICON.LEXICON import *
 from utils import log_function_call
 
@@ -158,30 +158,11 @@ def get_keyboard_for_status(status: list[str]) -> list[list[InlineKeyboardButton
 
 
 @log_function_call
-async def user_menu(
-    tg_id: int | None = None, status: list[str] | None = None
-) -> InlineKeyboardMarkup | None:
+async def user_menu(status: list[str] | None = None) -> InlineKeyboardMarkup | None:
     # TODO: Поменять tg_id на member_id в функции и всех ее вызовах. Или вообще убрать tg_id
     try:
         if not status:
-            status = await extract_status_tg(tg_id)
-        logger.info(f"Создание меню для пользователя {tg_id} со статусами: {status}")
-        # if not status or 'member' not in status:
-        #     if 'user' in status:
-        #         keyboard = get_keyboard_for_status(['user'])
-        #     elif 'candidate' in status:
-        #         keyboard = get_keyboard_for_status(['candidate'])
-        #     elif 'owner' in status:
-        #         keyboard = get_keyboard_for_status(['user','owner'])
-        #     elif 'admin' in status:
-        #         keyboard = get_keyboard_for_status(['user','admin'])
-        #     else:
-        #         unknown_button = {'unknown': 'Я не знаю кто ты'}
-        #         return create_inline_kb(1, **unknown_button)
-        # else:
-        #     keyboard = get_keyboard_for_status(status)
-        if not status:
-            raise ValueError("Не удалось получить статус пользователя")
+            raise ValueError("Не был передан статус пользователя")
         keyboard = get_keyboard_for_status(status)
 
         # Добавляем кнопку "Информация"
@@ -201,7 +182,7 @@ async def user_menu(
             kb_builder.row(*row)
         return kb_builder.as_markup()
     except Exception as e:
-        logger.error(f"Ошибка при создании меню для пользователя {tg_id}: {e}")
+        logger.error(f"Ошибка при создании меню для пользователя со статусом {status}: {e}")
         raise
 
 

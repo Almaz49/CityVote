@@ -54,14 +54,14 @@ async def process_start_command(message: Message, command: CommandObject, data: 
             )
         else:
             # Обычный старт без параметра
-            markup = await user_menu(message.from_user.id, status=data["user_status"])
+            markup = await user_menu(status= data["user_status"])
             text = await greetings_message(club_id=data["club_id"])
             text = text + "\nВаш статус в группе:"
             for status in data["user_status"]:
                 text += f"\n   - {LEXICON.get('user_status',{}).get(status, status)}"
 
         # Создаем клавиатуру
-        markup = await user_menu(message.from_user.id, status=data["user_status"])
+        markup = await user_menu(status= data["user_status"])
 
         # Отправляем сообщение
         await message.answer(text=text, reply_markup=markup, parse_mode="HTML")
@@ -98,7 +98,7 @@ async def process_help_command(message: Message, data: dict):
     logger.info(f"Пользователь {message.from_user.id} запросил справку.")
     await message.answer(
         text=help_message(data["user_status"]),
-        reply_markup=await user_menu(message.from_user.id, status=data["user_status"]),
+        reply_markup=await user_menu(status= data["user_status"]),
         parse_mode="HTML",  # Указываем режим разметки
     )
 
@@ -116,9 +116,7 @@ async def process_help_callback(callback: CallbackQuery, data: dict):
 
     # Добавляем данные для SafeEditMiddleware
     data["response_text"] = help_message(data["user_status"])
-    data["reply_markup"] = await user_menu(
-        callback.from_user.id, status=data["user_status"]
-    )
+    data["reply_markup"] = await user_menu(status= data["user_status"])
 
     # Отправляем сообщение со справкой в ответ
     await callback.message.answer(  # type: ignore
@@ -142,7 +140,7 @@ async def process_cancel_command(message: Message, data: dict):
     logger.info(
         f"Пользователь {message.from_user.id} попытался использовать /cancel вне машины состояний."
     )
-    markup = await user_menu(message.from_user.id, data["user_status"])
+    markup = await user_menu(status= data["user_status"])
     await message.answer(text="Вы вышли в главное меню.", reply_markup=markup)
 
 
@@ -158,7 +156,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
     if not message.from_user:
         raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
     logger.info(f"Пользователь {message.from_user.id} вышел из машины состояний.")
-    markup = await user_menu(message.from_user.id, data["user_status"])
+    markup = await user_menu(status= data["user_status"])
     await message.answer(
         text="Вы вышли из машины состояний и вернулись в главное меню.",
         reply_markup=markup,
@@ -179,7 +177,7 @@ async def process_main_menu_button(callback: CallbackQuery, data: dict):
     )
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-    markup = await user_menu(callback.from_user.id, data["user_status"])
+    markup = await user_menu(status= data["user_status"])
 
     # Добавляем данные для SafeEditMiddleware
     data["response_text"] = "Главное меню:"
@@ -205,7 +203,7 @@ async def process_main_menu_button_state(
     )
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-    markup = await user_menu(callback.from_user.id, data["user_status"])
+    markup = await user_menu(status= data["user_status"])
 
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
@@ -235,7 +233,7 @@ async def process_club_info_command(message: Message, data: dict):
     logger.info(f"Пользователь {message.from_user.id} запросил справку о группе.")
     await message.answer(
         text=await club_info(data["club_id"]),
-        reply_markup=await user_menu(message.from_user.id, status=data["user_status"]),
+        reply_markup=await user_menu(status= data["user_status"]),
         parse_mode="HTML",  # Указываем режим разметки
     )
 
@@ -279,9 +277,7 @@ async def process_leave_the_group(
             )
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при загрузке списка голосований."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -308,11 +304,12 @@ async def process_leave_club_entry(
     try:
         # Запускаем процедуру выхода из группы
         member_id = data["member_id"]
+        instance_name = data["instance_name"]
         status = data["user_status"]
-        await leave_club(member_id, status)
+        await leave_club(member_id, instance_name, status)
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы вышли из группы!"
-        data["reply_markup"] = await user_menu(callback.from_user.id)
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение
         await callback.message.edit_text(  # type: ignore
@@ -332,9 +329,7 @@ async def process_leave_club_entry(
             )
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore

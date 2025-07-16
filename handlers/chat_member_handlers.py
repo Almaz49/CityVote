@@ -8,7 +8,7 @@ from aiogram.filters import (JOIN_TRANSITION, LEAVE_TRANSITION,
                              ChatMemberUpdatedFilter)
 from aiogram.types import ChatMemberUpdated
 
-from data_base.data_base import *
+from data_base.db_member import mark_user_as_available, mark_user_as_unavailable
 from utils import log_handler_call
 
 # Настройка логирования

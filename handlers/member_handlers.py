@@ -77,9 +77,7 @@ async def process_variant_selection(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при голосовании."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Отправляем новое сообщение в случае ошибки
         await callback.message.answer(  # type: ignore
@@ -117,9 +115,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
         if not proxies:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "В данный момент нет доступных представителей."
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data["user_status"])
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -185,9 +181,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при загрузке списка представителей."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(  # type: ignore
@@ -219,9 +213,7 @@ async def process_trust(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = ans_str
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -233,9 +225,7 @@ async def process_trust(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при доверии голоса."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(  # type: ignore
@@ -285,9 +275,7 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
         if not proxies:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "В данный момент нет доступных представителей."
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data["user_status"])
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -384,9 +372,7 @@ async def process_select_deputy(callback: CallbackQuery, data: dict, state: FSMC
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при загрузке списка представителей."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(  # type: ignore
@@ -437,7 +423,7 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = ans_str
-        data["reply_markup"] = await user_menu(user_id, data["user_status"])
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Отвечаем
         await message.answer(
@@ -451,7 +437,7 @@ async def process_appoint_deputy(message: Message, data: dict, state: FSMContext
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при выборе заместителя."
         data["reply_markup"] = (
-            await user_menu(message.from_user.id, data["user_status"])
+            await user_menu(status= data["user_status"])
             if message.from_user
             else ReplyKeyboardRemove()
         )
@@ -474,12 +460,11 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
         member_id = data["member_id"]
+        instance_name = data["instance_name"]
         if not member_id:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы не являетесь участником группы."
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data["user_status"])
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -490,9 +475,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
         if "proxy" in data["user_status"]:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы уже являетесь представителем"
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data["user_status"])
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -510,11 +493,11 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             # Присваиваем статус 'votist' (если его не было)
             await new_status(member_id, member_id, "votist")
             # Присваем статус 'votist' тем, кто каким-то образом уже доверил ему голос
-            await votist_because_proxy_returned(member_id)
+            await votist_because_proxy_returned(member_id, instance_name)
 
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы стали представителем!"
-            data["reply_markup"] = await user_menu(callback.from_user.id)
+            data["reply_markup"] = await user_menu(status= data["user_status"])
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -543,9 +526,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при присвоении статуса представителя."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(  # type: ignore
@@ -614,6 +595,7 @@ async def process_username_entry(
     username = fsm_data["username"]
     user_id = data["user_id"]
     member_id = data["member_id"]
+    instance_name = data["instance_name"]
 
     try:
         # Записываем username в базу данных
@@ -623,11 +605,11 @@ async def process_username_entry(
         # Присваиваем статус 'votist' (если его не было)
         await new_status(member_id, member_id, "votist")
         # Присваем статус 'votist' тем, кто каким-то образом уже доверил ему голос
-        await votist_because_proxy_returned(member_id)
+        await votist_because_proxy_returned(member_id, instance_name)
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы стали представителем!"
-        data["reply_markup"] = await user_menu(callback.from_user.id)
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение
         await callback.message.edit_text(  # type: ignore
@@ -642,9 +624,7 @@ async def process_username_entry(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -704,12 +684,11 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     member_id = data["member_id"]
+    instance_name = data["instance_name"]
     if not member_id:
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы не являетесь участником группы."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение
         await callback.message.edit_text(  # type: ignore
@@ -719,7 +698,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
 
     # Убираем статус 'proxy'
     await new_status(member_id, member_id, "not_proxy")
-    await not_votist_because_proxy_quit(member_id)
+    await not_votist_because_proxy_quit(member_id, instance_name)
     flag = await is_votist(member_id)
     text = "Вы перестали быть представителем!"
     if not flag:
@@ -729,7 +708,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
 
     # Добавляем данные для SafeEditMiddleware
     data["response_text"] = text
-    data["reply_markup"] = await user_menu(callback.from_user.id)
+    data["reply_markup"] = await user_menu(status= data["user_status"])
 
     # Редактируем сообщение
     await callback.message.edit_text(  # type: ignore
@@ -752,9 +731,7 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
         if not member_id:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы не являетесь участником группы."
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data["user_status"])
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -771,7 +748,7 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = text
-        data["reply_markup"] = await user_menu(callback.from_user.id)
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение
         await callback.message.edit_text(  # type: ignore
@@ -783,9 +760,7 @@ async def process_resign_from_registrator(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при удалении статуса представителя."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(  # type: ignore
@@ -810,9 +785,7 @@ async def process_resign_from_admin(callback: CallbackQuery, data: dict):
         if not member_id:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы не являетесь участником группы."
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data["user_status"])
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -826,7 +799,7 @@ async def process_resign_from_admin(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = text
-        data["reply_markup"] = await user_menu(callback.from_user.id)
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение
         await callback.message.edit_text(  # type: ignore
@@ -838,9 +811,7 @@ async def process_resign_from_admin(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при удалении статуса администратора."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(  # type: ignore
@@ -884,9 +855,7 @@ async def process_become_registrator(
             data["response_text"] = (
                 "Предложение стать регистратором предназначалось не вам"
             )
-            data["reply_markup"] = await user_menu(
-                user_id, data.get("user_status", "user")
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             await callback.message.edit_text(  # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
@@ -897,9 +866,7 @@ async def process_become_registrator(
         member_id = data.get("member_id")
         if not member_id:
             data["response_text"] = "Вы не являетесь участником группы."
-            data["reply_markup"] = await user_menu(
-                user_id, data.get("user_status", "user")
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             await callback.message.edit_text(  # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
@@ -908,9 +875,7 @@ async def process_become_registrator(
 
         if "registrator" in data.get("user_status", []):
             data["response_text"] = "Вы уже являетесь регистратором"
-            data["reply_markup"] = await user_menu(
-                user_id, data.get("user_status", "user")
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             await callback.message.edit_text(  # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
@@ -919,9 +884,7 @@ async def process_become_registrator(
 
         if "pre-registrator" not in data.get("user_status", []):
             data["response_text"] = "Вы не являетесь кандидатом в регистраторы"
-            data["reply_markup"] = await user_menu(
-                user_id, data.get("user_status", "user")
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             await callback.message.edit_text(  # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
@@ -942,7 +905,7 @@ async def process_become_registrator(
             await new_status(member_id, member_id, "not_pre-registrator")
 
             data["response_text"] = "Вы стали регистратором!"
-            data["reply_markup"] = await user_menu(user_id)
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             await callback.message.edit_text(  # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
@@ -975,9 +938,7 @@ async def process_become_registrator(
         logger.error(f"Ошибка при обработке кнопки 'pre_registrator_yes': {e}")
 
         data["response_text"] = "Произошла ошибка при присвоении статуса регистратора."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data.get("user_status", "user")
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         await callback.message.edit_text(  # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
@@ -1005,9 +966,7 @@ async def process_become_registrator_own(
         if "registrator" in status:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы уже являетесь регистратором"
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -1018,9 +977,7 @@ async def process_become_registrator_own(
         if "pre-registrator" not in status:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы не являетесь кандидатом в регистраторы"
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -1044,7 +1001,7 @@ async def process_become_registrator_own(
 
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы стали регистратором!"
-            data["reply_markup"] = await user_menu(callback.from_user.id)
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -1074,9 +1031,7 @@ async def process_become_registrator_own(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при присвоении статуса представителя."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(  # type: ignore
@@ -1121,9 +1076,7 @@ async def process_not_become_registrator(
             data["response_text"] = (
                 "Предложение стать регистратором предназначалось не вам"
             )
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -1134,9 +1087,7 @@ async def process_not_become_registrator(
         if not member_id:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы не являетесь участником группы."
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -1147,9 +1098,7 @@ async def process_not_become_registrator(
         if "pre-registrator" not in data["user_status"]:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы не являетесь кандидатом в регистраторы"
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -1162,7 +1111,7 @@ async def process_not_become_registrator(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы не стали регистратором!"
-        data["reply_markup"] = await user_menu(callback.from_user.id)
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Редактируем сообщение
         await callback.message.edit_text(  # type: ignore
@@ -1174,9 +1123,7 @@ async def process_not_become_registrator(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при присвоении статуса представителя."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(  # type: ignore
@@ -1258,8 +1205,7 @@ async def process_reg_username_entry(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы стали регистратором!"
-        data["reply_markup"] = await user_menu(callback.from_user.id)
-
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
         # Редактируем сообщение
         await callback.message.edit_text(  # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
@@ -1273,9 +1219,7 @@ async def process_reg_username_entry(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore

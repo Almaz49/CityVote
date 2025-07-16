@@ -121,6 +121,21 @@ async def new_status(registrator, member_id, status, token_id=None):
                     (member_id, status2),
                 )
                 logger.info(f"Статус '{status2}' удален для member_id: {member_id}")
+                # Если удаляется стаус member, то удаляем все остальные статусы, кроме owner
+                if status2 == "member":
+                    await cursor.execute(
+                        """DELETE FROM Status WHERE member_id = ? AND
+                        status IN ("member", "registrator","admin","superregistrator","pre-registrator","votist","delegate","proxy") ?""",
+                        (member_id,),
+                    )
+                    logger.info(f"Статус 'member' удавлен для member_id: {member_id}")
+                # Если удаляется стаус ban, то удаляем срок бана из таблицы Members
+                if status2 == "ban":
+                    await cursor.execute(
+                        """UPDATE Members SET ban_expires_at = NULL WHERE member_id = ? """,
+                        (member_id,),
+                    )
+                    logger.info(f"Статус 'owner' удавлен для member_id: {member_id}")
                 success = True
                 message = f"Статус '{status2}' удален для member_id: {member_id}"
                 return success, message

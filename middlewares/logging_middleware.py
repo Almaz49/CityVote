@@ -8,7 +8,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import Update
 
 from data_base.db_func import extract_user_member_id
-from keyboards.keyboards import user_menu
+from keyboards.keyboards import return_to_main_menu_markup
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
             # Only call user_menu if tg_id is an integer
             if isinstance(tg_id, int):
                 try:
-                    markup = await user_menu(tg_id)
+                    markup = return_to_main_menu_markup
                 except Exception as menu_error:
                     logger.error(
                         f"Failed to generate user menu for tg_id {tg_id}: {menu_error}"

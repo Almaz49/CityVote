@@ -194,6 +194,9 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
     fsm_data = await state.get_data()
     logger.info(f"FSM data: \n{fsm_data}\n")
     member_tg_id = fsm_data["ID"]
+    club_id = data.get("club_id")
+    if not club_id:
+        raise ValueError("ID клуба отсутствует")
     user_id, member_id = await extract_user_member_id(club_id, member_tg_id)
     if not member_id:
         raise ValueError("ID участника отсутствует")
@@ -241,9 +244,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -270,7 +271,7 @@ async def process_no_confirm_status_press(
     data["response_text"] = (
         "Спасибо! Новый статус не добавлен!\nПопробуйте еще раз.\nВы вышли из машины состояний"
     )
-    data["reply_markup"] = await user_menu(callback.from_user.id, data["user_status"])
+    data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(  # type: ignore
@@ -344,9 +345,7 @@ async def process_new_status_confirm(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -387,9 +386,7 @@ async def process_new_status_entry(
                 "Извините, такого статуса нет.\n\n Попробуйте снова."
                 "Вы вышли из машины состояний"
             )
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Пытаемся отредактировать сообщение
             await callback.message.edit_text(  # type: ignore
@@ -398,16 +395,15 @@ async def process_new_status_entry(
         else:
             member_tg_id = fsm_data["ID"]
             registrator_tg_id = callback.from_user.id
-            ans_str = await new_status_tg(
+            club_id = data["club_id"]
+            ans_str = await new_status_tg(club_id,
                 registrator_tg_id, member_tg_id, status
             )  # Вызов функции присвоения нового статуса
 
             if isinstance(ans_str, str) and "Ошибка" in ans_str:
                 # Добавляем данные для SafeEditMiddleware
                 data["response_text"] = f"Произошла ошибка: {ans_str}"
-                data["reply_markup"] = await user_menu(
-                    callback.from_user.id, data["user_status"]
-                )
+                data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
                 # Пытаемся отредактировать сообщение
                 await callback.message.edit_text(  # type: ignore
@@ -422,9 +418,7 @@ async def process_new_status_entry(
             data["response_text"] = (
                 "Спасибо! Статус участника обновлен!\n\n" "Вы вышли из машины состояний"
             )
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Пытаемся отредактировать сообщение
             await callback.message.edit_text(  # type: ignore
@@ -436,9 +430,7 @@ async def process_new_status_entry(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -467,7 +459,7 @@ async def process_no_confirm_status(
     data["response_text"] = (
         "Спасибо! Новый статус не добавлен!\nПопробуйте еще раз.\nВы вышли из машины состояний"
     )
-    data["reply_markup"] = await user_menu(callback.from_user.id, data["user_status"])
+    data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(  # type: ignore
@@ -613,7 +605,7 @@ async def add_channel_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdminStates.adding_telegram_channel)
 @log_handler_call
-async def process_add_channel(message: Message, state: FSMContext, club_id: int):
+async def process_add_channel(message: Message, state: FSMContext, data: dict):
     if not message.text:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise ValueError("Текст сообщения пуст")
@@ -621,8 +613,10 @@ async def process_add_channel(message: Message, state: FSMContext, club_id: int)
     if not channel_info:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise
+    club_id = data["club_id"]
+    instance_name = data["instance_name"]
 
-    result = await process_channel_info(channel_info, club_id, "add")
+    result = await process_channel_info(channel_info, instance_name, club_id, "add")
     await message.answer(result["message"])
     await state.clear()
 
@@ -639,7 +633,7 @@ async def remove_channel_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdminStates.removing_telegram_channel)
 @log_handler_call
-async def process_remove_channel(message: Message, state: FSMContext, club_id: int):
+async def process_remove_channel(message: Message, state: FSMContext, data: dict):
     if not message.text:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise ValueError("Текст сообщения пуст")
@@ -648,7 +642,9 @@ async def process_remove_channel(message: Message, state: FSMContext, club_id: i
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         return
 
-    result = await process_channel_info(channel_info, club_id, "remove")
+    club_id = data["club_id"]
+    instance_name = data["instance_name"]
+    result = await process_channel_info(channel_info, instance_name, club_id, "remove")
     await message.answer(result["message"])
     await state.clear()
 
@@ -665,7 +661,7 @@ async def set_main_channel_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdminStates.setting_main_channel)
 @log_handler_call
-async def process_set_main_channel(message: Message, state: FSMContext, club_id: int):
+async def process_set_main_channel(message: Message, state: FSMContext, data: dict):
     if not message.text:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise ValueError("Текст сообщения пуст")
@@ -673,8 +669,9 @@ async def process_set_main_channel(message: Message, state: FSMContext, club_id:
     if not channel_info:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         return
-
-    result = await process_channel_info(channel_info, club_id, "set_main")
+    club_id = data['club_id']
+    instance_name = data['instance_name']
+    result = await process_channel_info(channel_info, instance_name, club_id, "set_main")
     # Логирование результата
     logger.debug(f"Результат операции: {result}")
 
@@ -832,7 +829,7 @@ async def confirm_stage_durations(
     response_text = (
         result if isinstance(result, str) else "Произошла ошибка при сохранении данных."
     )
-    markup = await user_menu(callback.from_user.id, data["user_status"])
+    markup = await user_menu(status= data.get("user_status", "user"))
 
     # Отправляем ответ и завершаем машину состояний
     await callback.message.edit_text(text=response_text, reply_markup=markup)  # type: ignore
@@ -855,7 +852,7 @@ async def cancel_stage_durations(
 
     # Отправляем сообщение об отмене
     response_text = "Установка продолжительности этапов отменена."
-    markup = await user_menu(callback.from_user.id, data["user_status"])
+    markup = await user_menu(status= data.get("user_status", "user"))
     await callback.message.edit_text(text=response_text, reply_markup=markup)  # type: ignore
 
 
@@ -979,7 +976,7 @@ async def confirm_thresholds(callback: CallbackQuery, state: FSMContext, data: d
     response_text = (
         result if isinstance(result, str) else "Произошла ошибка при сохранении данных."
     )
-    markup = await user_menu(callback.from_user.id, data["user_status"])
+    markup = await user_menu(status= data.get("user_status", "user"))
 
     # Отправляем ответ и завершаем машину состояний
     await callback.message.edit_text(text=response_text, reply_markup=markup)  # type: ignore
@@ -1000,5 +997,5 @@ async def cancel_thresholds(callback: CallbackQuery, state: FSMContext, data: di
 
     # Отправляем сообщение об отмене
     response_text = "Установка порогов доверенных голосов отменена."
-    markup = await user_menu(callback.from_user.id, data["user_status"])
+    markup = await user_menu(status= data.get("user_status", "user"))
     await callback.message.edit_text(text=response_text, reply_markup=markup)  # type: ignore

@@ -124,9 +124,7 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
             )
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при загрузке списка голосований."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Редактируем сообщение в случае ошибки
         await callback.message.answer(  # type: ignore
@@ -277,9 +275,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
             )
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при просмотре вариантов голосования."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Отправляем сообщение в случае ошибки
         await callback.message.answer(  # type: ignore
@@ -320,9 +316,7 @@ async def process_proxy_list(callback: CallbackQuery, data: dict):
         if not proxies:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "В данный момент нет доступных представителей."
-            data["reply_markup"] = await user_menu(
-                callback.from_user.id, data["user_status"]
-            )
+            data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -409,9 +403,7 @@ async def process_proxy_list(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при загрузке списка представителей."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(  # type: ignore

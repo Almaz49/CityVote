@@ -3,13 +3,12 @@
 
 import logging
 
-from aiogram import Bot, F, Router
+from aiogram import F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message)
 
-from config_data.config import Config, load_config
 from data_base.telegram_bot_logic import (get_club_info, list_of_members,
                                           new_status_tg, update_member_data,
                                           update_user_data)
@@ -23,9 +22,6 @@ from utils import log_handler_call
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# Загружаем конфиг в переменную config
-config: Config = load_config(".env")
-bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -111,9 +107,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при начале процесса регистрации."
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Пытаемся отредактировать сообщение
         try:
@@ -210,13 +204,15 @@ async def process_registrator_choise(
         await update_user_data(tg_id, **user_param)
 
         member_id = data["member_id"]
+        club_id = data["club_id"]
+        instance_name = data["instance_name"]
         member_param = {}
         member_param["resume"] = user_dict.get("resume")
         await update_member_data(member_id, **member_param)
 
         # Меняем статус пользователя на 'candidate'
         success, result = await new_status_tg(
-            None, tg_id, "candidate"
+            club_id, None, tg_id, "candidate"
         )  # меняем статус пользователя на 'candidate'
         if not success:
             await callback.message.answer(text=result)  # type: ignore
@@ -228,7 +224,7 @@ async def process_registrator_choise(
         # Отправляем в чат сообщение о выходе из машины состояний
         await callback.message.answer(  # type: ignore
             text="Спасибо! Ваши данные сохранены.\nАдминистрация их проверит и даст вам соответствующие права\nВы вышли из машины состояний",
-            reply_markup=await user_menu(callback.from_user.id),
+            reply_markup=await user_menu(status= data.get("user_status", "user"))
         )
 
         # Проверяем, что callback.data существует
@@ -240,13 +236,15 @@ async def process_registrator_choise(
         # Если выбран регистратор, отправляем ему сообщение с просьбой подтвердить регистрацию
         if callback.data.isdigit():
             success, result = await notify_registrator_short(
-                int(callback.data), tg_id, user_dict
+                int(callback.data), tg_id, user_dict, instance_name
             )
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")  # type: ignore
         elif callback.data == "stranger":
             logger.info(f"Пользователь {tg_id} выбрал 'Никого не знаю'.")
-            success, result = await notify_super_registrator_short(tg_id, user_dict)
+            club_id = data["club_id"]
+            instance_name = data["instance_name"]
+            success, result = await notify_super_registrator_short(club_id, tg_id, user_dict, instance_name)
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")  # type: ignore
             # Здесь тоже нужна функция уведомления администрации

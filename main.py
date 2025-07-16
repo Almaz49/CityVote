@@ -40,6 +40,7 @@ dp = Dispatcher(storage=MemoryStorage())
 # Записываем путь к базе данных и id группы в словарь-хранилище диспетчера для доступа в других модулях
 dp["path_db"] = path_db
 dp["club_id"] = club_id
+dp["instance_name"] = instance_name
 
 
 # Настройка логгирования
@@ -84,7 +85,7 @@ def schedule_jobs():
         minute=0,
         timezone=tz,
         id="voting_task",
-        args=[club_id],
+        args=[club_id, instance_name],
     ) # раз в сутки
 
     scheduler.add_job(

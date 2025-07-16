@@ -322,23 +322,6 @@ async def get_profile(member_id: int):
 # Нужна только для тестирования
 @log_function_call
 async def all_status():
-    # async with AsyncDatabase(path_db) as cursor:
-    #     # Извлекаем из БД неповторяющиеся статусы
-    #     await cursor.execute(
-    #         '''
-    #         SELECT DISTINCT status FROM Status
-    #         '''
-    #     )
-    #     answ = await cursor.fetchall()
-
-    #     # Добавляем те статусы, которые в принципе предусматриваются
-    #     predefined_statuses = [('admin',), ('registrator',), ('member',),
-    #                            ('delegate',), ('proxy',), ('moderator',)]
-    #     all_st = list(set(answ + predefined_statuses))
-
-    #     # Преобразуем список кортежей просто в список
-    #     all_st = [status[0] for status in all_st]
-
     all_st = ["admin", "registrator", "member", "delegate", "proxy", "pre-registrator", "banned"]
 
     logger.info(f"Все статусы: {all_st}")

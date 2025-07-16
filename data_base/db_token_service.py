@@ -11,6 +11,7 @@ import logging
 
 from data_base.db_member import new_status
 from utils.utils import log_function_call
+
 logger = logging.getLogger(__name__)
 
 @log_function_call

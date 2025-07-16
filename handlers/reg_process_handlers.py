@@ -2,11 +2,10 @@
 # Содержит хэндлеры процесса регистрации
 
 import logging
-from aiogram import Bot, F, Router
+from aiogram import F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
-from config_data.config import Config, load_config
 from data_base.db_member import new_status
 from data_base.db_token_service import (clear_old_attempts, get_token_attempts_count,
                                         add_token_attempt, auto_approve_by_token, is_valid_token)
@@ -21,9 +20,6 @@ from utils import log_handler_call
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# Загружаем конфиг в переменную config
-config: Config = load_config(".env")
-bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -201,6 +197,8 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         user_dict = await state.get_data()
         tg_id = callback.from_user.id
         member_id = data["member_id"]
+        club_id = data["club_id"]
+        instance_name = data["instance_name"]
 
         user_param = {
             "tg_phone_number": user_dict.get("tg_phone_number"),
@@ -212,7 +210,7 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         member_param = {"resume": user_dict.get("resume")}
         await update_member_data(member_id, **member_param)
 
-        success, result = await new_status_tg(None, tg_id, "candidate")
+        success, result = await new_status_tg(data.get("club_ud"), None, tg_id, "candidate")
         if not success:
             await callback.message.answer(text=result)
             return
@@ -223,15 +221,15 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
             text="Спасибо! Ваши данные сохранены.\n"
                  "Администрация их проверит и даст вам соответствующие права.\n"
                  "Вы вышли из машины состояний.",
-            reply_markup=await user_menu(callback.from_user.id),
+            reply_markup=await user_menu(status= data.get("user_status", "user"))
         )
 
         if callback.data.isdigit():
-            success, result = await notify_registrator_short(int(callback.data), tg_id, user_dict)
+            success, result = await notify_registrator_short(int(callback.data), tg_id, user_dict, instance_name)
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")
         elif callback.data == "stranger":
-            success, result = await notify_super_registrator_short(tg_id, user_dict)
+            success, result = await notify_super_registrator_short(club_id, tg_id, user_dict, instance_name)
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
 

@@ -8,7 +8,6 @@
 
 import logging
 
-from config_data.config import Config, load_config
 from data_base.db_func import *
 from data_base.db_member import *
 from data_base.db_vote import *
@@ -16,11 +15,6 @@ from utils import log_function_call
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
-
-# Загружаем конфиг в переменную config
-config: Config = load_config(".env")
-club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
-
 
 
 
@@ -31,7 +25,7 @@ club_id = config.tg_bot.club_id  # id группы в БД (не телегра�
 # Возвращает (flag, ans_str). Если flag == true, значит участник может быть назначен регистратором.
 # ans_str - комментарий, который выдается по итогу извлечения данных
 @log_function_call
-async def extract_new_registrator_data(tg_id):
+async def extract_new_registrator_data(club_id, tg_id):
     user_id = await extract_user_id(tg_id)
     member_id = await extract_member_id(club_id, user_id)
 
@@ -73,7 +67,7 @@ async def extract_new_registrator_data(tg_id):
 
 # Присвоение нового статуса - в качестве аргументов функции tg_id регистратора и участника группы
 @log_function_call
-async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
+async def new_status_tg(club_id, registrator_tg_id, member_tg_id, status, token_id=None):
     ans_str = ""
     if registrator_tg_id:
         registrator_user_id = await extract_user_id(registrator_tg_id)
@@ -125,7 +119,7 @@ async def new_status_tg(registrator_tg_id, member_tg_id, status, token_id=None):
 
 # Извлечение статусов участника группы (отдает список статусов)
 @log_function_call
-async def extract_status_tg(tg_id):
+async def extract_status_tg(club_id, tg_id):
     user_id = await extract_user_id(tg_id)
     if not user_id:
         logger.warning(f"Не найден пользователь с tg_id={tg_id}")

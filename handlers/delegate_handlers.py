@@ -136,11 +136,11 @@ async def process_new_voting_yes_confirm_press(
         logger.debug(f"Получена FSM data:{fsm_data}")
         title = fsm_data["title"]
         description = fsm_data["description"]
-        tg_id = callback.from_user.id
 
         # Создаем новое голосование
         flag, comment = await voting_create_manager(
             club_id=data["club_id"],
+            instance_name=data["instance_name"],
             creator=data["member_id"],
             title=title,
             text=description,
@@ -176,9 +176,7 @@ async def process_new_voting_yes_confirm_press(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -472,9 +470,7 @@ async def process_new_variant_yes_confirm_press(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(
-            callback.from_user.id, data["user_status"]
-        )
+        data["reply_markup"] = await user_menu(status= data["user_status"])
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore

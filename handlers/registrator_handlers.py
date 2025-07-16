@@ -7,7 +7,6 @@ from aiogram.filters import StateFilter
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 
-from config_data.config import Config, load_config
 from data_base.db_func import (
     extract_user_member_id
 )
@@ -23,8 +22,6 @@ from data_base.db_token_service import mark_token_as_used, create_formatted_toke
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# Загружаем конфиг в переменную config
-config: Config = load_config(".env")
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -148,7 +145,7 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
         # Уведомляем регистратора
         await message.answer(
             text=f"Спасибо! Пользователь {tg_id} получил статус 'Участник'.",
-            reply_markup=await user_menu(message.from_user.id, data["user_status"]),
+            reply_markup=await user_menu(status= data.get("user_status", "user"))
         )
 
         # Отправляем уведомление пользователю
@@ -218,11 +215,11 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
         # Отправляем уведомление об отказе
         await callback.message.answer(
             text=f"Спасибо! Пользователь {tg_id} не получил статус 'Участник'.",
-            reply_markup=await user_menu(callback.from_user.id, data["user_status"]),
+            reply_markup=await user_menu(status= data.get("user_status", "user"))
         )
     except Exception as e:
         logger.error(f"Ошибка при отклонении членства пользователя {tg_id}: {e}")
         await callback.message.answer(  # type: ignore
             text="Произошла ошибка при отклонении членства.",
-            reply_markup=await user_menu(callback.from_user.id, data["user_status"]),
+            reply_markup=await user_menu(status= data.get("user_status", "user"))
         )
