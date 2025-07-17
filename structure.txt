@@ -16,10 +16,15 @@
 │   └── main.py
 │   └── print_structure.py
 │   └── requirements.txt
+│   └── run.py
+│   └── run_Linux.py
 │   └── structure.txt
 │   └── test.py
 │   └── test_script.py
 │   └── warning.log
+│   ├── configs/
+│   │   └── bot01.env
+│   │   └── example.env
 │   ├── config_data/
 │   │   └── config.py
 │   ├── data_base/

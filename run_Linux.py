@@ -8,7 +8,7 @@ import subprocess
 
 # Конфигурация
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-MAIN_SCRIPT = "main.py"
+MAIN_SCRIPT = os.path.join(PROJECT_DIR, "main.py")
 VENV_PATH = os.path.join(PROJECT_DIR, "venv")
 VENV_PYTHON = os.path.join(VENV_PATH, "bin", "python")
 
