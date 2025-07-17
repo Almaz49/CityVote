@@ -782,7 +782,7 @@ async def check_ban_status(member_id):
                 WHERE member_id = ? AND status = 'banned'
             """, (member_id,))
             await cursor.execute(
-                """INSERT OR IGNORE INTO Registration (object_type, object_id, status, time_reg)
+                """INSERT OR IGNORE INTO Registrations (object_type, object_id, status, time_reg)
                 VALUES ('member', ?, 'unbanned', ?)""",
                 (member_id, now)
         )
@@ -837,7 +837,7 @@ async def check_ban_status_all_members(club_id: int):
 
                 # Логируем разбан
                 await cursor.execute(
-                    """INSERT OR IGNORE INTO Registration (object_type, object_id, status, time_reg)
+                    """INSERT OR IGNORE INTO Registrations (object_type, object_id, status, time_reg)
                     VALUES ('member', ?, 'unbanned', ?)""",
                     (member_id, now_str)
                 )
