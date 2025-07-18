@@ -37,7 +37,7 @@ def setup_logger(
 
     # Handler для записи DEBUG и выше в файл debug.log
     debug_handler = RotatingFileHandler(
-        info_log_path,
+        debug_log_path,
         maxBytes=5 * 1024 * 1024,  # 5 МБ
         backupCount=5,
         encoding=file_encoding
