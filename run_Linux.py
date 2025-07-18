@@ -15,6 +15,14 @@ VENV_PYTHON = os.path.join(VENV_PATH, "bin", "python")
 # Переменная окружения — измените, если хотите запускать разные ботов
 BOT_INSTANCE = "bot01"  # или None, если не нужно
 
+def parse_args():
+    """Парсим аргументы командной строки"""
+    bot_name = BOT_INSTANCE  # значение по умолчанию
+    if "--bot-name" in sys.argv:
+        idx = sys.argv.index("--bot-name")
+        if idx + 1 < len(sys.argv):
+            bot_name = sys.argv[idx + 1]
+    return bot_name
 
 def activate_venv():
     """Добавляет пути виртуального окружения в os.environ, если оно существует"""
@@ -54,4 +62,7 @@ def run_bot():
 
 if __name__ == "__main__":
     activate_venv()
+    bot_name = parse_args()
+    if bot_name:
+        os.environ["BOT_INSTANCE"] = bot_name
     sys.exit(run_bot())
