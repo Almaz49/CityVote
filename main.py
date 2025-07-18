@@ -45,8 +45,10 @@ dp["instance_name"] = instance_name
 
 # Настройка логгирования
 logger = setup_logger(
-    info_log_path="info.log",
-    warning_log_path="warning.log",
+    debug_log_path=f"logs/{instance_name}_debug.log",
+    info_log_path=f"logs/{instance_name}_info.log",
+    warning_log_path=f"logs/{instance_name}_warning.log",
+    error_log_path=f"logs/{instance_name}_error.log",
     console_level=logging.WARNING,  # Здесь менять уровень вывода логов в консоль
     file_encoding="utf-8",
 )

@@ -1,13 +1,14 @@
 # logging_setup.py
 
+import os
 import logging
-
+from logging.handlers import RotatingFileHandler
 
 def setup_logger(
-    debug_log_path="debug.log",
-    info_log_path="info.log",
-    warning_log_path="warning.log",
-    error_log_path="error.log",
+    debug_log_path="logs/debug.log",
+    info_log_path="logs/info.log",
+    warning_log_path="logs/warning.log",
+    error_log_path="logs/error.log",
     console_level=logging.DEBUG,
     file_encoding="utf-8",
 ):
@@ -23,8 +24,17 @@ def setup_logger(
     root_logger = logging.getLogger()  # Корневой логгер
     root_logger.setLevel(logging.DEBUG)
 
+        # Удаляем старые хэндлеры
+    for handler in root_logger.handlers:
+        root_logger.removeHandler(handler)
+
     # Handler для записи DEBUG и выше в файл debug.log
-    debug_handler = logging.FileHandler(debug_log_path, encoding=file_encoding)
+    debug_handler = RotatingFileHandler(
+        info_log_path,
+        maxBytes=5 * 1024 * 1024,  # 5 МБ
+        backupCount=5,
+        encoding=file_encoding
+    )
     debug_handler.setLevel(logging.DEBUG)
     debug_handler.setFormatter(
         logging.Formatter(
@@ -32,41 +42,44 @@ def setup_logger(
         )
     )
 
-    # Handler для записи INFO и выше в файл info.log
-    info_handler = logging.FileHandler(info_log_path, encoding=file_encoding)
+    # Handler для INFO
+    info_handler = RotatingFileHandler(
+        info_log_path,
+        maxBytes=5 * 1024 * 1024,  # 5 МБ
+        backupCount=5,
+        encoding=file_encoding
+    )
     info_handler.setLevel(logging.INFO)
-    info_handler.setFormatter(
-        logging.Formatter(
-            "[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s"
-        )
-    )
+    info_handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s"))
 
-    # Handler для записи WARNING и выше в файл warning.log
-    warning_handler = logging.FileHandler(warning_log_path, encoding=file_encoding)
+
+    # Handler для WARNING
+    warning_handler = RotatingFileHandler(
+        warning_log_path,
+        maxBytes=5 * 1024 * 1024,
+        backupCount=5,
+        encoding=file_encoding
+    )
     warning_handler.setLevel(logging.WARNING)
-    warning_handler.setFormatter(
-        logging.Formatter(
-            "[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s"
-        )
-    )
+    warning_handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s"))
 
-    # Handler для записи ERRROR и выше в файл error.log
-    error_handler = logging.FileHandler(error_log_path, encoding=file_encoding)
+
+    # Handler для ERROR
+    error_handler = RotatingFileHandler(
+        error_log_path,
+        maxBytes=5 * 1024 * 1024,
+        backupCount=5,
+        encoding=file_encoding
+    )
     error_handler.setLevel(logging.ERROR)
-    error_handler.setFormatter(
-        logging.Formatter(
-            "[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s"
-        )
-    )
+    error_handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s"))
 
-    # Handler для вывода в консоль
+
+    # Вывод в консоль
     console_handler = logging.StreamHandler()
     console_handler.setLevel(console_level)
-    console_handler.setFormatter(
-        logging.Formatter(
-            "[%(asctime)s] %(levelname)-8s %(filename)s:%(lineno)d - %(name)s - %(message)s"
-        )
-    )
+    console_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+
 
     # Добавляем handlers к корневому логгеру
     # При желании отключить тот или иной хэндлер логирования - заккоментить соответсвующую строку
