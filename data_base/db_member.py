@@ -663,7 +663,6 @@ async def extract_list_of_full_member_ids(club_id):
         Members.id AS member_id
         FROM Users
         INNER JOIN Members ON Users.id = Members.user_id
-        Members
         WHERE Members.club_id = ?
           AND Members.id IN (
             SELECT Status.member_id
