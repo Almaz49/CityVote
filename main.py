@@ -17,7 +17,7 @@ from handlers import (admin_handlers, chat_member_handlers, delegate_handlers,
 from manager.manager import check_votist_status_for_all_members, voting_task, check_token_for_oll_members
 from middlewares import (LoggingAndErrorHandlingMiddleware, SafeEditMiddleware,
                          StatusMiddleware)
-from utils import setup_logger
+from utils import setup_logger, cleanup_old_logs
 
 # Получаем имя экземпляра бота из переменной окружения
 instance_name = os.getenv("BOT_INSTANCE")
@@ -32,6 +32,9 @@ if not config.tg_bot.token or not config.db.path_db or not config.tg_bot.club_id
 path_db = config.db.path_db  # путь к базе данных
 club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
 admin_ids: list[int] = config.tg_bot.admin_ids  # Список ID админов из конфига
+
+# PROJECT_DIR — директория, где находится main.py
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Инициализируем бот и диспетчер
 bot = Bot(token=config.tg_bot.token)
@@ -61,7 +64,7 @@ logger = setup_logger(
 # logger.warning("Это warning-сообщение")
 # logger.error("Это error-сообщение")
 logger.warning("Бот начал работу")
-
+logger.info(f"[DEBUG] PROJECT_DIR = {PROJECT_DIR}")
 
 # --- Инициализируем планировщик ---
 scheduler = AsyncIOScheduler()
@@ -76,10 +79,12 @@ def schedule_jobs():
         tz = ZoneInfo("UTC")
         logger.warning(f"Неизвестный часовой пояс '{tz_name}'. Используется UTC.")
 
+    # Проврка права голоса для всех пользователей
     scheduler.add_job(
         check_votist_status_for_all_members, "interval", hours=1, args=[club_id]
     )  # раз в час
 
+    # Запуск голосований
     scheduler.add_job(
         voting_task,
         "cron",
@@ -90,6 +95,7 @@ def schedule_jobs():
         args=[club_id, instance_name],
     ) # раз в сутки
 
+    # Проверка токенов для всех польователей
     scheduler.add_job(
         check_token_for_oll_members,
         "cron",
@@ -99,6 +105,17 @@ def schedule_jobs():
         id="check_token_for_oll_members",
         args=[club_id],
     ) # раз в сутки
+
+    # Очистка старых логов
+    scheduler.add_job(
+        cleanup_old_logs,
+        "cron",
+        hour=2,  # Выполнять в 2:00 ночи
+        timezone=tz,
+        id="cleanup_old_logs",
+        args=[os.path.join(PROJECT_DIR, "logs")],  # Путь к папке с логами
+        kwargs={"days_to_keep": 7}  # Хранить 7 дней
+    )
 
     # scheduler.add_job(voting_task, 'interval', seconds=60, args=[club_id])  # раз в 60 секунд
 

@@ -1,9 +1,11 @@
 # logging_setup.py
-
 import os
 import logging
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from datetime import datetime, timedelta
 
+logger = logging.getLogger(__name__)
 def setup_logger(
     debug_log_path="logs/debug.log",
     info_log_path="logs/info.log",
@@ -20,6 +22,11 @@ def setup_logger(
     :param file_encoding: Кодировка файлов
     :return: logger объект
     """
+    # Убедись, что папка logs существует
+    log_dir = os.path.dirname(info_log_path)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
     # Настройка корневого логгера
     root_logger = logging.getLogger()  # Корневой логгер
     root_logger.setLevel(logging.DEBUG)
@@ -90,3 +97,23 @@ def setup_logger(
     root_logger.addHandler(console_handler)
 
     return root_logger
+
+def cleanup_old_logs(logs_dir: str, days_to_keep: int = 7):
+    """
+    Удаляет лог-файлы старше N дней
+    """
+    logs_path = Path(logs_dir)
+    if not logs_path.exists():
+        logger.warning(f"Папка с логами не найдена: {logs_dir}")
+        return
+
+    cutoff_time = datetime.now() - timedelta(days=days_to_keep)
+
+    for log_file in logs_path.iterdir():
+        if log_file.is_file() and log_file.suffix in [".log", ".log.1", ".log.gz"]:
+            if datetime.fromtimestamp(log_file.stat().st_mtime) < cutoff_time:
+                try:
+                    log_file.unlink()
+                    logger.info(f"Удалён устаревший лог: {log_file.name}")
+                except Exception as e:
+                    logger.error(f"Ошибка при удалении {log_file.name}: {e}")
