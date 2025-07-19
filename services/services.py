@@ -290,13 +290,13 @@ async def notify_super_registrator_short(club_id, candidate_tg_id, user_dict, in
             f"Подтверждаете?"
         )
 
-        if user_dict.get('status') == 'member':
+        if user_dict.get('status') and 'member' in user_dict.get('status'):
             message_text = (
                 f"Пользователь с данными:\n"
                 f'Имя: {user_dict.get("tg_first_name")}\n'
                 f'Фамилия: {user_dict.get("tg_last_name")}\n'
                 f'Резюме: {user_dict.get("resume")}\n'
-                f"Просит новый тоен\n"
+                f"Просит новый токен\n"
         )
 
 

@@ -243,6 +243,17 @@ def get_profile_menu_keyboard(status: list):
         text=LEXICON.get("change_info_level", "Изменить уровень информирования"),
         callback_data="change_info_level",
     )
+
+    builder.button(
+        text=LEXICON.get("enter_token", "Ввести токен"),
+        callback_data="enter_token",
+    )
+
+    builder.button(
+        text=LEXICON.get("request_token", "Запросить токен"),
+        callback_data="request_token",
+    )
+
     # Кнопки в зависимости от статуса
     # Представитель
     if "proxy" in status:

@@ -302,10 +302,10 @@ async def get_profile(member_id: int):
                     m.description,
                     m.info_level,
                     t.token AS token,
-                    proxy_user.username AS proxy_username
+                    proxy_user.username AS proxy_username,
                 FROM Members m
                 INNER JOIN Users u ON m.user_id = u.id
-                INNER JOIN Tokens t ON m.token = t.id
+                LEFT JOIN Tokens t ON m.token = t.id
                 LEFT JOIN Users proxy_user ON m.proxy = proxy_user.id
                 WHERE m.id = ?
             """,
