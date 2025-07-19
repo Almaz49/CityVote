@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS `Clubs` (
     `duration_first_stage`        INTEGER DEFAULT (2),
     `duration_final`              INTEGER DEFAULT (1),
     `duration_confirmation`       INTEGER DEFAULT (1),
+    `threshold_in_voices`         REAL    DEFAULT (5),
+    `threshold_in_percent`        REAL    DEFAULT (1),
 FOREIGN KEY(`father_group`) REFERENCES `Clubs`(`id`)
 );
 CREATE TABLE IF NOT EXISTS `Members` (

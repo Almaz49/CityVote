@@ -39,7 +39,7 @@ def main():
                 logging.info("Выполнение SQL-скрипта...")
                 cursor.executescript(sql_script)
                 conn.commit()
-                logging.info("SQL-скрипт успешно выполнен")
+                logging.info("SQL-скрипт успешно выполнен:\n{sql_script}")
 
                 # Удаляем файл при успехе
                 os.remove(sql_file)

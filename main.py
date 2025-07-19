@@ -103,7 +103,7 @@ def schedule_jobs():
         minute=0,
         timezone=tz,
         id="check_token_for_oll_members",
-        args=[club_id],
+        args=[club_id, instance_name],
     ) # раз в сутки
 
     # Очистка старых логов

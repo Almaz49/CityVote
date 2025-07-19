@@ -213,7 +213,7 @@ async def list_of_members(club_id, status: str | list[str] = "all"):
         Users.username,
         Users.id AS user_id,
         Members.id AS member_id,
-        Members.info_level
+        Members.info_level,
         Tokens.token
     FROM Members
     INNER JOIN Users ON Users.id = Members.user_id
