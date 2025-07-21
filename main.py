@@ -63,7 +63,7 @@ logger = setup_logger(
 # logger.info("Это info-сообщение")
 # logger.warning("Это warning-сообщение")
 # logger.error("Это error-сообщение")
-logger.warning("Бот начал работу")
+logger.warning(f"Бот {instance_name} версии 20.07.25 начал работу")
 logger.info(f"[DEBUG] PROJECT_DIR = {PROJECT_DIR}")
 
 # --- Инициализируем планировщик ---
