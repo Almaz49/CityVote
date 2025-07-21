@@ -61,6 +61,7 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
                     "club_id": club_id,
                     "user_id": user_id,
                     "member_id": member_id,
+                    "instance_name": instance_name,
                 }
                 logger.info(
                     f'Создан словарь дата в мидлваре логирования {pformat(data["data"])}'
