@@ -403,5 +403,5 @@ async def check_token_for_oll_members(club_id: int, instance_name: str):
         else:
             await send_notification_to_user(
                 member["tg_id"],
-                f"Истек срок действия вашего токена. Попрожите администратора обновить его."
+                f"Истек срок действия вашего токена. Попросите администратора обновить его."
             )

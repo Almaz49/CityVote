@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Update, data: dict):
-        logger.info("\n Middleware logging_middleware started work\n")
+        logger.info("\n\n Начинаем работу с апдейтом. Middleware logging_middleware started work\n\n")
         try:
             # Логируем тип события и пользователя
             if isinstance(event, Update):
@@ -23,6 +23,16 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
                 tg_id = user.id if user else "Unknown"
                 event_type = event.__class__.__name__
                 logger.info(f"Получено событие {event_type} от пользователя {tg_id}")
+
+            # Извлекаем instance_name из data
+            instance_name = data.get("instance_name", None)
+            if not instance_name:
+                logger.warning(
+                    "instance_name не определён. Не передано название бота."
+                )
+                return
+
+
 
             # Извлекаем club_id, user_id и member_id только если tg_id — целое число
             club_id = data.get("club_id", None)

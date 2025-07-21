@@ -1,6 +1,7 @@
 # Модуль db_member
 # ФУНКЦИИ БАЗЫ ДАННЫХ ПО РАБОТЕ С УЧАСТНИКАМИ
 import datetime
+from typing import Optional
 import logging
 import os
 import aiosqlite
@@ -678,14 +679,14 @@ async def extract_list_of_full_member_ids(club_id):
         return result
 
 @log_function_call
-async def check_token_expiration(member_id):
+async def check_token_expiration(member_id) -> Optional[datetime.datetime]:
     """
     Проверяет, истел ли срок токена для пользователя с указанным member_id.
     Если истек - пользователю присваивается статус 'frozen', а токену - статус 'old'.
     Также у пользователя удаляется статус 'votist', если он есть.
 
     :param member_id: ID пользователя (member_id) для проверки.
-    :return: True, если срок токена истек, и False, если срок токена не истек.
+    :return: None, если срок токена истек, и , время действия токена, если срок токена не истек.
     """
     now = datetime.datetime.now()
     async with AsyncDatabase(path_db) as cursor:
@@ -697,8 +698,8 @@ async def check_token_expiration(member_id):
         await cursor.execute(query, (member_id,))
         result = await cursor.fetchone()
         if result is None:
-            raise ValueError("Токен не найден")
-            return False
+            logger.info("Токен не найден")
+            return None # Прирваниваем отсутсвие токена к его просрочке
         expires_at, token_id = result
         expires_at_dt = datetime.datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
         if expires_at_dt < now:
@@ -711,7 +712,7 @@ async def check_token_expiration(member_id):
             await cursor.execute(
                 "DELETE FROM Status WHERE member_id = ? AND status = 'votist'",(member_id,)
                         )
-            return False
+            return None
         else:
             return expires_at_dt
 

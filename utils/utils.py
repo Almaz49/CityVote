@@ -29,7 +29,7 @@ def log_function_call(func):
         args_str = ", ".join([repr(a) for a in args])
         kwargs_str = ", ".join([f"{k}={repr(v)}" for k, v in kwargs.items()])
         logger.debug(
-            f"Вызвана функция {func.__name__} из модуля {func.__module__}\n"
+            f"\nВызвана функция {func.__name__} из модуля {func.__module__}\n"
             f"Аргументы: ({args_str}) {{{kwargs_str}}}"
         )
         return func(*args, **kwargs)
@@ -38,7 +38,7 @@ def log_function_call(func):
         args_str = ", ".join([repr(a) for a in args])
         kwargs_str = ", ".join([f"{k}={repr(v)}" for k, v in kwargs.items()])
         logger.debug(
-            f"Вызвана АСИНХРОННАЯ функция {func.__name__} из модуля {func.__module__}\n"
+            f"\nВызвана АСИНХРОННАЯ функция {func.__name__} из модуля {func.__module__}\n"
             f"Аргументы: ({args_str}) {{{kwargs_str}}}"
         )
         return await func(*args, **kwargs)
@@ -61,7 +61,7 @@ def log_function_call(func):
 def log_handler_call(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        logger.info(f"Вызван хэндлер {func.__name__} из модуля {func.__module__}\n")
+        logger.info(f"\n\nВызван хэндлер {func.__name__} из модуля {func.__module__}\n\n")
         try:
             return await func(*args, **kwargs)
         except Exception as e:
