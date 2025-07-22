@@ -94,20 +94,52 @@ async def clear_old_attempts(member_id: int) -> None:
         )
 
 @log_function_call
-async def auto_approve_by_token(member_id: int, token_id: int) -> tuple[bool, str]:
+async def auto_approve_by_token(member_id: int, token_id: int = 0, token: str = "") -> tuple[bool, str]:
     """
     Привязывает токен к пользователю и автоматически регистрирует его как member.
 
     :param member_id: ID пользователя.
     :param token_id: ID валидного токена.
+    :param token: Токен (строка).
     :return: (success, message)
     """
 
+    if not token_id and not token:
+        return False, "Не указан токен."
+
+    if not token_id:
+        clean_token = (token.strip()).replace(" ", "").replace("-", "")
+        async with AsyncDatabase(path_db) as cursor:
+            await cursor.execute(
+                "SELECT id FROM Tokens WHERE token = ?", (clean_token,)
+            )
+            row = await cursor.fetchone()
+            if not row:
+                return False, "Токен не найден."
+            token_id = row[0]
+
+    # Проверяем, что токен не использован
+    async with AsyncDatabase(path_db) as cursor:
+        await cursor.execute(
+            "SELECT status FROM Tokens WHERE id = ?", (token_id,)
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return False, "Токен не найден."
+        status = row[0]
+        if status != 'valid':
+            return False, "Токен уже использован или устарел."
+
+
     try:
         async with AsyncDatabase(path_db) as cursor:
-            # Обновляем статус токена
+            # Обновляем статус токена и привязываем его к пользователю
             await cursor.execute(
-                "UPDATE Tokens SET status = 'used' WHERE id = ?", (token_id,)
+                "UPDATE Tokens SET status = 'used', member_id = ? WHERE id = ?", (member_id, token_id,)
+            )
+            # Обновляем токен в таблице Members
+            await cursor.execute(
+                "UPDATE Members SET token = ? WHERE id = ?", (token_id, member_id)
             )
 
 

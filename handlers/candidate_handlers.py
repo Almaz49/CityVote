@@ -4,7 +4,7 @@
 import logging
 import traceback
 
-from aiogram import F, Router
+from aiogram import F, Bot, Router
 from aiogram.filters import Command, CommandObject, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
@@ -296,7 +296,7 @@ async def process_leave_the_group(
 @router.callback_query(StateFilter(FSM_leave_club.fill_OK), F.data == "ConfirmOK")
 @log_handler_call
 async def process_leave_club_entry(
-    callback: CallbackQuery, state: FSMContext, data: dict
+    bot: Bot, callback: CallbackQuery, state: FSMContext, data: dict
 ):
     logger.info(
         f"Кнопка 'ВСЁ ВЕРНО' при подтверждении выхода из нажата пользователем {callback.from_user.id}"
@@ -308,7 +308,7 @@ async def process_leave_club_entry(
         member_id = data["member_id"]
         instance_name = data["instance_name"]
         status = data["user_status"]
-        await leave_club(member_id, instance_name, status)
+        await leave_club(bot, member_id, instance_name, status)
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы вышли из группы!"
         data["reply_markup"] = await user_menu(status= data["user_status"])
@@ -620,7 +620,7 @@ async def process_token(message: Message, state: FSMContext, data: dict):
 """
 @router.callback_query(F.data == "request_token")
 @log_handler_call
-async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
+async def request_token(bot: Bot, callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик кнопки request_token.
     """
@@ -641,7 +641,7 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
         await callback.message.answer(text='Не найден профиль пользователя')  # type: ignore
         return
     profile['status'] = status
-    success, result = await notify_super_registrator_short(club_id=club_id, candidate_tg_id= tg_id, user_dict= profile, instance_name=instance_name)
+    success, result = await notify_super_registrator_short(bot=bot, club_id=club_id, candidate_tg_id= tg_id, user_dict= profile, instance_name=instance_name)
     if not success:
         await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
     else:
