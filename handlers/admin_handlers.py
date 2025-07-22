@@ -3,7 +3,7 @@
 import logging
 import os
 
-from aiogram import F, Router
+from aiogram import F, Bot, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
@@ -202,7 +202,7 @@ async def process_registrator_contact_sent(
 @router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == "ConfirmOK")
 @log_handler_call
 async def process_yes_registrator_press(
-    callback: CallbackQuery, state: FSMContext, data: dict
+    callback: CallbackQuery, state: FSMContext, data: dict, bot: Bot,
 ):
     logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
@@ -250,7 +250,7 @@ async def process_yes_registrator_press(
         pre_reg_markup = create_inline_kb(2, **keyboard)
 
         response = await send_notification_to_user(
-            member_tg_id, notification, pre_reg_markup, instance_name=instance_name
+            bot, member_tg_id, notification, pre_reg_markup, instance_name=instance_name
         )
 
         # Добавляем данные для SafeEditMiddleware
@@ -753,7 +753,7 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
 
 @router.callback_query(F.data.regexp(r"^voting_start:\d+$"))
 @log_handler_call
-async def process_voting_start_cb(callback: CallbackQuery, data: dict):
+async def process_voting_start_cb(bot: Bot, callback: CallbackQuery, data: dict):
     """
     Обработчик выбора конкретного голосования.
     """
@@ -775,7 +775,7 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
         instance_name = data["instance_name"]
 
         result = await voting_manager(
-            voting_id, instance_name=instance_name ,club_id=club_id, admin=member_id, stage_type="start"
+            bot, voting_id, instance_name=instance_name ,club_id=club_id, admin=member_id, stage_type="start"
         )
 
         # Гарантируем, что text всегда является строкой
@@ -817,7 +817,7 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
 # Хэндлер для промежуточного итога голосования после нажатия соотвествующей кнопки в меню администратора
 @router.callback_query(F.data.regexp(r"^voting_stage:\d+$"))
 @log_handler_call
-async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
+async def process_voting_stage_cb(bot: Bot, callback: CallbackQuery, data: dict):
     """
     Обработчик нажатия кнопки старта промежуточного этапа голосования.
     """
@@ -838,7 +838,7 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
         instance_name = data["instance_name"]
 
         result = await voting_manager(
-            voting_id, instance_name=instance_name, club_id=club_id, admin=member_id, stage_type="stage"
+            bot, voting_id, instance_name=instance_name, club_id=club_id, admin=member_id, stage_type="stage"
         )
 
         if result:
@@ -877,7 +877,7 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
 # Хэндлер для перехода в финал голосования после нажатия соотвествующей кнопки в меню администратора
 @router.callback_query(F.data.regexp(r"^voting_final:\d+$"))
 @log_handler_call
-async def process_voting_final_cb(callback: CallbackQuery, data: dict):
+async def process_voting_final_cb(bot: Bot, callback: CallbackQuery, data: dict):
     """
     Обработчик перехода в финал конкретного голосования.
     """
@@ -898,7 +898,7 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
         instance_name = data["instance_name"]
 
         result = await voting_manager(
-            voting_id, instance_name=instance_name, club_id=club_id, admin=member_id, stage_type="final"
+            bot, voting_id, instance_name=instance_name, club_id=club_id, admin=member_id, stage_type="final"
         )
 
         if result:
@@ -937,7 +937,7 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
 # Хэндлер для завершения голосования после нажатия соотвествующей кнопки в меню администратора
 @router.callback_query(F.data.regexp(r"^voting_complete:\d+$"))
 @log_handler_call
-async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
+async def process_voting_complete_cb(bot: Bot, callback: CallbackQuery, data: dict):
     """
     Обработчик выбора конкретного голосования.
     """
@@ -958,7 +958,7 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
         instance_name = data["instance_name"]
 
         result = await voting_manager(
-            voting_id, club_id=club_id, admin=member_id, stage_type="complete", instance_name=instance_name
+            bot, voting_id, club_id=club_id, admin=member_id, stage_type="complete", instance_name=instance_name
         )
         if result:
             text = result.get("message")
@@ -1405,7 +1405,7 @@ async def export_members_start(callback: CallbackQuery, state: FSMContext, data:
 @router.callback_query(StateFilter(FSMExportMembers.fill_status), F.data != "main_menu")
 @log_handler_call
 async def process_export_members(
-    callback: CallbackQuery, state: FSMContext, data: dict
+    bot: Bot, callback: CallbackQuery, state: FSMContext, data: dict
 ):
     if not callback.data: return
     if not callback.message: return
@@ -1423,6 +1423,7 @@ async def process_export_members(
 
         # Отправляем файл через нашу функцию
         await send_file_to_user(
+            bot=bot,
             tg_id=callback.from_user.id,
             instance_name=instance_name,
             file_path=file_path,

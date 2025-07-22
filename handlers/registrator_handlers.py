@@ -4,7 +4,7 @@
 import logging
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
-from aiogram import F, Router
+from aiogram import F, Bot, Router
 from aiogram.types import CallbackQuery, Message
 
 from data_base.db_func import (
@@ -89,7 +89,7 @@ async def process_registrator_yes_press(
 # Хэндлер для ввода комментария и выдачи токена
 @router.message(StateFilter(FSMRegistration.fill_comment))
 @log_handler_call
-async def process_token_comment(message: Message, state: FSMContext, data: dict):
+async def process_token_comment(bot: Bot, message: Message, state: FSMContext, data: dict):
     if not message.text:
         await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
         return
@@ -150,6 +150,7 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
 
         # Отправляем уведомление пользователю
         await send_notification_to_user(
+            bot,
             tg_id,
             message_text=(
                 "Поздравляем! Ваша заявка на вступление в группу одобрена. Теперь вы полноправный участник группы и можете принимать участие в голосованиях.\n\n"

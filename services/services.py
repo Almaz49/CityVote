@@ -40,12 +40,10 @@ async def get_bot_username(bot: Bot):
 
 # Функция уведомления пользователя
 @log_function_call
-async def send_notification_to_user(tg_id: int, message_text: str, reply_markup = main_menu_markup, instance_name = None):
+async def send_notification_to_user(bot: Bot, tg_id: int, message_text: str, reply_markup = main_menu_markup, instance_name = None):
     is_available = await is_user_available(tg_id)
     # logger.debug(f"Пользователь {tg_id} доступен: {is_available}")
     if is_available:
-        config = load_config(instance_name=instance_name)
-        bot = Bot(token=config.tg_bot.token) # type: ignore
         try:
             # Попытка отправить сообщение
             await bot.send_message(
@@ -85,6 +83,7 @@ async def send_notification_to_user(tg_id: int, message_text: str, reply_markup 
 
 @log_function_call
 async def send_notification_to_chat_or_channel(
+    bot: Bot,
     chat_id: int,
     instance_name: str,
     message_text: str,
@@ -96,6 +95,7 @@ async def send_notification_to_chat_or_channel(
     """
     Отправляет уведомление в чат или канал с возможностью добавления inline-кнопки.
 
+    :param bot: Экземпляр бота Aiosogram.
     :param chat_id: ID чата или канала, куда отправляется уведомление.
     :param message_text: Текст уведомления (может быть в формате HTML).
     :param inline_button_text: Текст для inline-кнопки (опционально). По умолчанию "Принять участие в голосованиях".
@@ -106,8 +106,6 @@ async def send_notification_to_chat_or_channel(
     """
     try:
         #Излекаем имя бота
-        config = load_config(instance_name=instance_name)
-        bot = Bot(token=config.tg_bot.token) # type: ignore
         bot_username = await get_bot_username(bot)
         # Создаем inline-клавиатуру
         reply_markup = InlineKeyboardMarkup(
@@ -165,7 +163,7 @@ async def send_notification_to_chat_or_channel(
     return response
 
 @log_function_call
-async def send_file_to_user(tg_id: int, instance_name:str, file_path: str, caption: str = "Файл", reply_markup=None):
+async def send_file_to_user(bot: Bot, tg_id: int, instance_name:str, file_path: str, caption: str = "Файл", reply_markup=None):
     """
     Отправляет файл пользователю по его tg_id.
 
@@ -187,8 +185,7 @@ async def send_file_to_user(tg_id: int, instance_name:str, file_path: str, capti
         document = FSInputFile(path=file_path)
 
         # Отправляем документ
-        config: Config = load_config(instance_name=instance_name)
-        bot = Bot(token=config.tg_bot.token) # type: ignore
+
         await bot.send_document(
             chat_id=tg_id,
             document=document,
@@ -215,7 +212,7 @@ async def send_file_to_user(tg_id: int, instance_name:str, file_path: str, capti
     return response
 #Функция уведомления регистратора при краткой регистрации.
 @log_function_call
-async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict, instance_name):
+async def notify_registrator_short(bot: Bot, registrator_tg_id, candidate_tg_id, user_dict, instance_name):
     try:
         print(user_dict)
         # Создаем объекты инлайн-кнопок
@@ -248,6 +245,7 @@ async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict
 
         # Отправляем сообщение регистратору
         await send_notification_to_user(
+            bot,
             registrator_tg_id,
             message_text,
             markup,  # клавиатура подтверждения
@@ -261,7 +259,7 @@ async def notify_registrator_short(registrator_tg_id, candidate_tg_id, user_dict
 
 #Функция уведомления суперрегистратора при краткой регистрации.
 @log_function_call
-async def notify_super_registrator_short(club_id, candidate_tg_id, user_dict, instance_name):
+async def notify_super_registrator_short(bot, club_id, candidate_tg_id, user_dict, instance_name):
     try:
         # Создаем объекты инлайн-кнопок
         confirm_button = InlineKeyboardButton(
@@ -309,6 +307,7 @@ async def notify_super_registrator_short(club_id, candidate_tg_id, user_dict, in
         for registrator in super_registrators:
             registrator_tg_id = registrator['tg_id']
             await send_notification_to_user(
+                bot,
                 registrator_tg_id,
                 message_text,
                 markup,  # клавиатура подтверждения
@@ -324,7 +323,7 @@ async def notify_super_registrator_short(club_id, candidate_tg_id, user_dict, in
 
 # Функция уведомления и лишения статуса 'votist' тех пользователей, чей представитель утратил этот статус
 @log_function_call
-async def not_votist_because_proxy_quit(proxy:int, instance_name):
+async def not_votist_because_proxy_quit(bot: Bot, proxy:int, instance_name):
     logger.info(f"Лишаем статуса гоосующих тех, чей представитель {proxy} сложил полномочия")
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -373,6 +372,7 @@ async def not_votist_because_proxy_quit(proxy:int, instance_name):
                     # Отправляем сообщение участннику, чей представитель ушел в отставку
                     if tg_id:
                         await send_notification_to_user(
+                            bot,
                             tg_id,
                             message_text,
                             instance_name=instance_name
@@ -384,7 +384,7 @@ async def not_votist_because_proxy_quit(proxy:int, instance_name):
 
 # Функция уведомления и присвоения статуса 'votist' тем пользователям, чей представитель возобновил этот статус
 @log_function_call
-async def votist_because_proxy_returned(proxy:int,instance_name:str):
+async def votist_because_proxy_returned(bot: Bot, proxy:int,instance_name:str):
     logger.info(f"Возвращаем статус гоосующих тем, чей представитель {proxy} вернул полномочия")
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -429,6 +429,7 @@ async def votist_because_proxy_returned(proxy:int,instance_name:str):
                     # Отправляем сообщение участннику, чей представитель ушел в отставку
                     if  tg_id:
                         await send_notification_to_user(
+                            bot,
                             tg_id,
                             message_text,
                             instance_name=instance_name
@@ -488,10 +489,8 @@ async def club_info(club_id:int):
 
 
 # Функция создания ссылки на публичный канал по его ID
-async def get_channel_link(channel_id, instance_name: str):
+async def get_channel_link(bot: Bot, channel_id, instance_name: str):
     try:
-        config: Config = load_config(instance_name=instance_name)
-        bot = Bot(token=config.tg_bot.token) # type: ignore
         chat = await bot.get_chat(chat_id=channel_id)
         if chat.username:
             # Формируем ссылку для публичного канала
@@ -506,18 +505,8 @@ async def get_channel_link(channel_id, instance_name: str):
 
 # Функция создания пригласительной ссылки в приватный канал (работает, если бот администратор) по ID канала
 @log_function_call
-async def get_invite_link(channel_id, instance_name: str):
+async def get_invite_link(bot: Bot, channel_id, instance_name: str):
     try:
-        config: Config = load_config(instance_name=instance_name)
-        # Original line (error-prone):
-        # bot = Bot(token=config.tg_bot.token)
-
-        # Fixed version:
-        if config.tg_bot.token is None:
-            logger.error("Telegram bot token is missing in the config.")
-            raise ValueError("Telegram bot token is not set in the configuration.")
-
-        bot = Bot(token=config.tg_bot.token)
         invite_link = await bot.export_chat_invite_link(chat_id=channel_id)
         return invite_link
     except Exception as e:
@@ -526,18 +515,12 @@ async def get_invite_link(channel_id, instance_name: str):
 
 
 @log_function_call
-async def get_channel_id(channel_username, instance_name): # Имя канала без @
+async def get_channel_id(bot: Bot, channel_username, instance_name): # Имя канала без @
     """
     Получение ID канала по его имени
     """
     try:
-        config: Config = load_config(instance_name=instance_name)
-        config: Config = load_config(instance_name=instance_name)
-        if config.tg_bot.token is None:
-            logger.error("Telegram bot token is missing in the config.")
-            raise ValueError("Telegram bot token is required but not provided.")
 
-        bot = Bot(token=config.tg_bot.token)
         chat = await bot.get_chat(chat_id=channel_username)
         channel_id = chat.id
         return channel_id
@@ -546,20 +529,14 @@ async def get_channel_id(channel_username, instance_name): # Имя канала
         return None
 
 @log_function_call
-async def validate_and_get_channel_info(channel_info: str, instance_name: str) -> dict:
+async def validate_and_get_channel_info(bot: Bot, channel_info: str, instance_name: str) -> dict:
     """
     Проверяет существование канала/чата и права бота.
     :param channel_info: ID или username канала/чата
     :return: Словарь с информацией о канале/чате или сообщением об ошибке
     """
     try:
-        config: Config = load_config(instance_name=instance_name)
-        config: Config = load_config(instance_name=instance_name)
-        if config.tg_bot.token is None:
-            logger.error("Telegram bot token is missing in the config.")
-            raise ValueError("Telegram bot token is required but not provided.")
 
-        bot = Bot(token=config.tg_bot.token)
         """ Извлекает username/ID из разных форматов """
         # Обработка ссылок
         if channel_info.startswith(("https://", "http://", "t.me")):
@@ -653,7 +630,7 @@ async def validate_and_get_channel_info(channel_info: str, instance_name: str) -
         return {"success": False, "message": f"Произошла ошибка: {e}"}
 
 @log_function_call
-async def process_channel_info(channel_info: str, instance_name: str, club_id: int, action: str) -> dict:
+async def process_channel_info(bot: Bot, channel_info: str, instance_name: str, club_id: int, action: str) -> dict:
     """
     Обрабатывает информацию о канале/чате для различных действий.
     :param channel_info: ID или username канала/чата
@@ -662,7 +639,7 @@ async def process_channel_info(channel_info: str, instance_name: str, club_id: i
     :return: Словарь с результатом операции
     """
     # Проверяем существование канала и права бота
-    validation_result = await validate_and_get_channel_info(channel_info, instance_name=instance_name)
+    validation_result = await validate_and_get_channel_info(bot, channel_info, instance_name=instance_name)
     if not validation_result["success"]:
         return {"success": False, "message": validation_result["message"]}
 

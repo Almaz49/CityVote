@@ -6,6 +6,8 @@ import datetime
 import logging
 from typing import Any, Dict, Optional
 
+from aiogram import Bot
+
 from data_base.db_func import get_club_info, list_of_channel, list_of_members, list_of_variants, list_of_votings
 from data_base.db_member import check_ban_status_all_members, check_token_expiration, extract_list_of_full_member_ids, is_votist, member_leave_club
 from data_base.db_vote import confirmation_of_voting_results_stop, extract_group_id, get_voting_info, voting_complete, voting_create, voting_final, voting_stage, voting_start
@@ -31,6 +33,7 @@ level_info_dict = {
 
 @log_function_call
 async def voting_create_manager(
+    bot: Bot,
     club_id: int,
     instance_name: str,
     creator: str,
@@ -76,7 +79,7 @@ async def voting_create_manager(
                 tg_id = item.get("tg_id")
                 if tg_id is not None:
                     try:
-                        await send_notification_to_user(tg_id, notify_text, instance_name=instance_name)
+                        await send_notification_to_user(bot, tg_id, notify_text, instance_name=instance_name)
                     except Exception as e:
                         logger.error(f"Ошибка отправки пользователю {tg_id}: {e}")
 
@@ -89,7 +92,7 @@ async def voting_create_manager(
                 chat_id = item.get("tg_id")
                 if chat_id is not None:
                     try:
-                        await send_notification_to_chat_or_channel(chat_id=chat_id, instance_name=instance_name, message_text=notify_text)
+                        await send_notification_to_chat_or_channel(bot=bot, chat_id=chat_id, instance_name=instance_name, message_text=notify_text)
                     except Exception as e:
                         logger.error(f"Ошибка отправки в чат {chat_id}: {e}")
 
@@ -101,6 +104,7 @@ async def voting_create_manager(
 
 @log_function_call
 async def voting_manager(
+    bot: Bot,
     voting_id: int,
     instance_name:str,
     club_id: Optional[int] = None,
@@ -202,7 +206,7 @@ async def voting_manager(
                 if tg_id is not None:
                     try:
                         await send_notification_to_user(
-                            tg_id, notify_text, reply_markup=markup, instance_name=instance_name
+                            bot, tg_id, notify_text, reply_markup=markup, instance_name=instance_name
                         )
                     except Exception as e:
                         logger.error(f"Ошибка отправки пользователю {tg_id}: {e}")
@@ -216,7 +220,7 @@ async def voting_manager(
                 chat_id = item.get("tg_id")
                 if chat_id is not None:
                     try:
-                        await send_notification_to_chat_or_channel(chat_id, instance_name, notify_text)
+                        await send_notification_to_chat_or_channel(bot, chat_id, instance_name, notify_text)
                     except Exception as e:
                         logger.error(f"Ошибка отправки в чат {chat_id}: {e}")
 
@@ -224,19 +228,19 @@ async def voting_manager(
 
 
 @log_function_call
-async def leave_club(member_id: int, instance_name:str, status: str) -> None:
+async def leave_club(bot: Bot, member_id: int, instance_name:str, status: str) -> None:
     """
     Функция выхода из группы. Если участник был представителем — вызывается дополнительная логика.
     """
     logger.info(f"Выход из группы: member_id={member_id}")
     await member_leave_club(member_id, status)
     if "proxy" in status:
-        await not_votist_because_proxy_quit(member_id, instance_name)
+        await not_votist_because_proxy_quit(bot, member_id, instance_name)
 
 
 @log_function_call
 async def daily_task(
-    club_id: int, instance_name:str, message_text: str = "📅 Ежедневная задача выполнена!"
+    bot: Bot, club_id: int, instance_name:str, message_text: str = "📅 Ежедневная задача выполнена!"
 ) -> None:
     """
     Рассылка админам.
@@ -249,7 +253,7 @@ async def daily_task(
             if tg_id is not None:
                 try:
                     await send_notification_to_user(
-                        tg_id=tg_id, message_text=message_text, instance_name=instance_name
+                        bot=bot, tg_id=tg_id, message_text=message_text, instance_name=instance_name
                     )
                 except Exception as e:
                     logger.error(f"Не удалось отправить сообщение админу {tg_id}: {e}")
@@ -259,7 +263,7 @@ async def daily_task(
 # Она будет вызывать список идущих голосований и проверять не пришло ли время очередного этапа.
 # Если да, то выполнять этап голосования
 @log_function_call
-async def voting_task(club_id, instance_name:str) -> None:
+async def voting_task(bot: Bot, club_id, instance_name:str) -> None:
     logger.info("Выполняется автоматический запуск этапов голосований")
     club_info = await get_club_info(club_id)
     if not club_info:
@@ -364,9 +368,9 @@ async def voting_task(club_id, instance_name:str) -> None:
                 stage_type = "complete"
 
         if stage_type:
-            await voting_manager(voting_id, instance_name, club_id=club_id, stage_type=stage_type)
+            await voting_manager(bot, voting_id, instance_name, club_id=club_id, stage_type=stage_type)
 
-    await daily_task(club_id, instance_name)  # Отсылаем сообщение админам
+    await daily_task(bot, club_id, instance_name)  # Отсылаем сообщение админам
 
 
 @log_function_call
@@ -382,7 +386,7 @@ async def check_votist_status_for_all_members(club_id: int):
     await asyncio.gather(*[is_votist(member["member_id"]) for member in members])
 
 @log_function_call
-async def check_token_for_oll_members(club_id: int, instance_name: str):
+async def check_token_for_oll_members(bot: Bot, club_id: int, instance_name: str):
     """
     Проверка не истек ли срок действия токенов у всех участников
     """
@@ -396,12 +400,14 @@ async def check_token_for_oll_members(club_id: int, instance_name: str):
             delta = (token_expiries_at - now).days
             if delta in (30, 15, 7, 3, 1):
                 await send_notification_to_user(
+                    bot,
                     member["tg_id"],
                     f" Срок действия вашего токена через {delta} дней заканчивается. Попросите администратора обновить его.",
                     instance_name=instance_name
                 )
         else:
             await send_notification_to_user(
+                bot,
                 member["tg_id"],
                 f"Истек срок действия вашего токена. Попросите администратора обновить его."
             )

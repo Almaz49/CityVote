@@ -1,6 +1,6 @@
 import logging
 
-from aiogram import F, Router
+from aiogram import F, Bot, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
@@ -605,7 +605,7 @@ async def add_channel_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdminStates.adding_telegram_channel)
 @log_handler_call
-async def process_add_channel(message: Message, state: FSMContext, data: dict):
+async def process_add_channel(bot: Bot, message: Message, state: FSMContext, data: dict):
     if not message.text:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise ValueError("Текст сообщения пуст")
@@ -616,7 +616,7 @@ async def process_add_channel(message: Message, state: FSMContext, data: dict):
     club_id = data["club_id"]
     instance_name = data["instance_name"]
 
-    result = await process_channel_info(channel_info, instance_name, club_id, "add")
+    result = await process_channel_info(bot, channel_info, instance_name, club_id, "add")
     await message.answer(result["message"])
     await state.clear()
 
@@ -633,7 +633,7 @@ async def remove_channel_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdminStates.removing_telegram_channel)
 @log_handler_call
-async def process_remove_channel(message: Message, state: FSMContext, data: dict):
+async def process_remove_channel(bot: Bot, message: Message, state: FSMContext, data: dict):
     if not message.text:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise ValueError("Текст сообщения пуст")
@@ -644,7 +644,7 @@ async def process_remove_channel(message: Message, state: FSMContext, data: dict
 
     club_id = data["club_id"]
     instance_name = data["instance_name"]
-    result = await process_channel_info(channel_info, instance_name, club_id, "remove")
+    result = await process_channel_info(bot, channel_info, instance_name, club_id, "remove")
     await message.answer(result["message"])
     await state.clear()
 
@@ -661,7 +661,7 @@ async def set_main_channel_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdminStates.setting_main_channel)
 @log_handler_call
-async def process_set_main_channel(message: Message, state: FSMContext, data: dict):
+async def process_set_main_channel(bot: Bot, message: Message, state: FSMContext, data: dict):
     if not message.text:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise ValueError("Текст сообщения пуст")
@@ -671,7 +671,7 @@ async def process_set_main_channel(message: Message, state: FSMContext, data: di
         return
     club_id = data['club_id']
     instance_name = data['instance_name']
-    result = await process_channel_info(channel_info, instance_name, club_id, "set_main")
+    result = await process_channel_info(bot, channel_info, instance_name, club_id, "set_main")
     # Логирование результата
     logger.debug(f"Результат операции: {result}")
 

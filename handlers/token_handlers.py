@@ -3,7 +3,7 @@
 
 import logging
 import os
-from aiogram import Router, F
+from aiogram import Bot, Router, F
 from aiogram.filters import StateFilter
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
@@ -319,7 +319,7 @@ async def process_issue_1_token_comment(message: Message, state: FSMContext, dat
 
 @router.callback_query(F.data == "export_tokens")
 @log_handler_call
-async def handle_export_tokens(callback: CallbackQuery, data: dict):
+async def handle_export_tokens(bot: Bot, callback: CallbackQuery, data: dict):
     logger.info(f"Пользователь {callback.from_user.id} экспортирует токены.")
     club_id = data.get('club_id')
     if not club_id:
@@ -337,6 +337,7 @@ async def handle_export_tokens(callback: CallbackQuery, data: dict):
 
         # Отправляем файл через нашу функцию
         await send_file_to_user(
+            bot=bot,
             tg_id=callback.from_user.id,
             instance_name=instance_name,
             file_path=file_path,
