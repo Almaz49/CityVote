@@ -908,7 +908,7 @@ async def check_member_status(member_id: int, target_status: str) -> bool:
     :return: True, если статус найден, иначе False.
     """
     # Используем контекстный менеджер для работы с базой данных
-    async with AsyncDatabase("your_database_name.db") as cursor:
+    async with AsyncDatabase(path_db) as cursor:
         try:
             # SQL-запрос для проверки наличия статуса
             query = """
