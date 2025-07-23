@@ -319,8 +319,11 @@ async def process_issue_1_token_comment(message: Message, state: FSMContext, dat
 
 @router.callback_query(F.data == "export_tokens")
 @log_handler_call
-async def handle_export_tokens(bot: Bot, callback: CallbackQuery, data: dict):
+async def handle_export_tokens(callback: CallbackQuery, data: dict):
     logger.info(f"Пользователь {callback.from_user.id} экспортирует токены.")
+    if not callback.bot:
+        raise ValueError("Не удалось получить бота")
+    bot:Bot = callback.bot
     club_id = data.get('club_id')
     if not club_id:
         raise ValueError("Не удалось получить club_id из данных запроса.")

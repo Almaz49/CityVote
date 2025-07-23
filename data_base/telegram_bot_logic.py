@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # Возвращает (flag, ans_str). Если flag == true, значит участник может быть назначен регистратором.
 # ans_str - комментарий, который выдается по итогу извлечения данных
 @log_function_call
-async def extract_new_registrator_data(club_id, tg_id):
+async def extract_new_registrator_data(club_id:int, tg_id:int):
     user_id = await extract_user_id(tg_id)
     member_id = await extract_member_id(club_id, user_id)
 

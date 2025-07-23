@@ -296,12 +296,15 @@ async def process_leave_the_group(
 @router.callback_query(StateFilter(FSM_leave_club.fill_OK), F.data == "ConfirmOK")
 @log_handler_call
 async def process_leave_club_entry(
-    bot: Bot, callback: CallbackQuery, state: FSMContext, data: dict
+    callback: CallbackQuery, state: FSMContext, data: dict
 ):
     logger.info(
         f"Кнопка 'ВСЁ ВЕРНО' при подтверждении выхода из нажата пользователем {callback.from_user.id}"
     )
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+    if not callback.bot:
+        raise ValueError("Не удалось получить бота")
+    bot:Bot = callback.bot
 
     try:
         # Запускаем процедуру выхода из группы
@@ -620,7 +623,7 @@ async def process_token(message: Message, state: FSMContext, data: dict):
 """
 @router.callback_query(F.data == "request_token")
 @log_handler_call
-async def request_token(bot: Bot, callback: CallbackQuery, state: FSMContext, data: dict):
+async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик кнопки request_token.
     """
@@ -628,6 +631,9 @@ async def request_token(bot: Bot, callback: CallbackQuery, state: FSMContext, da
     await callback.answer()
     if not callback.message:
         raise ValueError("Нет сообщения для ответа")
+    if not callback.bot:
+        raise ValueError("Не удалось получить бота")
+    bot:Bot = callback.bot
     member_id = data["member_id"]
     club_id = data["club_id"]
     instance_name = data["instance_name"]

@@ -17,11 +17,7 @@ from utils import log_handler_call
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# # Загружаем конфиг в переменную config
-# config: Config = load_config('.env')
-# bot = Bot(token=config.tg_bot.token)
-# path_db = config.db.path_db  # путь к базе данных
-# club_id = config.tg_bot.club_id  # id группы в БД (не телеграм)
+
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -605,10 +601,13 @@ async def add_channel_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdminStates.adding_telegram_channel)
 @log_handler_call
-async def process_add_channel(bot: Bot, message: Message, state: FSMContext, data: dict):
+async def process_add_channel(message: Message, state: FSMContext, data: dict):
     if not message.text:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise ValueError("Текст сообщения пуст")
+    if not message.bot:
+        raise ValueError("Бот не найден")
+    bot:Bot = message.bot
     channel_info = message.text.strip()
     if not channel_info:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
@@ -633,10 +632,13 @@ async def remove_channel_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdminStates.removing_telegram_channel)
 @log_handler_call
-async def process_remove_channel(bot: Bot, message: Message, state: FSMContext, data: dict):
+async def process_remove_channel(message: Message, state: FSMContext, data: dict):
     if not message.text:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise ValueError("Текст сообщения пуст")
+    if not message.bot:
+        raise ValueError("Бот не найден")
+    bot:Bot = message.bot
     channel_info = message.text.strip()
     if not channel_info:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
@@ -661,10 +663,13 @@ async def set_main_channel_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdminStates.setting_main_channel)
 @log_handler_call
-async def process_set_main_channel(bot: Bot, message: Message, state: FSMContext, data: dict):
+async def process_set_main_channel(message: Message, state: FSMContext, data: dict):
     if not message.text:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise ValueError("Текст сообщения пуст")
+    if not message.bot:
+        raise ValueError("Бот не найден")
+    bot:Bot = message.bot
     channel_info = message.text.strip()
     if not channel_info:
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")

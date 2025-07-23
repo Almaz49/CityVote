@@ -1,6 +1,6 @@
 import logging
 
-from aiogram import F, Router
+from aiogram import F, Bot, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -23,10 +23,6 @@ from utils import log_handler_call, paginate
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# # Инициализируем бота
-# # Загружаем конфиг в переменную config
-# config: Config = load_config('.env')
-# bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -458,6 +454,9 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
     try:
         logger.info(f"Пользователь {callback.from_user.id} запросил статус 'proxy'.")
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+        if not callback.bot:
+            raise ValueError("Не удалось получить бота")
+        bot:Bot = callback.bot
 
         member_id = data["member_id"]
         instance_name = data["instance_name"]
@@ -493,7 +492,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             # Присваиваем статус 'votist' (если его не было)
             await new_status(member_id, member_id, "votist")
             # Присваем статус 'votist' тем, кто каким-то образом уже доверил ему голос
-            await votist_because_proxy_returned(member_id, instance_name)
+            await votist_because_proxy_returned(bot, member_id, instance_name)
 
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы стали представителем!"
@@ -591,6 +590,10 @@ async def process_username_entry(
     )
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
+    if not callback.bot:
+        raise ValueError("Не удалось получить бота")
+    bot:Bot = callback.bot
+
     fsm_data = await state.get_data()
     username = fsm_data["username"]
     user_id = data["user_id"]
@@ -605,7 +608,7 @@ async def process_username_entry(
         # Присваиваем статус 'votist' (если его не было)
         await new_status(member_id, member_id, "votist")
         # Присваем статус 'votist' тем, кто каким-то образом уже доверил ему голос
-        await votist_because_proxy_returned(member_id, instance_name)
+        await votist_because_proxy_returned(bot, member_id, instance_name)
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы стали представителем!"
@@ -681,6 +684,11 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
     logger.info(
         f"Пользователь {callback.from_user.id} отказывается от статуса 'proxy'."
     )
+
+    if not callback.bot:
+        raise ValueError("Не удалось получить бота")
+    bot:Bot = callback.bot
+
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     member_id = data["member_id"]
@@ -698,7 +706,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
 
     # Убираем статус 'proxy'
     await new_status(member_id, member_id, "not_proxy")
-    await not_votist_because_proxy_quit(member_id, instance_name)
+    await not_votist_because_proxy_quit(bot, member_id, instance_name)
     flag = await is_votist(member_id)
     text = "Вы перестали быть представителем!"
     if not flag:

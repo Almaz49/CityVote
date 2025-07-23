@@ -2,7 +2,7 @@
 # В нем хэндлеры пользователей, обладающих правами делегатов
 import logging
 
-from aiogram import F, Router
+from aiogram import F, Bot, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
@@ -18,9 +18,6 @@ from utils import check_fsm_data, log_handler_call
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# # Загружаем конфиг в переменную config
-# config: Config = load_config(".env")
-# bot = Bot(token=config.tg_bot.token)
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -131,6 +128,9 @@ async def process_new_voting_yes_confirm_press(
     # if not fsm_data:
     #     await callback.message.answer("Сессия устарела. Пожалуйста, начните заново.")
     #     return
+    if not callback.bot:
+        raise ValueError("Не удалось получить бота")
+    bot:Bot = callback.bot
     try:
         fsm_data = await state.get_data()
         logger.debug(f"Получена FSM data:{fsm_data}")
@@ -139,6 +139,7 @@ async def process_new_voting_yes_confirm_press(
 
         # Создаем новое голосование
         flag, comment = await voting_create_manager(
+            bot=bot,
             club_id=data["club_id"],
             instance_name=data["instance_name"],
             creator=data["member_id"],

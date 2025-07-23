@@ -100,7 +100,10 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
     await state.update_data(ID=member_tg_id)
 
     # Извлекаем данные о новом регистраторе
-    club_id = data.get
+    club_id = data.get("club_id")
+    if not club_id:  # Если club_id не существует
+        logger.warning("club_id не существует")
+        raise ValueError("club_id не существует")
     flag, ans_str = await extract_new_registrator_data(club_id,member_tg_id)
 
     # Создаем объект инлайн-клавиатуры
@@ -160,7 +163,13 @@ async def process_registrator_contact_sent(
 
     logger.info(f"Прислан контакт: {contact} от пользователя {message.from_user.id}")
     member_tg_id = contact.user_id
+    if not member_tg_id:  # Если member_tg_id не существует
+        logger.warning("member_tg_id не существует")
+        raise ValueError("member_tg_id не существует")
     club_id = data.get("club_id")
+    if not club_id:  # Если club_id не существует
+        logger.warning("club_id не существует")
+        raise ValueError("club_id не существует")
 
     flag, ans_str = await extract_new_registrator_data(
        club_id, member_tg_id
@@ -202,10 +211,14 @@ async def process_registrator_contact_sent(
 @router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == "ConfirmOK")
 @log_handler_call
 async def process_yes_registrator_press(
-    callback: CallbackQuery, state: FSMContext, data: dict, bot: Bot,
+    callback: CallbackQuery, state: FSMContext, data: dict
 ):
     logger.info(f"Кнопка 'ВСЁ ВЕРНО' нажата пользователем {callback.from_user.id}")
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+    if not callback.bot:
+        raise ValueError("Не удалось получить бота")
+    bot:Bot = callback.bot
 
     # Меняем в базе данных статус пользователя по ключу tg_id пользователя и tg_id регистратора
     fsm_data = await state.get_data()
@@ -753,7 +766,7 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
 
 @router.callback_query(F.data.regexp(r"^voting_start:\d+$"))
 @log_handler_call
-async def process_voting_start_cb(bot: Bot, callback: CallbackQuery, data: dict):
+async def process_voting_start_cb(callback: CallbackQuery, data: dict):
     """
     Обработчик выбора конкретного голосования.
     """
@@ -763,6 +776,9 @@ async def process_voting_start_cb(bot: Bot, callback: CallbackQuery, data: dict)
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
+        if not callback.bot:
+            raise ValueError("Не удалось получить бота")
+        bot:Bot = callback.bot
 
         logger.info(
             f"Пользователь {callback.from_user.id} запускает голосование: {callback.data}"
@@ -817,7 +833,7 @@ async def process_voting_start_cb(bot: Bot, callback: CallbackQuery, data: dict)
 # Хэндлер для промежуточного итога голосования после нажатия соотвествующей кнопки в меню администратора
 @router.callback_query(F.data.regexp(r"^voting_stage:\d+$"))
 @log_handler_call
-async def process_voting_stage_cb(bot: Bot, callback: CallbackQuery, data: dict):
+async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
     """
     Обработчик нажатия кнопки старта промежуточного этапа голосования.
     """
@@ -827,6 +843,9 @@ async def process_voting_stage_cb(bot: Bot, callback: CallbackQuery, data: dict)
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
+        if not callback.bot:
+            raise ValueError("Не удалось получить бота")
+        bot:Bot = callback.bot
         logger.info(
             f"Пользователь {callback.from_user.id} запускает промежуточный этап голосования: {callback.data}"
         )
@@ -877,10 +896,13 @@ async def process_voting_stage_cb(bot: Bot, callback: CallbackQuery, data: dict)
 # Хэндлер для перехода в финал голосования после нажатия соотвествующей кнопки в меню администратора
 @router.callback_query(F.data.regexp(r"^voting_final:\d+$"))
 @log_handler_call
-async def process_voting_final_cb(bot: Bot, callback: CallbackQuery, data: dict):
+async def process_voting_final_cb(callback: CallbackQuery, data: dict):
     """
     Обработчик перехода в финал конкретного голосования.
     """
+    if not callback.bot:
+        raise ValueError("Не удалось получить бота")
+    bot:Bot = callback.bot
     try:
         # Проверяем, что callback.data существует
         if callback.data is None:
@@ -937,7 +959,7 @@ async def process_voting_final_cb(bot: Bot, callback: CallbackQuery, data: dict)
 # Хэндлер для завершения голосования после нажатия соотвествующей кнопки в меню администратора
 @router.callback_query(F.data.regexp(r"^voting_complete:\d+$"))
 @log_handler_call
-async def process_voting_complete_cb(bot: Bot, callback: CallbackQuery, data: dict):
+async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
     """
     Обработчик выбора конкретного голосования.
     """
@@ -947,6 +969,9 @@ async def process_voting_complete_cb(bot: Bot, callback: CallbackQuery, data: di
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
+        if not callback.bot:
+            raise ValueError("Не удалось получить бота")
+        bot:Bot = callback.bot
         logger.info(
             f"Пользователь {callback.from_user.id} завершает голосование: {callback.data}"
         )
@@ -1405,8 +1430,11 @@ async def export_members_start(callback: CallbackQuery, state: FSMContext, data:
 @router.callback_query(StateFilter(FSMExportMembers.fill_status), F.data != "main_menu")
 @log_handler_call
 async def process_export_members(
-    bot: Bot, callback: CallbackQuery, state: FSMContext, data: dict
+    callback: CallbackQuery, state: FSMContext, data: dict
 ):
+    if not callback.bot:
+        raise ValueError("Не удалось получить бота")
+    bot:Bot = callback.bot
     if not callback.data: return
     if not callback.message: return
     club_id = data.get('club_id')
