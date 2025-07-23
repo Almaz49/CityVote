@@ -3,7 +3,7 @@
 
 import logging
 
-from aiogram import F, Router
+from aiogram import F, Bot, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
@@ -233,10 +233,14 @@ async def process_registrator_choise(
             await callback.message.edit_text("Произошла ошибка: данные не найдены.")  # type: ignore
             raise ValueError("Callback data отсутствует")
 
+        if not callback.bot:
+            raise ValueError("Не удалось получить бота")
+        bot:Bot = callback.bot
+
         # Если выбран регистратор, отправляем ему сообщение с просьбой подтвердить регистрацию
         if callback.data.isdigit():
             success, result = await notify_registrator_short(
-                int(callback.data), tg_id, user_dict, instance_name
+                bot, int(callback.data), tg_id, user_dict, instance_name
             )
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")  # type: ignore
@@ -244,7 +248,7 @@ async def process_registrator_choise(
             logger.info(f"Пользователь {tg_id} выбрал 'Никого не знаю'.")
             club_id = data["club_id"]
             instance_name = data["instance_name"]
-            success, result = await notify_super_registrator_short(club_id, tg_id, user_dict, instance_name)
+            success, result = await notify_super_registrator_short(bot, club_id, tg_id, user_dict, instance_name)
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")  # type: ignore
             # Здесь тоже нужна функция уведомления администрации

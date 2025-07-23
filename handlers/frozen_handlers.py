@@ -136,7 +136,12 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
     Обработчик кнопки request_token.
     """
     logger.info(f"Пользователь {callback.from_user.id} хочет получить новый токен.")
+    if not callback.bot:
+        raise ValueError("Бот не найден")
+    bot = callback.bot
+
     await callback.answer()
+
     if not callback.message:
         raise ValueError("Нет сообщения для ответа")
     member_id = data["member_id"]
@@ -152,7 +157,7 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
         await callback.message.answer(text='Не найден профиль пользователя')  # type: ignore
         return
     profile['status'] = status
-    success, result = await notify_super_registrator_short(club_id=club_id, candidate_tg_id= tg_id, user_dict= profile, instance_name=instance_name)
+    success, result = await notify_super_registrator_short(bot=bot, club_id=club_id, candidate_tg_id= tg_id, user_dict= profile, instance_name=instance_name)
     if not success:
         await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
     else:

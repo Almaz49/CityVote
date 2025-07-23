@@ -2,7 +2,7 @@
 # Содержит хэндлеры процесса регистрации
 
 import logging
-from aiogram import F, Router
+from aiogram import F, Bot, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
@@ -186,6 +186,9 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         if not callback.data:
             logger.info(f"Пользователь {callback.from_user.id} не выбрал регистратора")
             raise
+        if not callback.bot:
+            raise ValueError("Не удалось получить бота")
+        bot:Bot = callback.bot
         if callback.message and isinstance(callback.message, Message):
             try:
                 await callback.message.delete()
@@ -225,11 +228,11 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         )
 
         if callback.data.isdigit():
-            success, result = await notify_registrator_short(int(callback.data), tg_id, user_dict, instance_name)
+            success, result = await notify_registrator_short(bot, int(callback.data), tg_id, user_dict, instance_name)
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")
         elif callback.data == "stranger":
-            success, result = await notify_super_registrator_short(club_id, tg_id, user_dict, instance_name)
+            success, result = await notify_super_registrator_short(bot, club_id, tg_id, user_dict, instance_name)
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
 
