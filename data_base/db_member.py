@@ -163,7 +163,7 @@ async def new_status(registrator, member_id, status, token_id=None):
                     logger.info(
                         f"Статус '{'candidate'}' удален для member_id: {member_id}"
                     )
-                    # Проверяем, был ли уже записан токэн. Если да, то старому токену присваивается статус 'old'
+                    # Проверяем, был ли уже у пользователя токен. Если да, то старому токену присваивается статус 'old'
                     await cursor.execute(
                         """SELECT token FROM Members WHERE id = ?""",
                         (member_id,),
@@ -184,6 +184,11 @@ async def new_status(registrator, member_id, status, token_id=None):
                         """UPDATE Tokens SET member_id = ? WHERE id = ?""",
                         (member_id, token_id),
                     )
+                    # Меняем токену статус на 'used'
+                    await cursor.execute(
+                            """UPDATE Tokens SET status = ? WHERE id = ?""",
+                            ("used", token_id),
+                        )
                 # Если присваевается статус candidate, удаляем статус member
                 if new_st == "candidate":
                     await cursor.execute(

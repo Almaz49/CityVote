@@ -109,6 +109,7 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
     fsm_data = await state.get_data()
     tg_id = fsm_data.get("tg_id")
     club_id = data.get("club_id")
+    registrator = data.get("member_id")
 
     if not tg_id or not club_id:
         logger.error("Не удалось получить tg_id или club_id")
@@ -136,7 +137,7 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
             return
 
         # Привязываем токен к пользователю
-        succes, msg = await auto_approve_by_token(member_id, token=token)
+        succes, msg = await auto_approve_by_token(member_id, token=token, registrator=registrator)
 
         if not succes:
             await message.answer(

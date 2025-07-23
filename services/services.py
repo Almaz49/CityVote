@@ -279,9 +279,9 @@ async def notify_super_registrator_short(bot, club_id, candidate_tg_id, user_dic
         # Формируем сообщение для регистратора
         message_text = (
             f"Пользователь с данными:\n"
-            f'Имя: {user_dict.get("tg_first_name")}\n'
-            f'Фамилия: {user_dict.get("tg_last_name")}\n'
-            f'Резюме: {user_dict.get("resume")}\n'
+            f'Имя: {user_dict.get("first_name") or user_dict.get("tg_first_name") or "Не указано"}\n'
+            f'Фамилия: {user_dict.get("last_name") or user_dict.get("tg_last_name") or "Не указано"}\n'
+            f'Резюме: {user_dict.get("resume") or "Не указано"}\n'
             f"Просит вас подтвердить его право\n"
             f"стать членом клуба.\n"
             f"Подтверждаете?"
@@ -290,9 +290,9 @@ async def notify_super_registrator_short(bot, club_id, candidate_tg_id, user_dic
         if user_dict.get('status') and 'member' in user_dict.get('status'):
             message_text = (
                 f"Пользователь с данными:\n"
-                f'Имя: {user_dict.get("tg_first_name")}\n'
-                f'Фамилия: {user_dict.get("tg_last_name")}\n'
-                f'Резюме: {user_dict.get("resume")}\n'
+                f'Имя: {user_dict.get("first_name") or user_dict.get("tg_first_name") or "Не указано"}\n'
+                f'Фамилия: {user_dict.get("last_name") or user_dict.get("tg_last_name") or "Не указано"}\n'
+                f'Резюме: {user_dict.get("resume") or "Не указано"}\n'
                 f"Просит новый токен\n"
         )
 

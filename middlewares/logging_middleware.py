@@ -69,10 +69,10 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
 
             # Логируем текст сообщения или callback_data
             if hasattr(event, "message") and event.message:
-                logger.info(f"\n\nПолучено текстовое сообщение: {event.message.text}")
+                logger.info(f"\n\nПолучено текстовое сообщение: {event.message.text}\n\n")
             elif hasattr(event, "callback_query") and event.callback_query:
                 logger.info(
-                    f"\n\nПолучен callback_query с данными: {event.callback_query.data}"
+                    f"\n\nПолучен callback_query с данными: {event.callback_query.data}\n\n"
                 )
             else:
                 logger.info(f"\n\nПолучено событие другого типа: {type(event)}")

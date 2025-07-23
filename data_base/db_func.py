@@ -297,8 +297,13 @@ async def get_profile(member_id: int):
                     u.id AS user_id,
                     u.username AS username,
                     u.email AS email,
+                    u.tg_first_name AS tg_first_name,
+                    u.tg_last_name AS tg_last_name,
                     u.first_name AS first_name,
                     u.last_name AS last_name,
+                    m.id AS member_id,
+                    m.proxy,
+                    m.resume,
                     m.description,
                     m.info_level,
                     t.token AS token,
@@ -312,6 +317,7 @@ async def get_profile(member_id: int):
                 (member_id,),
             )
             profile = await fetch_as_dict(cursor)
+            logger.info(f"Информация о профиле успешно получена:\n{profile}")
             return profile[0] if profile else {}
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при получении информации о профиле: {e}")
@@ -907,26 +913,11 @@ async def check_member_status(member_id: int, target_status: str) -> bool:
     :param target_status: Статус, который нужно проверить (например, 'admin', 'member' и т.д.).
     :return: True, если статус найден, иначе False.
     """
-    # Используем контекстный менеджер для работы с базой данных
     async with AsyncDatabase(path_db) as cursor:
         try:
-            # SQL-запрос для проверки наличия статуса
-            query = """
-                SELECT EXISTS (
-                    SELECT 1
-                    FROM Status
-                    WHERE member_id = ? AND status = ?
-                )
-            """
-            # Выполняем запрос с параметрами
+            query = "SELECT 1 FROM Status WHERE member_id = ? AND status = ? LIMIT 1"
             await cursor.execute(query, (member_id, target_status))
-            # Получаем результат (первый элемент кортежа)
-            result = await cursor.fetchone()
-            # Если результат 1, значит запись существует
-            if result:
-                return True
-            else:
-                return False
+            return (await cursor.fetchone()) is not None
         except aiosqlite.Error as e:
             logger.error(f"Ошибка при выполнении запроса к базе данных: {e}")
             raise

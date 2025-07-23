@@ -94,7 +94,7 @@ async def clear_old_attempts(member_id: int) -> None:
         )
 
 @log_function_call
-async def auto_approve_by_token(member_id: int, token_id: int = 0, token: str = "") -> tuple[bool, str]:
+async def auto_approve_by_token(member_id: int, token_id: int = 0, token: str = "", registrator = None) -> tuple[bool, str]:
     """
     Привязывает токен к пользователю и автоматически регистрирует его как member.
 
@@ -127,27 +127,16 @@ async def auto_approve_by_token(member_id: int, token_id: int = 0, token: str = 
         if not row:
             return False, "Токен не найден."
         status = row[0]
-        if status != 'valid':
-            return False, "Токен уже использован или устарел."
+    if status != 'valid':
+        return False, "Токен уже использован или устарел."
 
+    # Обновляем статус пользователя на 'member'
+    _, msg = await new_status(registrator, member_id=member_id, status="member", token_id=token_id)
+
+    if not _:
+        return False, f"Не удалось обновить статус: {msg}"
 
     try:
-        async with AsyncDatabase(path_db) as cursor:
-            # Обновляем статус токена и привязываем его к пользователю
-            await cursor.execute(
-                "UPDATE Tokens SET status = 'used', member_id = ? WHERE id = ?", (member_id, token_id,)
-            )
-            # Обновляем токен в таблице Members
-            await cursor.execute(
-                "UPDATE Members SET token = ? WHERE id = ?", (token_id, member_id)
-            )
-
-
-        # Обновляем статус пользователя на 'member'
-        _, msg = await new_status(registrator=None, member_id=member_id, status="member", token_id=token_id)
-
-        if not _:
-            return False, f"Не удалось обновить статус: {msg}"
 
         async with AsyncDatabase(path_db) as cursor:
             # Удаляем статус 'frozen' у пользователя, если был
