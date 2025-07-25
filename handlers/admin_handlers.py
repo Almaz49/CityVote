@@ -701,7 +701,7 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
         else:
             amount = 0
         if amount == 2:
-            voting_status = "final"
+            voting_status = "final" if voting_status == "ongoing" else voting_status
 
         dict_menu = {}
         if voting_status == "add_variants":
