@@ -327,9 +327,6 @@ async def handle_export_tokens(callback: CallbackQuery, data: dict):
     club_id = data.get('club_id')
     if not club_id:
         raise ValueError("Не удалось получить club_id из данных запроса.")
-    instance_name = data.get('instance_name')
-    if not instance_name:
-        raise ValueError("Не удалось получить instance_name из данных запроса.")
 
     await callback.answer()
 
@@ -342,7 +339,6 @@ async def handle_export_tokens(callback: CallbackQuery, data: dict):
         await send_file_to_user(
             bot=bot,
             tg_id=callback.from_user.id,
-            instance_name=instance_name,
             file_path=file_path,
             caption="Экспорт токенов",
             reply_markup=main_menu_markup

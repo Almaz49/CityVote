@@ -92,7 +92,7 @@ def schedule_jobs():
         minute=0,
         timezone=tz,
         id="voting_task",
-        args=[bot, club_id, instance_name],
+        args=[bot, club_id],
     ) # раз в сутки
 
     # Проверка токенов для всех польователей
@@ -103,7 +103,7 @@ def schedule_jobs():
         minute=0,
         timezone=tz,
         id="check_token_for_oll_members",
-        args=[bot, club_id, instance_name],
+        args=[bot, club_id],
     ) # раз в сутки
 
     # Очистка старых логов

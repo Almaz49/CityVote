@@ -205,7 +205,6 @@ async def process_registrator_choise(
 
         member_id = data["member_id"]
         club_id = data["club_id"]
-        instance_name = data["instance_name"]
         member_param = {}
         member_param["resume"] = user_dict.get("resume")
         await update_member_data(member_id, **member_param)
@@ -240,15 +239,14 @@ async def process_registrator_choise(
         # Если выбран регистратор, отправляем ему сообщение с просьбой подтвердить регистрацию
         if callback.data.isdigit():
             success, result = await notify_registrator_short(
-                bot, int(callback.data), tg_id, user_dict, instance_name
+                bot, int(callback.data), tg_id, user_dict
             )
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")  # type: ignore
         elif callback.data == "stranger":
             logger.info(f"Пользователь {tg_id} выбрал 'Никого не знаю'.")
             club_id = data["club_id"]
-            instance_name = data["instance_name"]
-            success, result = await notify_super_registrator_short(bot, club_id, tg_id, user_dict, instance_name)
+            success, result = await notify_super_registrator_short(bot, club_id, tg_id, user_dict)
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")  # type: ignore
             # Здесь тоже нужна функция уведомления администрации

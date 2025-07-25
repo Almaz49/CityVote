@@ -202,7 +202,7 @@ async def list_of_members(club_id, status: str | list[str] = "all"):
         pass
     else:
         raise ValueError("Параметр status должен быть строкой или списком строк")
-    # Получаем список участников с дополнительным полем info_level из таблицы Members
+    # Получаем список участников из таблицы Members
     query = """
     SELECT
         Users.first_name,
@@ -323,6 +323,35 @@ async def get_profile(member_id: int):
             logger.error(f"Ошибка при получении информации о профиле: {e}")
             raise
 
+@log_function_call
+async def get_tg_id_by_member_id(member_id: int):
+    """
+    Возвращает telegram ID участника по его member_id.
+    :param member_id: ID участника в таблице Members
+    """
+    if not member_id:
+        raise ValueError("member_id не может быть пустым")
+
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            logger.info(f"Запрос информации о профиле для member_id={member_id}")
+            await cursor.execute(
+                """
+                SELECT
+                    u.tg_id
+                FROM Members m
+                INNER JOIN Users u ON m.user_id = u.id
+                WHERE m.id = ?
+            """,
+                (member_id,),
+            )
+            row = await cursor.fetchone()
+
+            logger.info(f"Telegram ID успешно получен:\n{row}")
+            return row[0] if row else None
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при получении Telegram ID: {e}")
+            raise
 
 # Функция выявления всех статусов, использующихся в группе.
 # Нужна только для тестирования

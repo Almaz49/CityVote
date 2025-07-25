@@ -459,7 +459,6 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
         bot:Bot = callback.bot
 
         member_id = data["member_id"]
-        instance_name = data["instance_name"]
         if not member_id:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы не являетесь участником группы."
@@ -492,7 +491,7 @@ async def process_become_proxy(callback: CallbackQuery, state: FSMContext, data:
             # Присваиваем статус 'votist' (если его не было)
             await new_status(member_id, member_id, "votist")
             # Присваем статус 'votist' тем, кто каким-то образом уже доверил ему голос
-            await votist_because_proxy_returned(bot, member_id, instance_name)
+            await votist_because_proxy_returned(bot, member_id)
 
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "Вы стали представителем!"
@@ -598,7 +597,6 @@ async def process_username_entry(
     username = fsm_data["username"]
     user_id = data["user_id"]
     member_id = data["member_id"]
-    instance_name = data["instance_name"]
 
     try:
         # Записываем username в базу данных
@@ -608,7 +606,7 @@ async def process_username_entry(
         # Присваиваем статус 'votist' (если его не было)
         await new_status(member_id, member_id, "votist")
         # Присваем статус 'votist' тем, кто каким-то образом уже доверил ему голос
-        await votist_because_proxy_returned(bot, member_id, instance_name)
+        await votist_because_proxy_returned(bot, member_id)
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы стали представителем!"
@@ -692,7 +690,6 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     member_id = data["member_id"]
-    instance_name = data["instance_name"]
     if not member_id:
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы не являетесь участником группы."
@@ -706,7 +703,7 @@ async def process_resign_from_proxy(callback: CallbackQuery, data: dict):
 
     # Убираем статус 'proxy'
     await new_status(member_id, member_id, "not_proxy")
-    await not_votist_because_proxy_quit(bot, member_id, instance_name)
+    await not_votist_because_proxy_quit(bot, member_id)
     flag = await is_votist(member_id)
     text = "Вы перестали быть представителем!"
     if not flag:

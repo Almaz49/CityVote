@@ -105,7 +105,9 @@ buttons = {
         "user": ["registration"],  # Для статуса 'user'
         "candidate": ["profile"],  # Для статуса 'candidate'
         "member": ["profile"],  # Для статуса 'member'
+        "proxy": ["mailing_list"], # Для статуса 'proxy'
         "delegate": ["new_voting"],  # Для статуса 'delegate'
+        "admin": ["mailing_list"],  # Для статуса 'admin'
     },
     "settings": {  # Категория: Настройки
         "admin": ["new_registrator", "registrators_list","tokens","admin_members"],  # Для статуса 'admin'

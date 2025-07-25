@@ -146,7 +146,6 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
         raise ValueError("Нет сообщения для ответа")
     member_id = data["member_id"]
     club_id = data["club_id"]
-    instance_name = data["instance_name"]
     tg_id = callback.from_user.id
     status = data["status"]
     if 'member' not in status:  # type: ignore
@@ -157,7 +156,7 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
         await callback.message.answer(text='Не найден профиль пользователя')  # type: ignore
         return
     profile['status'] = status
-    success, result = await notify_super_registrator_short(bot=bot, club_id=club_id, candidate_tg_id= tg_id, user_dict= profile, instance_name=instance_name)
+    success, result = await notify_super_registrator_short(bot=bot, club_id=club_id, candidate_tg_id= tg_id, user_dict= profile)
     if not success:
         await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
     else:

@@ -58,6 +58,7 @@ async def process_start_command(message: Message, command: CommandObject, data: 
             # Обычный старт без параметра
             markup = await user_menu(status= data["user_status"])
             text = await greetings_message(club_id=data["club_id"])
+            text = text or ""
             text = text + "\nВаш статус в группе:"
             for status in data["user_status"]:
                 text += f"\n   - {LEXICON.get('user_status',{}).get(status, status)}"
@@ -167,57 +168,83 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
     await state.clear()
 
 
-# Хэндлер для кнопки 'Главное меню' в основном состоянии
-@router.callback_query(F.data == "main_menu", StateFilter(default_state))
-@log_handler_call
-async def process_main_menu_button(callback: CallbackQuery, data: dict):
+# # Хэндлер для кнопки 'Главное меню' в основном состоянии
+# @router.callback_query(F.data == "main_menu", StateFilter(default_state))
+# @log_handler_call
+# async def process_main_menu_button(callback: CallbackQuery, data: dict):
+#     """
+#     Обработчик кнопки "Главное меню".
+#     """
+#     logger.info(
+#         f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}"
+#     )
+#     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+#     markup = await user_menu(status= data["user_status"])
+
+#     # Добавляем данные для SafeEditMiddleware
+#     data["response_text"] = "Главное меню:"
+#     data["reply_markup"] = markup
+
+#     # Пытаемся отредактировать сообщение
+#     await callback.message.edit_text(  # type: ignore
+#         text=data["response_text"], reply_markup=data["reply_markup"]
+#     )
+
+
+# # Хэндлер для кнопки 'Главное меню' внутри машины состояний.
+# @router.callback_query(F.data == "main_menu", ~StateFilter(default_state))
+# @log_handler_call
+# async def process_main_menu_button_state(
+#     callback: CallbackQuery, state: FSMContext, data: dict
+# ):
+#     """
+#     Обработчик кнопки "Главное меню".
+#     """
+#     logger.info(
+#         f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}"
+#     )
+#     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+#     markup = await user_menu(status= data["user_status"])
+
+#     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
+#     await state.clear()
+
+#     # Добавляем данные для SafeEditMiddleware
+#     data["response_text"] = "Вы вышли из процесса.\nГлавное меню:"
+#     data["reply_markup"] = markup
+
+#     # Пытаемся отредактировать сообщение
+#     await callback.message.edit_text(  # type: ignore
+#         text=data["response_text"], reply_markup=data["reply_markup"]
+    # )
+
+@router.callback_query(F.data == "main_menu", StateFilter('*'))
+async def return_to_main_menu(callback: CallbackQuery, state: FSMContext, data: dict):
     """
-    Обработчик кнопки "Главное меню".
+    Хэндлер для кнопки "Главное меню".
+    Прерывает машину состояний и возвращает в главное меню.
     """
-    logger.info(
-        f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}"
-    )
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-    markup = await user_menu(status= data["user_status"])
-
-    # Добавляем данные для SafeEditMiddleware
-    data["response_text"] = "Главное меню:"
-    data["reply_markup"] = markup
-
-    # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
-        text=data["response_text"], reply_markup=data["reply_markup"]
-    )
-
-
-# Хэндлер для кнопки 'Главное меню' внутри машины состояний.
-@router.callback_query(F.data == "main_menu", ~StateFilter(default_state))
-@log_handler_call
-async def process_main_menu_button_state(
-    callback: CallbackQuery, state: FSMContext, data: dict
-):
-    """
-    Обработчик кнопки "Главное меню".
-    """
-    logger.info(
-        f"Пользователь {callback.from_user.id} нажал на кнопку: {callback.data}"
-    )
-    await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
-
-    markup = await user_menu(status= data["user_status"])
-
-    # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
-
-    # Добавляем данные для SafeEditMiddleware
-    data["response_text"] = "Вы вышли из процесса.\nГлавное меню:"
-    data["reply_markup"] = markup
-
-    # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
-        text=data["response_text"], reply_markup=data["reply_markup"]
-    )
+    if callback.message and isinstance(callback.message, Message):
+        markup = await user_menu(status=data["user_status"])
+        try:
+            await callback.message.edit_text(
+                "Вы возвращены в главное меню.",
+                reply_markup=markup
+            )
+        except Exception:
+            await callback.answer("Сообщение устарело. Открываю главное меню.", show_alert=True)
+            await callback.message.answer(
+                "Вы возвращены в главное меню.",
+                reply_markup=markup
+            )
+    elif callback.message:
+        await callback.answer("Не удалось отредактировать сообщение.", show_alert=True)
+    else:
+        await callback.answer("Ошибка: нет сообщения для редактирования.", show_alert=True)
+    await callback.answer()
 
 
 # Хэндлер для команды /club_info
@@ -309,9 +336,8 @@ async def process_leave_club_entry(
     try:
         # Запускаем процедуру выхода из группы
         member_id = data["member_id"]
-        instance_name = data["instance_name"]
         status = data["user_status"]
-        await leave_club(bot, member_id, instance_name, status)
+        await leave_club(bot, member_id, status)
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы вышли из группы!"
         data["reply_markup"] = await user_menu(status= data["user_status"])
@@ -636,7 +662,6 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
     bot:Bot = callback.bot
     member_id = data["member_id"]
     club_id = data["club_id"]
-    instance_name = data["instance_name"]
     tg_id = callback.from_user.id
     status = data["user_status"]
     if 'member' not in status:  # type: ignore
@@ -647,7 +672,7 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
         await callback.message.answer(text='Не найден профиль пользователя')  # type: ignore
         return
     profile['status'] = status
-    success, result = await notify_super_registrator_short(bot=bot, club_id=club_id, candidate_tg_id= tg_id, user_dict= profile, instance_name=instance_name)
+    success, result = await notify_super_registrator_short(bot=bot, club_id=club_id, candidate_tg_id= tg_id, user_dict= profile)
     if not success:
         await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
     else:

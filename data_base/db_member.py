@@ -264,7 +264,7 @@ async def trust(member_id, proxy):
 
 
 @log_function_call
-async def is_votist(member_id):
+async def is_votist(member_id: int):
     """
     Проверка, является ли пользователь 'votist'
     """

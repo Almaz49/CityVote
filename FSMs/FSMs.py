@@ -199,3 +199,9 @@ class FSMBan(StatesGroup):
 # FSM экспорта списка участников
 class FSMExportMembers(StatesGroup):
     fill_status = State()
+
+# FSM создания рассылок
+class FSMTextMailing(StatesGroup):
+    fill_choice = State()
+    fill_text = State()
+    fill_tg_id = State()

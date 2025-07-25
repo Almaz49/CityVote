@@ -201,7 +201,6 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         tg_id = callback.from_user.id
         member_id = data["member_id"]
         club_id = data["club_id"]
-        instance_name = data["instance_name"]
 
         user_param = {
             "tg_phone_number": user_dict.get("tg_phone_number"),
@@ -228,11 +227,11 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         )
 
         if callback.data.isdigit():
-            success, result = await notify_registrator_short(bot, int(callback.data), tg_id, user_dict, instance_name)
+            success, result = await notify_registrator_short(bot, int(callback.data), tg_id, user_dict)
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")
         elif callback.data == "stranger":
-            success, result = await notify_super_registrator_short(bot, club_id, tg_id, user_dict, instance_name)
+            success, result = await notify_super_registrator_short(bot, club_id, tg_id, user_dict)
             if not success:
                 await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
 

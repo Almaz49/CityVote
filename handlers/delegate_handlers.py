@@ -141,7 +141,6 @@ async def process_new_voting_yes_confirm_press(
         flag, comment = await voting_create_manager(
             bot=bot,
             club_id=data["club_id"],
-            instance_name=data["instance_name"],
             creator=data["member_id"],
             title=title,
             text=description,

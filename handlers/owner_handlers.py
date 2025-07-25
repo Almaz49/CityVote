@@ -613,9 +613,8 @@ async def process_add_channel(message: Message, state: FSMContext, data: dict):
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         raise
     club_id = data["club_id"]
-    instance_name = data["instance_name"]
 
-    result = await process_channel_info(bot, channel_info, instance_name, club_id, "add")
+    result = await process_channel_info(bot, channel_info, club_id, "add")
     await message.answer(result["message"])
     await state.clear()
 
@@ -645,8 +644,7 @@ async def process_remove_channel(message: Message, state: FSMContext, data: dict
         return
 
     club_id = data["club_id"]
-    instance_name = data["instance_name"]
-    result = await process_channel_info(bot, channel_info, instance_name, club_id, "remove")
+    result = await process_channel_info(bot, channel_info, club_id, "remove")
     await message.answer(result["message"])
     await state.clear()
 
@@ -675,8 +673,7 @@ async def process_set_main_channel(message: Message, state: FSMContext, data: di
         await message.answer("ID или ссылка не могут быть пустыми. Попробуйте снова.")
         return
     club_id = data['club_id']
-    instance_name = data['instance_name']
-    result = await process_channel_info(bot, channel_info, instance_name, club_id, "set_main")
+    result = await process_channel_info(bot, channel_info, club_id, "set_main")
     # Логирование результата
     logger.debug(f"Результат операции: {result}")
 

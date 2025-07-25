@@ -3,11 +3,10 @@
 # Вообще-то нарушает логику разделения скрипта на скрипт телеграм-бота и скрипт базы данных.
 # Может пределаю позже.
 
+import asyncio
 import html
 import logging
 from typing import List
-
-import aiosqlite
 import os
 from aiogram import Bot
 from aiogram.exceptions import (TelegramAPIError, TelegramBadRequest,
@@ -17,7 +16,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
 
 from config_data.config import Config, load_config
 # from data_base.telegram_bot_logic import AsyncDatabase, is_votist
-from data_base.db_func import AsyncDatabase, add_telegram_channel, count_member, get_club_info, get_profile, list_of_members, list_of_variants, remove_telegram_channel, set_main_channel
+from data_base.db_func import AsyncDatabase, add_telegram_channel, count_member, get_club_info, get_profile, get_tg_id_by_member_id, list_of_members, list_of_variants, remove_telegram_channel, set_main_channel
 from data_base.db_member import is_user_available, is_votist, mark_user_as_unavailable
 from data_base.db_vote import count_directly_empty_votes, count_directly_votes, count_proxy_votes, extract_member_choise, extract_proxy_choice, get_voting_info
 from keyboards.keyboards import create_inline_kb, main_menu_markup
@@ -39,7 +38,7 @@ async def get_bot_username(bot: Bot):
 
 # Функция уведомления пользователя
 @log_function_call
-async def send_notification_to_user(bot: Bot, tg_id: int, message_text: str, reply_markup = main_menu_markup, instance_name = None):
+async def send_notification_to_user(bot: Bot, tg_id: int, message_text: str, reply_markup = main_menu_markup):
     is_available = await is_user_available(tg_id)
     # logger.debug(f"Пользователь {tg_id} доступен: {is_available}")
     if is_available:
@@ -50,41 +49,82 @@ async def send_notification_to_user(bot: Bot, tg_id: int, message_text: str, rep
                 text=message_text,
                 reply_markup=reply_markup
             )
-            response = f'Сообщение отправлено пользователю {tg_id}'
+
+            # Задержка между сообщениями, чтобы не забанил телеграм
+            await asyncio.sleep(0.05)
+            return f'Сообщение отправлено пользователю {tg_id}'
         except TelegramForbiddenError:
             # Пользователь заблокировал бота
             logger.warning(f"Пользователь {tg_id} заблокировал бота.")
-            response = f"Пользователь {tg_id} заблокировал бота."
             await mark_user_as_unavailable(tg_id, reason="bot blocked")
+            await asyncio.sleep(0.05)
+            return f"Пользователь {tg_id} заблокировал бота."
         except TelegramBadRequest as e:
             if "chat not found" in str(e).lower():
                 # Чат не найден (пользователь удалил аккаунт)
                 logger.warning(f"Пользователь {tg_id} удалил аккаунт или чат не существует.")
-                response = f"Пользователь {tg_id} удалил аккаунт или чат не существует."
                 await mark_user_as_unavailable(tg_id, reason="user lost")
+                await asyncio.sleep(0.05)
+                return f"Пользователь {tg_id} удалил аккаунт или чат не существует."
+
             else:
                 # Другая ошибка BadRequest
                 logger.error(f"Ошибка при отправке сообщения пользователю {tg_id}: {e}")
-                response = f"Ошибка при отправке сообщения пользователю {tg_id}: {e}"
+                await asyncio.sleep(0.05)
+                return f"Ошибка при отправке сообщения пользователю {tg_id}: {e}"
         except TelegramAPIError as e:
             # Любая другая ошибка Telegram API
             logger.error(f"Telegram API Error для пользователя {tg_id}: {e}")
-            response = f"Telegram API Error для пользователя {tg_id}: {e}"
+            await asyncio.sleep(0.05)
+            return f"Telegram API Error для пользователя {tg_id}: {e}"
         except Exception as e:
             # Все остальные исключения
             logger.error(f"Неизвестная ошибка при отправке сообщения пользователю {tg_id}: {e}")
-            response = f"Неизвестная ошибка при отправке сообщения пользователю {tg_id}: {e}"
+            await asyncio.sleep(0.05)
+            return f"Неизвестная ошибка при отправке сообщения пользователю {tg_id}: {e}"
     else:
-        response = f"Пользователь {tg_id} недоступен для отправки сообщений"
+        await asyncio.sleep(0.05)
+        return f"Пользователь {tg_id} недоступен для отправки сообщений"
 
-    return response
 
+@log_function_call
+@log_function_call
+async def send_notification_to_members(
+    bot: Bot,
+    club_id: int,
+    message_text: str,
+    status: str | list[str] = "all",
+) -> str:
+    try:
+        members = await list_of_members(club_id, status)
+        sent_count = 0
+        failed_count = 0
+
+        for i, member in enumerate(members):
+            tg_id = member.get("tg_id")
+            if not isinstance(tg_id, int) or tg_id is None:
+                logger.warning(f"Пропускаем участника: некорректный tg_id={tg_id}")
+                failed_count += 1
+                continue
+
+            result = await send_notification_to_user(bot, tg_id, message_text)
+            if "отправлено" in result or "успешно" in result:
+                sent_count += 1
+            else:
+                failed_count += 1
+
+            if (i + 1) % 20 == 0:
+                await asyncio.sleep(1)
+
+        return f"✅ Рассылка завершена: {sent_count} отправлено, {failed_count} ошибок"
+    except Exception as e:
+        logger.error(f"Ошибка при подготовке рассылки: {e}")
+        return f"❌ Ошибка при получении списка участников: {e}"
 
 @log_function_call
 async def send_notification_to_chat_or_channel(
     bot: Bot,
     chat_id: int,
-    instance_name: str,
     message_text: str,
     inline_button_text: str = "Принять участие в голосованиях",
     inline_button_callback_data: str|None = None, # Параметр, который передается при нажатии на кнопку
@@ -131,38 +171,38 @@ async def send_notification_to_chat_or_channel(
             reply_markup=reply_markup,
             parse_mode=parse_mode
         )
-
-        response = f"Уведомление успешно отправлено в чат/канал {chat_id}"
+        # Задержка между сообщениями, чтобы не забанил телеграм
+        await asyncio.sleep(0.05)
+        return f"Уведомление успешно отправлено в чат/канал {chat_id}"
 
     except TelegramForbiddenError:
         # Канал или чат заблокировали бота
         logger.warning(f"Бот заблокирован в чате/канале {chat_id}.")
-        response = f"Бот заблокирован в чате/канале {chat_id}."
+        return f"Бот заблокирован в чате/канале {chat_id}."
 
     except TelegramBadRequest as e:
         if "chat not found" in str(e).lower():
             # Чат или канал не существует
             logger.warning(f"Чат/канал {chat_id} не найден.")
-            response = f"Чат/канал {chat_id} не найден."
+            return f"Чат/канал {chat_id} не найден."
         else:
             # Другая ошибка BadRequest
             logger.error(f"Ошибка при отправке уведомления в чат/канал {chat_id}: {e}")
-            response = f"Ошибка при отправке уведомления в чат/канал {chat_id}: {e}"
+            return f"Ошибка при отправке уведомления в чат/канал {chat_id}: {e}"
 
     except TelegramAPIError as e:
         # Любая другая ошибка Telegram API
         logger.error(f"Telegram API Error для чата/канала {chat_id}: {e}")
-        response = f"Telegram API Error для чата/канала {chat_id}: {e}"
+        return f"Telegram API Error для чата/канала {chat_id}: {e}"
 
     except Exception as e:
         # Все остальные исключения
         logger.error(f"Неизвестная ошибка при отправке уведомления в чат/канал {chat_id}: {e}")
-        response = f"Неизвестная ошибка при отправке уведомления в чат/канал {chat_id}: {e}"
+        return f"Неизвестная ошибка при отправке уведомления в чат/канал {chat_id}: {e}"
 
-    return response
 
 @log_function_call
-async def send_file_to_user(bot: Bot, tg_id: int, instance_name:str, file_path: str, caption: str = "Файл", reply_markup=None):
+async def send_file_to_user(bot: Bot, tg_id: int, file_path: str, caption: str = "Файл", reply_markup=None):
     """
     Отправляет файл пользователю по его tg_id.
 
@@ -191,29 +231,34 @@ async def send_file_to_user(bot: Bot, tg_id: int, instance_name:str, file_path: 
             caption=caption,
             reply_markup=reply_markup
         )
-        response = f"Файл успешно отправлен пользователю {tg_id}"
+        # Задержка между сообщениями, чтобы не забанил телеграм
+        await asyncio.sleep(0.05)
+        return f"Файл успешно отправлен пользователю {tg_id}"
+
     except TelegramForbiddenError:
         logger.warning(f"Пользователь {tg_id} заблокировал бота.")
-        response = f"Пользователь {tg_id} заблокировал бота."
         await mark_user_as_unavailable(tg_id, reason="bot blocked")
+        return f"Пользователь {tg_id} заблокировал бота."
+
     except TelegramBadRequest as e:
         if "chat not found" in str(e).lower():
             logger.warning(f"Пользователь {tg_id} удалил аккаунт или чат не существует.")
-            response = f"Пользователь {tg_id} удалил аккаунт или чат не существует."
             await mark_user_as_unavailable(tg_id, reason="user lost")
+            return f"Пользователь {tg_id} удалил аккаунт или чат не существует."
+
         else:
             logger.error(f"Ошибка при отправке файла пользователю {tg_id}: {e}")
-            response = f"Ошибка при отправке файла пользователю {tg_id}: {e}"
+            return f"Ошибка при отправке файла пользователю {tg_id}: {e}"
     except Exception as e:
         logger.error(f"Неизвестная ошибка при отправке файла пользователю {tg_id}: {e}")
-        response = f"Неизвестная ошибка при отправке файла пользователю {tg_id}: {e}"
+        return f"Неизвестная ошибка при отправке файла пользователю {tg_id}: {e}"
 
-    return response
+
 #Функция уведомления регистратора при краткой регистрации.
 @log_function_call
-async def notify_registrator_short(bot: Bot, registrator_tg_id, candidate_tg_id, user_dict, instance_name):
+async def notify_registrator_short(bot: Bot, registrator_tg_id, candidate_tg_id, user_dict):
     try:
-        print(user_dict)
+        logger.debug(f"Данные пользователя для регистрации: {user_dict}")
         # Создаем объекты инлайн-кнопок
         confirm_button = InlineKeyboardButton(
             text='Подтверждаю',
@@ -248,7 +293,6 @@ async def notify_registrator_short(bot: Bot, registrator_tg_id, candidate_tg_id,
             registrator_tg_id,
             message_text,
             markup,  # клавиатура подтверждения
-            instance_name
         )
 
         return True, "Уведомление отправлено."
@@ -258,7 +302,7 @@ async def notify_registrator_short(bot: Bot, registrator_tg_id, candidate_tg_id,
 
 #Функция уведомления суперрегистратора при краткой регистрации.
 @log_function_call
-async def notify_super_registrator_short(bot, club_id, candidate_tg_id, user_dict, instance_name):
+async def notify_super_registrator_short(bot, club_id, candidate_tg_id, user_dict):
     try:
         # Создаем объекты инлайн-кнопок
         confirm_button = InlineKeyboardButton(
@@ -310,7 +354,6 @@ async def notify_super_registrator_short(bot, club_id, candidate_tg_id, user_dic
                 registrator_tg_id,
                 message_text,
                 markup,  # клавиатура подтверждения
-                instance_name
         )
 
         return True, "Уведомление отправлено."
@@ -320,124 +363,158 @@ async def notify_super_registrator_short(bot, club_id, candidate_tg_id, user_dic
 
 
 
-# Функция уведомления и лишения статуса 'votist' тех пользователей, чей представитель утратил этот статус
+# # Функция уведомления и лишения статуса 'votist' тех пользователей, чей представитель утратил этот статус
+# @log_function_call
+# async def not_votist_because_proxy_quit(bot: Bot, proxy:int):
+#     logger.info(f"Лишаем статуса гоосующих тех, чей представитель {proxy} сложил полномочия")
+#     async with AsyncDatabase(path_db) as cursor:
+#         try:
+#             # Получаем имя представителя
+#             await cursor.execute('''SELECT username FROM Users WHERE id IN
+#                                  (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
+#             username_result = await cursor.fetchone()
+#             if username_result:
+#                 proxy_name, = username_result
+#             else:
+#                 proxy_name = 'Имя неизвестно'
+
+#             # Получаем id всех доверителей
+#             await cursor.execute(
+#                 'SELECT id FROM Members WHERE proxy = ?',
+#                 (proxy,)
+#             )
+#             result = await cursor.fetchall()
+#         except aiosqlite.Error as e:
+#             logger.error(f"Ошибка при лишении статуса 'голосующих' доверителей ушедшего представителя: {e}")
+#             raise
+
+#     for item in result:
+#         member_id, = item
+#         # Проверяем, является ли пользователь голосующим
+#         flag = await is_votist(member_id)
+#         if not flag:
+#             # Получаем телеграм id пользователя
+#             async with AsyncDatabase(path_db) as cursor:
+#                 try:
+#                     await cursor.execute(
+#                 '''SELECT tg_id FROM Users WHERE id in
+#                 (SELECT user_id FROM Members WHERE id = ?)''',
+#                 (member_id,)
+#                     )
+#                     tg_id_result = await cursor.fetchone()
+#                     if tg_id_result:
+#                         tg_id, = tg_id_result
+#                     else:
+#                         tg_id = None
+#                     message_text = f'''
+# Ваш представитель {proxy_name} утратил статус представителя.
+# Выберите другого или сами станьте представителем, чтобы иметь право решающего голоса.
+# Для начала работы наберите или нажмите команду /start
+# '''
+#                     # Отправляем сообщение участннику, чей представитель ушел в отставку
+#                     if tg_id:
+#                         await send_notification_to_user(
+#                             bot,
+#                             tg_id,
+#                             message_text,
+#                         )
+
+#                 except aiosqlite.Error as e:
+#                     logger.error(f"Ошибка при лишении статуса голосующего: {e}")
+#                     raise
+
+# # Функция уведомления и присвоения статуса 'votist' тем пользователям, чей представитель возобновил этот статус
+# @log_function_call
+# async def votist_because_proxy_returned(bot: Bot, proxy:int):
+#     logger.info(f"Возвращаем статус гоосующих тем, чей представитель {proxy} вернул полномочия")
+#     async with AsyncDatabase(path_db) as cursor:
+#         try:
+#             await cursor.execute('''SELECT username FROM Users WHERE id IN
+#                                  (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
+#             username_result = await cursor.fetchone()
+#             if username_result:
+#                 proxy_name, = username_result
+#             else:
+#                 proxy_name = 'Имя неизвестно'
+
+#             await cursor.execute(
+#                 'SELECT id FROM Members WHERE proxy = ?',
+#                 (proxy,)
+#             )
+#             result = await cursor.fetchall()
+#         except aiosqlite.Error as e:
+#             logger.error(f"Ошибка при возвращении статуса 'голосующих' доверителям вернувшегося представителя: {e}")
+#             raise
+
+#     for item in result:
+#         member_id, = item
+#         flag = await is_votist(member_id)
+#         if flag:
+#             async with AsyncDatabase(path_db) as cursor:
+#                 try:
+#                     await cursor.execute(
+#                 '''SELECT tg_id FROM Users WHERE id in
+#                 (SELECT user_id FROM Members WHERE id = ?)''',
+#                 (member_id,)
+#                     )
+#                     tg_id_result = await cursor.fetchone()
+#                     if tg_id_result:
+#                         tg_id, = tg_id_result
+#                     else:
+#                         tg_id = None
+#                     message_text = f'''
+# Ваш представитель {proxy_name} вернул статус представителя.
+# Теперь ваш голос будет учитываться при голосованиях.
+# Для начала работы наберите или нажмите команду /start
+# '''
+#                     # Отправляем сообщение участннику, чей представитель ушел в отставку
+#                     if  tg_id:
+#                         await send_notification_to_user(
+#                             bot,
+#                             tg_id,
+#                             message_text,
+#                         )
+
+#                 except aiosqlite.Error as e:
+#                     logger.error(f"Ошибка при лишении статуса голосующего: {e}")
+#                     raise
+
 @log_function_call
-async def not_votist_because_proxy_quit(bot: Bot, proxy:int, instance_name):
-    logger.info(f"Лишаем статуса гоосующих тех, чей представитель {proxy} сложил полномочия")
+async def _notify_trustees(bot: Bot, proxy_id: int, message_template: str):
+    """
+
+    """
     async with AsyncDatabase(path_db) as cursor:
-        try:
-            # Получаем имя представителя
-            await cursor.execute('''SELECT username FROM Users WHERE id IN
-                                 (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
-            username_result = await cursor.fetchone()
-            if username_result:
-                proxy_name, = username_result
-            else:
-                proxy_name = 'Имя неизвестно'
+        await cursor.execute('''SELECT username FROM Users WHERE id IN (SELECT user_id FROM Members WHERE id = ?)''', (proxy_id,))
+        row = await cursor.fetchone()
+        if row:
+            proxy_name = row[0]
+        else:
+            proxy_name ="Имя неизвестно"
 
-            # Получаем id всех доверителей
-            await cursor.execute(
-                'SELECT id FROM Members WHERE proxy = ?',
-                (proxy,)
-            )
-            result = await cursor.fetchall()
-        except aiosqlite.Error as e:
-            logger.error(f"Ошибка при лишении статуса 'голосующих' доверителей ушедшего представителя: {e}")
-            raise
+        await cursor.execute('SELECT id FROM Members WHERE proxy = ?', (proxy_id,))
+        trustees = await cursor.fetchall()
 
-    for item in result:
-        member_id, = item
-        # Проверяем, является ли пользователь голосующим
-        flag = await is_votist(member_id)
-        if not flag:
-            # Получаем телеграм id пользователя
-            async with AsyncDatabase(path_db) as cursor:
-                try:
-                    await cursor.execute(
-                '''SELECT tg_id FROM Users WHERE id in
-                (SELECT user_id FROM Members WHERE id = ?)''',
-                (member_id,)
-                    )
-                    tg_id_result = await cursor.fetchone()
-                    if tg_id_result:
-                        tg_id, = tg_id_result
-                    else:
-                        tg_id = None
-                    message_text = f'''
-Ваш представитель {proxy_name} утратил статус представителя.
-Выберите другого или сами станьте представителем, чтобы иметь право решающего голоса.
-Для начала работы наберите или нажмите команду /start
-'''
-                    # Отправляем сообщение участннику, чей представитель ушел в отставку
-                    if tg_id:
-                        await send_notification_to_user(
-                            bot,
-                            tg_id,
-                            message_text,
-                            instance_name=instance_name
-                        )
+    for (member_id,) in trustees:
+        await is_votist(member_id)
+        tg_id = await get_tg_id_by_member_id(member_id)  # вынеси в отдельную функцию
+        if tg_id:
+            text = message_template.format(proxy_name=proxy_name)
+            await send_notification_to_user(bot, tg_id, text)
 
-                except aiosqlite.Error as e:
-                    logger.error(f"Ошибка при лишении статуса голосующего: {e}")
-                    raise
+async def not_votist_because_proxy_quit(bot: Bot, proxy: int):
+    """
+    Функция уведомления о том, что представитель ушел в отставку
+    """
+    template = "Ваш представитель {proxy_name} ушёл. Выберите нового..."
+    await _notify_trustees(bot, proxy, template)
 
-# Функция уведомления и присвоения статуса 'votist' тем пользователям, чей представитель возобновил этот статус
-@log_function_call
-async def votist_because_proxy_returned(bot: Bot, proxy:int,instance_name:str):
-    logger.info(f"Возвращаем статус гоосующих тем, чей представитель {proxy} вернул полномочия")
-    async with AsyncDatabase(path_db) as cursor:
-        try:
-            await cursor.execute('''SELECT username FROM Users WHERE id IN
-                                 (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
-            username_result = await cursor.fetchone()
-            if username_result:
-                proxy_name, = username_result
-            else:
-                proxy_name = 'Имя неизвестно'
-
-            await cursor.execute(
-                'SELECT id FROM Members WHERE proxy = ?',
-                (proxy,)
-            )
-            result = await cursor.fetchall()
-        except aiosqlite.Error as e:
-            logger.error(f"Ошибка при возвращении статуса 'голосующих' доверителям вернувшегося представителя: {e}")
-            raise
-
-    for item in result:
-        member_id, = item
-        flag = await is_votist(member_id)
-        if flag:
-            async with AsyncDatabase(path_db) as cursor:
-                try:
-                    await cursor.execute(
-                '''SELECT tg_id FROM Users WHERE id in
-                (SELECT user_id FROM Members WHERE id = ?)''',
-                (member_id,)
-                    )
-                    tg_id_result = await cursor.fetchone()
-                    if tg_id_result:
-                        tg_id, = tg_id_result
-                    else:
-                        tg_id = None
-                    message_text = f'''
-Ваш представитель {proxy_name} вернул статус представителя.
-Теперь ваш голос будет учитываться при голосованиях.
-Для начала работы наберите или нажмите команду /start
-'''
-                    # Отправляем сообщение участннику, чей представитель ушел в отставку
-                    if  tg_id:
-                        await send_notification_to_user(
-                            bot,
-                            tg_id,
-                            message_text,
-                            instance_name=instance_name
-                        )
-
-                except aiosqlite.Error as e:
-                    logger.error(f"Ошибка при лишении статуса голосующего: {e}")
-                    raise
-
+async def votist_because_proxy_returned(bot: Bot, proxy: int):
+    """
+    Функция уведомления о том, что представитель вернулся
+    """
+    template = "Ваш представитель {proxy_name} вернулся. Ваш голос учитывается!"
+    await _notify_trustees(bot, proxy, template)
 
 
 # Функция создания приветственного обращения. Использует информацию о группе
@@ -449,12 +526,13 @@ async def greetings_message(club_id:int):
         response = f"<b>👋 Привет! Я — бот для голосований группы {result.get('name')}.</b>" + LEXICON.get('greetings',
         'Пройдите регистрацию, чтобы воспользоваться всеми моими возможностями')
         if result.get('channel_link'):
-            response = response + f"<a href='{result.get('channel_link')}'>[Подпишитесь на наш канал, чтобы быть в курсе всех событий:]</a>"
+            logger.debug('Текст приветствия успешно составлен')
+            return response + f"<a href='{result.get('channel_link')}'>[Подпишитесь на наш канал, чтобы быть в курсе всех событий:]</a>"
         logger.debug('Текст приветствия успешно составлен')
     else:
-        response = 'Привет! Произошла ошибка, информация о группе не найдена, сообщите об этом администрациии'
         logger.debug('Не найдена информация о группе для составления приветствия')
-    return response
+        return 'Привет! Произошла ошибка, информация о группе не найдена, сообщите об этом администрациии'
+
 
 # Функция создания справки в зависимости от ролей участника
 @log_function_call
@@ -488,7 +566,7 @@ async def club_info(club_id:int):
 
 
 # Функция создания ссылки на публичный канал по его ID
-async def get_channel_link(bot: Bot, channel_id, instance_name: str):
+async def get_channel_link(bot: Bot, channel_id: int):
     try:
         chat = await bot.get_chat(chat_id=channel_id)
         if chat.username:
@@ -504,7 +582,7 @@ async def get_channel_link(bot: Bot, channel_id, instance_name: str):
 
 # Функция создания пригласительной ссылки в приватный канал (работает, если бот администратор) по ID канала
 @log_function_call
-async def get_invite_link(bot: Bot, channel_id, instance_name: str):
+async def get_invite_link(bot: Bot, channel_id):
     try:
         invite_link = await bot.export_chat_invite_link(chat_id=channel_id)
         return invite_link
@@ -514,7 +592,7 @@ async def get_invite_link(bot: Bot, channel_id, instance_name: str):
 
 
 @log_function_call
-async def get_channel_id(bot: Bot, channel_username, instance_name): # Имя канала без @
+async def get_channel_id(bot: Bot, channel_username): # Имя канала без @
     """
     Получение ID канала по его имени
     """
@@ -528,7 +606,7 @@ async def get_channel_id(bot: Bot, channel_username, instance_name): # Имя к
         return None
 
 @log_function_call
-async def validate_and_get_channel_info(bot: Bot, channel_info: str, instance_name: str) -> dict:
+async def validate_and_get_channel_info(bot: Bot, channel_info: str) -> dict:
     """
     Проверяет существование канала/чата и права бота.
     :param channel_info: ID или username канала/чата
@@ -629,7 +707,7 @@ async def validate_and_get_channel_info(bot: Bot, channel_info: str, instance_na
         return {"success": False, "message": f"Произошла ошибка: {e}"}
 
 @log_function_call
-async def process_channel_info(bot: Bot, channel_info: str, instance_name: str, club_id: int, action: str) -> dict:
+async def process_channel_info(bot: Bot, channel_info: str, club_id: int, action: str) -> dict:
     """
     Обрабатывает информацию о канале/чате для различных действий.
     :param channel_info: ID или username канала/чата
@@ -638,7 +716,7 @@ async def process_channel_info(bot: Bot, channel_info: str, instance_name: str, 
     :return: Словарь с результатом операции
     """
     # Проверяем существование канала и права бота
-    validation_result = await validate_and_get_channel_info(bot, channel_info, instance_name=instance_name)
+    validation_result = await validate_and_get_channel_info(bot, channel_info)
     if not validation_result["success"]:
         return {"success": False, "message": validation_result["message"]}
 

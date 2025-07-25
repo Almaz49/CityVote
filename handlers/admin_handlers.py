@@ -14,10 +14,10 @@ from data_base.db_member import ban_member, new_status, export_list_of_members
 from data_base.db_vote import delete_variant
 from data_base.telegram_bot_logic import extract_new_registrator_data, new_status_tg
 from filters.filters import StatusFilter
-from FSMs.FSMs import FSMExportMembers, FSMNewRegistrator, FSMBan
+from FSMs.FSMs import FSMExportMembers, FSMNewRegistrator, FSMBan, FSMTextMailing
 from keyboards.keyboards import *
 from manager.manager import *
-from services.services import send_file_to_user, send_notification_to_user
+from services.services import send_file_to_user, send_notification_to_members, send_notification_to_user
 from utils import log_handler_call
 
 # Настройка логирования
@@ -226,7 +226,7 @@ async def process_yes_registrator_press(
     admin_tg_id = callback.from_user.id
     admin_id = data["member_id"]
     club_id = data["club_id"]
-    instance_name = data["instance_name"]
+
 
     try:
         ans_str = await new_status_tg(club_id,
@@ -263,7 +263,7 @@ async def process_yes_registrator_press(
         pre_reg_markup = create_inline_kb(2, **keyboard)
 
         response = await send_notification_to_user(
-            bot, member_tg_id, notification, pre_reg_markup, instance_name=instance_name
+            bot, member_tg_id, notification, pre_reg_markup
         )
 
         # Добавляем данные для SafeEditMiddleware
@@ -788,10 +788,9 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
         voting_id = int(callback.data.split(":")[1])
         member_id = data["member_id"]
         club_id = data["club_id"]
-        instance_name = data["instance_name"]
 
         result = await voting_manager(
-            bot, voting_id, instance_name=instance_name ,club_id=club_id, admin=member_id, stage_type="start"
+            bot, voting_id, club_id=club_id, admin=member_id, stage_type="start"
         )
 
         # Гарантируем, что text всегда является строкой
@@ -854,10 +853,9 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
         voting_id = int(callback.data.split(":")[1])
         member_id = data["member_id"]
         club_id = data["club_id"]
-        instance_name = data["instance_name"]
 
         result = await voting_manager(
-            bot, voting_id, instance_name=instance_name, club_id=club_id, admin=member_id, stage_type="stage"
+            bot, voting_id, club_id=club_id, admin=member_id, stage_type="stage"
         )
 
         if result:
@@ -917,10 +915,9 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
         voting_id = int(callback.data.split(":")[1])
         member_id = data["member_id"]
         club_id = data["club_id"]
-        instance_name = data["instance_name"]
 
         result = await voting_manager(
-            bot, voting_id, instance_name=instance_name, club_id=club_id, admin=member_id, stage_type="final"
+            bot, voting_id, club_id=club_id, admin=member_id, stage_type="final"
         )
 
         if result:
@@ -980,10 +977,9 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
         voting_id = int(callback.data.split(":")[1])
         member_id = data["member_id"]
         club_id = data["club_id"]
-        instance_name = data["instance_name"]
 
         result = await voting_manager(
-            bot, voting_id, club_id=club_id, admin=member_id, stage_type="complete", instance_name=instance_name
+            bot, voting_id, club_id=club_id, admin=member_id, stage_type="complete"
         )
         if result:
             text = result.get("message")
@@ -1439,8 +1435,6 @@ async def process_export_members(
     if not callback.message: return
     club_id = data.get('club_id')
     if not club_id: return
-    instance_name = data.get('instance_name')
-    if not instance_name: return
     status = callback.data
     if status == "all members":
         status = "all"
@@ -1453,7 +1447,6 @@ async def process_export_members(
         await send_file_to_user(
             bot=bot,
             tg_id=callback.from_user.id,
-            instance_name=instance_name,
             file_path=file_path,
             caption="Экспорт списка участников",
             reply_markup=main_menu_markup
@@ -1468,4 +1461,110 @@ async def process_export_members(
         await callback.message.answer("Не удалось экспортировать список участников.")  # type: ignore
 
     await callback.message.answer("Главное меню:", reply_markup=main_menu_markup)  # type: ignore
+    await state.clear()
+
+"""
+Хэндлеры рассылок администратора
+"""
+
+@router.callback_query(StateFilter(default_state), F.data == "mailing_list")
+@log_handler_call
+async def mailing_list_start(callback: CallbackQuery, state: FSMContext, data:dict) -> None:
+    """
+    Хендлер нажатия кнопки "Рассылка"
+    """
+    if not callback.message: return
+    buttons = ["mailing_all", "mailing_members", "mailing_user","main_menu"]
+    markup = create_inline_kb(1, *buttons)
+    await callback.message.answer(text="Выберите, кому рассылать:", reply_markup=markup)
+    await state.set_state(FSMTextMailing.fill_choice)
+
+
+@router.callback_query(FSMTextMailing.fill_choice, F.data.in_(["mailing_all", "mailing_members", "mailing_user"]))
+@log_handler_call
+async def mailing_all_start(callback: CallbackQuery, state: FSMContext, data:dict) -> None:
+    """
+    Хендлер выбора типа рассылки
+    """
+    if not callback.message: return
+    # Записываем в FSM данные о том, какой тип рассылки выбран
+    await state.update_data(choice=callback.data, ID = None)
+    if callback.data == "mailing_user":
+        await callback.message.answer(
+            text="Введите телеграм ID пользователя или пришлите его контакт",
+            reply_markup=return_to_main_menu_markup
+            )
+        await state.set_state(FSMTextMailing.fill_tg_id)
+    else:
+        await callback.message.answer(text="Введите текст рассылки:", reply_markup=return_to_main_menu_markup)
+        await state.set_state(FSMTextMailing.fill_text)
+
+
+
+
+@router.message(FSMTextMailing.fill_tg_id, F.text.isdigit() | F.contact)
+@log_handler_call
+async def fill_mailing_tg_id_or_contact(message: Message, state: FSMContext):
+    if message.contact:
+        user_tg_id = message.contact.user_id
+        if not user_tg_id:
+            await message.answer(
+                text = "К сожалению, ID контакта отсутствует. Попробуйте отправить просто ID",
+                reply_markup=return_to_main_menu_markup
+                                 )
+            return
+        logger.info(f"Получен контакт с ID: {user_tg_id}")
+    elif message.text:  # тогда message.text.isdigit()
+        try:
+            user_tg_id = int(message.text.strip())
+        except ValueError:
+            await message.answer(
+                text="Пожалуйста, введите корректное числовое значение.",
+                reply_markup=return_to_main_menu_markup)
+            return
+    else:
+        await message.answer(
+             text="Сообщние не содержит текст. Пожалуйста, попробуйте снова.",
+             reply_markup=return_to_main_menu_markup
+             )
+        logger.warning(f"Пользователь {message.from_user.id if message.from_user else 'неизвестен'} ввел некорректный контакт: {message.text}")
+        return
+
+    await state.update_data(ID=user_tg_id)
+    await message.answer("Введите текст послания:", reply_markup=return_to_main_menu_markup)
+    await state.set_state(FSMTextMailing.fill_text)
+
+
+@router.message(F.text, FSMTextMailing.fill_text)
+@log_handler_call
+async def fill_mailing_text_for_all(message: Message, state: FSMContext, data: dict):
+    """
+    Хэндлер для отправки текста рассылки
+    """
+    if not message.text:
+        await message.answer("Текст не может быть пустым. Попробуйте ещё раз:")
+        return
+    if len(message.text) > 4000:
+        await message.answer(
+            text = "Сообщение слишком длинное (макс. 4000 символов). попробуйте снова",
+            reply_markup=return_to_main_menu_markup)
+        return
+    message_text = message.text
+    bot = message.bot
+    if not bot:
+        raise ValueError("Бот не найден")
+    club_id = data["club_id"]
+
+    fsm_data = await state.get_data()
+
+    if fsm_data.get("choice") == "mailing_user":
+        text = await send_notification_to_user(bot, fsm_data["ID"], message_text)
+    elif fsm_data.get("choice") == "mailing_all":
+        text = await send_notification_to_members(bot, club_id, message_text)
+    elif fsm_data.get("choice") == "mailing_members":
+        text = await send_notification_to_members(bot, club_id, message_text, status="member")
+    else:
+        raise ValueError("Неизвестное значение choice")
+
+    await message.answer(text=text, reply_markup=main_menu_markup)
     await state.clear()
