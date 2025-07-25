@@ -459,13 +459,16 @@ async def count_directly_votes(variant_id):
             # ''', (variant_id,))
             await cursor.execute(
                 """
-            SELECT COUNT(DISTINCT Members.id)
-            FROM Members
-            JOIN Elections ON Members.id = Elections.member_id
-            JOIN Status ON Members.id = Status.member_id
-            WHERE Elections.variant_id = ?
-            AND Elections.status IN ('valid', 'lose', 'win')
-            AND Status.status = 'votist'
+            SELECT COUNT(*)
+            FROM Elections e
+            WHERE e.variant_id = ?
+            AND e.status IN ('valid', 'lose', 'win')
+            AND EXISTS (
+                SELECT 1
+                FROM Status s
+                WHERE s.member_id = e.member_id
+                AND s.status = 'votist'
+            )
             """,
                 (variant_id,),
             )
@@ -494,68 +497,70 @@ async def count_directly_empty_votes(variant_id):
         try:
             await cursor.execute(
                 """
-                SELECT COUNT(*) FROM Members WHERE id IN
-                (SELECT member_id FROM Elections WHERE variant_id = ? AND status IN ('valid', 'lose', 'winner'))
-                AND id NOT IN
-                (SELECT member_id FROM Status WHERE status = 'votist')
-            """,
+                SELECT COUNT(DISTINCT e.member_id)
+                FROM Elections e
+                WHERE e.variant_id = ?
+                  AND e.status IN ('valid', 'lose', 'win')
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM Status s
+                      WHERE s.member_id = e.member_id
+                        AND s.status = 'votist'
+                  )
+                """,
                 (variant_id,),
             )
+
             result = await cursor.fetchone()
-            if result:
-                (amount,) = result
-                logger.info(
-                    f"Количество прямых голосов без права голоса за variant_id={variant_id}: {amount}"
-                )
-                return int(amount)
-            else:
-                logger.info(
-                    f"Для variant_id={variant_id} нет прямых голосов без права голоса."
-                )
-                return None
+            amount = result[0] if result else 0
+
+            logger.info(
+                f"Количество прямых голосов без права голоса за variant_id={variant_id}: {amount}"
+            )
+            return amount
+
         except aiosqlite.Error as e:
             logger.error(
                 f"Ошибка при подсчете прямых голосов без права голоса: {e}\n{traceback.format_exc()}"
             )
             raise
 
-
-# Функция подсчета голосов, отданых за вариант через представителей
-@log_function_call
-async def count_proxy_votes_old(variant_id):
-    async with AsyncDatabase(path_db) as cursor:
-        try:
-            await cursor.execute(
-                """
-                SELECT COUNT(*) FROM Members WHERE proxy IN
-                (SELECT member_id FROM Elections WHERE variant_id = ? AND status IN ('valid', 'lose', 'winner'))
-                AND id NOT IN
-                (SELECT member_id FROM Elections WHERE status IN ('valid', 'lose', 'winner')
-                AND variant_id IN
-                (SELECT id FROM Variants WHERE voting_id IN
-                (SELECT voting_id FROM Variants WHERE id = ?)))
-                AND id IN
-                (SELECT member_id FROM Status WHERE status = 'votist')
-            """,
-                (variant_id, variant_id),
-            )
-            result = await cursor.fetchone()
-            if result:
-                (amount,) = result
-                logger.info(
-                    f"Количество голосов через представителей за variant_id={variant_id}: {amount}"
-                )
-                return int(amount)
-            else:
-                logger.info(
-                    f"Для variant_id={variant_id} нет голосов через представителей."
-                )
-                return None
-        except aiosqlite.Error as e:
-            logger.error(
-                f"Ошибка при подсчете голосов через представителей: {e}\n{traceback.format_exc()}"
-            )
-            raise
+# # Функция подсчета голосов, отданых за вариант через представителей
+# @log_function_call
+# async def count_proxy_votes_old(variant_id):
+#     async with AsyncDatabase(path_db) as cursor:
+#         try:
+#             await cursor.execute(
+#                 """
+#                 SELECT COUNT(*) FROM Members WHERE proxy IN
+#                 (SELECT member_id FROM Elections WHERE variant_id = ? AND status IN ('valid', 'lose', 'winner'))
+#                 AND id NOT IN
+#                 (SELECT member_id FROM Elections WHERE status IN ('valid', 'lose', 'winner')
+#                 AND variant_id IN
+#                 (SELECT id FROM Variants WHERE voting_id IN
+#                 (SELECT voting_id FROM Variants WHERE id = ?)))
+#                 AND id IN
+#                 (SELECT member_id FROM Status WHERE status = 'votist')
+#             """,
+#                 (variant_id, variant_id),
+#             )
+#             result = await cursor.fetchone()
+#             if result:
+#                 (amount,) = result
+#                 logger.info(
+#                     f"Количество голосов через представителей за variant_id={variant_id}: {amount}"
+#                 )
+#                 return int(amount)
+#             else:
+#                 logger.info(
+#                     f"Для variant_id={variant_id} нет голосов через представителей."
+#                 )
+#                 return None
+#         except aiosqlite.Error as e:
+#             logger.error(
+#                 f"Ошибка при подсчете голосов через представителей: {e}\n{traceback.format_exc()}"
+#             )
+#             raise
 
 
 @log_function_call
@@ -563,60 +568,67 @@ async def count_proxy_votes(variant_id):
     """
     Подсчитывает количество голосов, отданных за вариант через представителей.
 
-    :param variant_id: ID варианта, для которого подсчитываются голоса.
-    :return: Количество голосов через представителей или None, если их нет.
+    Условия:
+    - Участник имеет статус 'votist'
+    - Участник НЕ голосовал (с valid) в текущем голосовании
+    - Участник указал proxy (не NULL)
+    - Представитель (proxy) имеет статус 'proxy'
+    - Представитель проголосовал за указанный вариант (status IN ('valid', 'lose', 'win'))
     """
     async with AsyncDatabase(path_db) as cursor:
         try:
-            # Подсчет голосов через представителей
             await cursor.execute(
                 """
                 SELECT COUNT(*)
                 FROM Members m
-                INNER JOIN Status s ON m.id = s.member_id
-                LEFT JOIN Elections e ON m.id = e.member_id
-                WHERE s.status = 'votist'
-                  AND m.proxy IS NOT NULL
-                  AND m.proxy IN (
-                      SELECT member_id
-                      FROM Elections
-                      WHERE variant_id = ?
-                        AND status IN ('valid', 'lose', 'win')
-                  )
-                  AND m.id NOT IN (
-                      SELECT member_id
-                      FROM Elections
-                      WHERE variant_id IN (
-                          SELECT id
+                -- Проверяем, что участник имеет статус 'votist'
+                INNER JOIN Status s ON m.id = s.member_id AND s.status = 'votist'
+                -- Проверяем, что proxy заполнен
+                WHERE m.proxy IS NOT NULL
+                -- Проверяем, что представитель имеет статус 'proxy'
+                AND EXISTS (
+                    SELECT 1
+                    FROM Status sp
+                    WHERE sp.member_id = m.proxy
+                      AND sp.status = 'proxy'
+                )
+                -- Проверяем, что представитель проголосовал за нужный вариант
+                AND EXISTS (
+                    SELECT 1
+                    FROM Elections e_proxy
+                    WHERE e_proxy.member_id = m.proxy
+                      AND e_proxy.variant_id = ?
+                      AND e_proxy.status IN ('valid', 'lose', 'win')
+                )
+                -- Исключаем участников, которые сами проголосовали с valid в этом голосовании
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM Elections e_self
+                    INNER JOIN Variants v ON e_self.variant_id = v.id
+                    WHERE e_self.member_id = m.id
+                      AND v.voting_id = (
+                          SELECT voting_id
                           FROM Variants
-                          WHERE voting_id = (
-                              SELECT voting_id
-                              FROM Variants
-                              WHERE id = ?
-                          )
+                          WHERE id = ?
                       )
-                  )
-            """,
+                      AND e_self.status = 'valid'
+                )
+                """,
                 (variant_id, variant_id),
             )
 
             result = await cursor.fetchone()
-            if result:
-                (amount,) = result
-                logger.info(
-                    f"Количество голосов через представителей за variant_id={variant_id}: {amount}"
-                )
-                return int(amount)
+            amount = result[0] if result else 0
+
+            if amount > 0:
+                logger.info(f"Количество голосов через представителей за variant_id={variant_id}: {amount}")
             else:
-                logger.info(
-                    f"Для variant_id={variant_id} нет голосов через представителей."
-                )
-                return None
+                logger.info(f"Для variant_id={variant_id} нет голосов через представителей.")
+
+            return amount if amount > 0 else 0
 
         except aiosqlite.Error as e:
-            logger.error(
-                f"Ошибка при подсчете голосов через представителей: {e}\n{traceback.format_exc()}"
-            )
+            logger.error(f"Ошибка при подсчете голосов через представителей: {e}\n{traceback.format_exc()}")
             raise
 
 

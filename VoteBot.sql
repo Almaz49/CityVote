@@ -1,3 +1,5 @@
+-- === Таблицы ===
+
 CREATE TABLE IF NOT EXISTS `Votings` (
 	`id` integer primary key NOT NULL UNIQUE,
 	`creator` INTEGER NOT NULL,
@@ -88,13 +90,12 @@ FOREIGN KEY(`proxy`) REFERENCES `Members`(`id`),
 UNIQUE (`club_id`, `user_id`)
 );
 CREATE TABLE Tokens (
-    `id`             INTEGER PRIMARY KEY
-                           NOT NULL,
+    `id`             INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `token`          TEXT    NOT NULL
                            UNIQUE,
     `club_id`        INTEGER NOT NULL,
     `creator`        INTEGER,
-    `status`         TEXT    DEFAULT valid,
+    `status`         TEXT    DEFAULT `valid`,
     `validity`       TEXT,
     `time_of_action` TEXT,
     `lot`            INTEGER,
@@ -125,17 +126,18 @@ FOREIGN KEY(`registrator`) REFERENCES `Members`(`id`)
 CREATE TABLE IF NOT EXISTS `Status` (
 	`id` integer primary key NOT NULL UNIQUE,
 	`member_id` INTEGER NOT NULL,
-	`status` TEXT,
+	`status` TEXT NOT NULL,
 FOREIGN KEY(`member_id`) REFERENCES `Members`(`id`),
 UNIQUE (`member_id`, `status`)
 );
 CREATE TABLE IF NOT EXISTS `Elections` (
     `id`            INTEGER PRIMARY KEY AUTOINCREMENT
                           UNIQUE,
-    `member_id`     INTEGER REFERENCES `Members` (`id`),
-    `variant_id`    INTEGER REFERENCES `Variants` (`id`),
+    `member_id`     INTEGER NOT NULL REFERENCES `Members` (`id`),
+    `variant_id`    INTEGER NOT NULL REFERENCES `Variants` (`id`),
     `time_election` TEXT,
-    `status`        TEXT
+    `status`        TEXT,
+	`voting_id` INTEGER NOT NULL REFERENCES `Votings` (`id`)
 );
 CREATE TABLE IF NOT EXISTS `Trusts` (
     `id`         INTEGER PRIMARY KEY AUTOINCREMENT
@@ -166,3 +168,11 @@ CREATE TABLE IF NOT EXISTS TokenAttempts (
                          DEFAULT (datetime('now') ),
     `member_id`    INTEGER REFERENCES Members (`id`)
 );
+
+ -- === Индексы ===
+
+CREATE INDEX IF NOT EXISTS idx_elections_member_voting_status
+ON Elections(member_id, voting_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_elections_voting_variant_status
+ON Elections(voting_id, variant_id, status);
