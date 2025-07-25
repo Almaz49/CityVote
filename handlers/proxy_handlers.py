@@ -25,7 +25,7 @@ router = Router()
 router.message.filter(StatusFilter(required_status=["proxy"]))
 router.callback_query.filter(StatusFilter(required_status=["proxy"]))
 
-@router.callback_query(StateFilter(default_state), F.data == "mailing_list")
+@router.callback_query(StateFilter(default_state), F.data == "mailing_followers")
 @log_handler_call
 async def mailing_list_start_proxy(callback: CallbackQuery, state: FSMContext, data:dict) -> None:
     """

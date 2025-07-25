@@ -11,7 +11,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from config_data.config import Config, load_config
 from handlers import (admin_handlers, chat_member_handlers, delegate_handlers,
-                      last_handlers, member_handlers, oll_users_handlers,
+                      last_handlers, member_handlers, oll_users_handlers, proxy_handlers,
                       owner_handlers, reg_process_handlers, candidate_handlers,
                       registrator_handlers, token_handlers, frozen_handlers, ban_handlers)
 from manager.manager import check_votist_status_for_all_members, voting_task, check_token_for_oll_members
@@ -143,6 +143,7 @@ dp.update.middleware(SafeEditMiddleware())  # Затем middleware для safe_
 routers = [
     owner_handlers.router,
     candidate_handlers.router,
+    proxy_handlers.router,
     frozen_handlers.router,  # Все хэндлеры ниже будут недоступны для пользователей с просроченным токеном
     oll_users_handlers.router,
     member_handlers.router,

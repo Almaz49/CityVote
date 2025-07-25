@@ -128,7 +128,8 @@ LEXICON_RU = {
     "mailing_list": "Рассылка",
     "mailing_all": "Рассылка всем",
     "mailing_members": "Рассылка участникам",
-    "mailing_user": "Рассылка пользователю",
+    "mailing_user": "Сообщение пользователю",
+    "mailing_followers": "Рассылка подписчикам",
     # Названия и тексты
     "Don't make any decision": "Не принимать никакого решения",
     "info_menu": "Выберите интересующую вас информацию",

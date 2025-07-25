@@ -694,7 +694,7 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
             logger.warning(f"Голосование с ID {voting_id} не найдено")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             raise  # Возвращаем ответ и прерываем обработку
-        voting_status = voting_info["status"]
+        voting_status = voting_info.get("voting_status")
         variants = await list_of_variants(voting_id, "valid")
         if variants:
             amount = len(variants)
@@ -732,6 +732,11 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
             dict_menu[f"voting_complete:{voting_id}"] = LEXICON.get(
                 "voting_complete", "voting_complete"
             )
+        else:
+            logger.warning(f"Голосование {voting_id} имеет некорректный статус: {voting_status}")
+            await callback.message.answer(  # type: ignore
+            text="Неизвестный статус голосования, обратитесь к администрации.", reply_markup=return_to_main_menu_markup
+        )
 
         dict_menu["main_menu"] = LEXICON.get("return_to_main_menu", "main menu")
 
