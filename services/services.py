@@ -16,7 +16,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
 
 from config_data.config import Config, load_config
 # from data_base.telegram_bot_logic import AsyncDatabase, is_votist
-from data_base.db_func import AsyncDatabase, add_telegram_channel, count_member, get_club_info, get_profile, get_tg_id_by_member_id, list_of_members, list_of_variants, remove_telegram_channel, set_main_channel
+from data_base.db_func import AsyncDatabase, add_telegram_channel, count_member, get_club_info, get_profile, get_tg_id_by_member_id, list_of_followers, list_of_members, list_of_variants, remove_telegram_channel, set_main_channel
 from data_base.db_member import is_user_available, is_votist, mark_user_as_unavailable
 from data_base.db_vote import count_directly_empty_votes, count_directly_votes, count_proxy_votes, extract_member_choise, extract_proxy_choice, get_voting_info
 from keyboards.keyboards import create_inline_kb, main_menu_markup
@@ -87,7 +87,7 @@ async def send_notification_to_user(bot: Bot, tg_id: int, message_text: str, rep
         return f"Пользователь {tg_id} недоступен для отправки сообщений"
 
 
-@log_function_call
+
 @log_function_call
 async def send_notification_to_members(
     bot: Bot,
@@ -108,6 +108,41 @@ async def send_notification_to_members(
                 continue
 
             result = await send_notification_to_user(bot, tg_id, message_text)
+            if "отправлено" in result or "успешно" in result:
+                sent_count += 1
+            else:
+                failed_count += 1
+
+            if (i + 1) % 20 == 0:
+                await asyncio.sleep(1)
+
+        return f"✅ Рассылка завершена: {sent_count} отправлено, {failed_count} ошибок"
+    except Exception as e:
+        logger.error(f"Ошибка при подготовке рассылки: {e}")
+        return f"❌ Ошибка при получении списка участников: {e}"
+
+@log_function_call
+async def send_notification_to_followers(
+    bot: Bot,
+    club_id: int,
+    message_text: str,
+    proxy: int,
+) -> str:
+    logger.debug(f"Отправка сообщения {message_text} в подписчиков {proxy}")
+    message_text_with_header = f"📩 От вашего представителя:\n\n{message_text}"
+    try:
+        followers = await list_of_followers(proxy)
+        logger.info(f"Запущена рассылка от представителя {proxy} для {len(followers)} подписчиков")
+        sent_count = 0
+        failed_count = 0
+
+        for i, tg_id in enumerate(followers):
+            if not isinstance(tg_id, int) or tg_id is None:
+                logger.warning(f"Пропускаем участника: некорректный tg_id={tg_id}")
+                failed_count += 1
+                continue
+
+            result = await send_notification_to_user(bot, tg_id, message_text_with_header)
             if "отправлено" in result or "успешно" in result:
                 sent_count += 1
             else:

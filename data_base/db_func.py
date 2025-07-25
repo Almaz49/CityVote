@@ -246,6 +246,31 @@ async def list_of_members(club_id, status: str | list[str] = "all"):
             logger.error(f"Ошибка при выполнении запроса: {e}")
             raise
 
+@log_function_call
+async def list_of_followers(proxy: int):
+    # Получаем список Telegram ID участников, доверивших свой голос представителю proxy
+    query = """
+    SELECT Users.tg_id
+    FROM Members
+    INNER JOIN Users ON Users.id = Members.user_id
+    WHERE Members.proxy = ? AND Users.tg_id IS NOT NULL
+    """
+    params = (proxy,)
+
+
+    logger.info(f"Выполняется запрос: {query}")
+    logger.info(f"Параметры для запроса: {params}")
+
+    async with AsyncDatabase(path_db) as cursor:
+        try:
+            await cursor.execute(query, params)
+            result = await cursor.fetchall()
+            logger.info("Запрос успешно выполнен.")
+            result = [row[0] for row in result if row[0] is not None]
+            return result
+        except aiosqlite.Error as e:
+            logger.error(f"Ошибка при выполнении запроса: {e}")
+            raise
 
 @log_function_call
 async def list_of_proxy(club_id: int):
