@@ -682,10 +682,10 @@ async def election(member_id, variant_id):
                     # Делаем запись о голосовании в таблицу выборов
                     await cursor.execute(
                         """
-                        INSERT INTO Elections(member_id, variant_id, time_election, status)
-                        VALUES (?, ?, ?, ?)
+                        INSERT INTO Elections(member_id, variant_id, time_election, status,voting_id)
+                        VALUES (?, ?, ?, ?,?)
                     """,
-                        (member_id, variant_id, time_election, "valid"),
+                        (member_id, variant_id, time_election, "valid", voting_id),
                     )
 
                     # Меняем статус предыдущего выбора на 'invalid'
@@ -1356,6 +1356,10 @@ async def extract_voting_status(voting_id):
 
 @log_function_call
 async def extract_proxy_choice(member_id, voting_id):
+    """
+    Получение выбора представителя
+    """
+    logger.info(f"Получение выбора proxy для member_id={member_id}, voting_id={voting_id}")
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
