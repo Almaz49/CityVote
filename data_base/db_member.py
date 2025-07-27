@@ -1,7 +1,6 @@
 # Модуль db_member
 # ФУНКЦИИ БАЗЫ ДАННЫХ ПО РАБОТЕ С УЧАСТНИКАМИ
 import datetime
-from typing import Optional
 import logging
 import os
 import aiosqlite
@@ -174,6 +173,15 @@ async def new_status(registrator, member_id, status, token_id=None):
                             """UPDATE Tokens SET status = ? WHERE id = ?""",
                             ("old", result[0]),
                         )
+
+                    # Проверяем, были ли токены, привязанные к пользователю со статусом, отличающимся от "old" и присваиваем им статус "old"
+                    await cursor.execute(
+                        """
+                        UPDATE Tokens SET status = 'old' WHERE member_id = ? AND status != 'old'
+                        """, (member_id,)
+                    )
+
+
                     # Записываем токен в таблицу Members
                     await cursor.execute(
                         """UPDATE Members SET token = ? WHERE id = ?""",
@@ -705,6 +713,12 @@ async def check_token_expiration(member_id) -> tuple[bool, datetime.datetime]:
         result = await cursor.fetchone()
         if result is None:
             logger.info("Токен не найден")
+            await cursor.execute(
+                "INSERT OR IGNORE INTO Status (member_id, status) VALUES (?, 'frozen')",(member_id,)
+                        )
+            await cursor.execute(
+                "DELETE FROM Status WHERE member_id = ? AND status = 'votist'",(member_id,)
+                        )
             return False, three_days_ago  # Прирваниваем отсутсвие токена к его просрочке
         expires_at, token_id = result
         expires_at_dt = datetime.datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
