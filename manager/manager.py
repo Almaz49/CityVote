@@ -393,7 +393,7 @@ async def check_token_for_oll_members(bot: Bot, club_id: int):
     for member in members:
         result = await check_token_expiration(member["member_id"])
         if result:
-            token_expiries_at = result
+            success, token_expiries_at = result
             now = datetime.datetime.now()
             delta = (token_expiries_at - now).days
             if delta in (30, 15, 7, 3, 1):
@@ -402,9 +402,11 @@ async def check_token_for_oll_members(bot: Bot, club_id: int):
                     member["tg_id"],
                     f" Срок действия вашего токена через {delta} дней заканчивается. Попросите администратора обновить его.",
                 )
+            elif delta in (0, -1):
+                await send_notification_to_user(
+                    bot,
+                    member["tg_id"],
+                    f"Срок действия вашего токена истек. Попрожите администратора обновить его.",
+                )
         else:
-            await send_notification_to_user(
-                bot,
-                member["tg_id"],
-                f"Истек срок действия вашего токена. Попросите администратора обновить его."
-            )
+            logger.error(f"Не удалось получить данные токена для {member['member_id']}")

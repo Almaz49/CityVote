@@ -684,16 +684,17 @@ async def extract_list_of_full_member_ids(club_id):
         return result
 
 @log_function_call
-async def check_token_expiration(member_id) -> Optional[datetime.datetime]:
+async def check_token_expiration(member_id) -> tuple[bool, datetime.datetime]:
     """
     Проверяет, истел ли срок токена для пользователя с указанным member_id.
     Если истек - пользователю присваивается статус 'frozen', а токену - статус 'old'.
     Также у пользователя удаляется статус 'votist', если он есть.
 
     :param member_id: ID пользователя (member_id) для проверки.
-    :return: None, если срок токена истек, и , время действия токена, если срок токена не истек.
+    :return: None, срок токена, если срок токена истек, и , True, срок токена, если срок токена не истек.
     """
     now = datetime.datetime.now()
+    three_days_ago = now - datetime.timedelta(days=3)
     async with AsyncDatabase(path_db) as cursor:
         query = """
         SELECT time_of_action, id FROM Tokens
@@ -704,7 +705,7 @@ async def check_token_expiration(member_id) -> Optional[datetime.datetime]:
         result = await cursor.fetchone()
         if result is None:
             logger.info("Токен не найден")
-            return None # Прирваниваем отсутсвие токена к его просрочке
+            return False, three_days_ago  # Прирваниваем отсутсвие токена к его просрочке
         expires_at, token_id = result
         expires_at_dt = datetime.datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
         if expires_at_dt < now:
@@ -717,9 +718,9 @@ async def check_token_expiration(member_id) -> Optional[datetime.datetime]:
             await cursor.execute(
                 "DELETE FROM Status WHERE member_id = ? AND status = 'votist'",(member_id,)
                         )
-            return None
+            return False, expires_at_dt
         else:
-            return expires_at_dt
+            return True, expires_at_dt
 
 @log_function_call
 async def ban_member(member_id: int, admin: int, ban_time_days: int) -> None:
