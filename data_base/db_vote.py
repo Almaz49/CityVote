@@ -462,7 +462,7 @@ async def count_directly_votes(variant_id):
             SELECT COUNT(*)
             FROM Elections e
             WHERE e.variant_id = ?
-            AND e.status IN ('valid', 'lose', 'win')
+            AND e.status IN ('valid', 'loser', 'win')
             AND EXISTS (
                 SELECT 1
                 FROM Status s
@@ -500,7 +500,7 @@ async def count_directly_empty_votes(variant_id):
                 SELECT COUNT(DISTINCT e.member_id)
                 FROM Elections e
                 WHERE e.variant_id = ?
-                  AND e.status IN ('valid', 'lose', 'win')
+                  AND e.status IN ('valid', 'loser', 'win')
                   AND NOT EXISTS (
                       SELECT 1
                       FROM Status s
@@ -533,9 +533,9 @@ async def count_directly_empty_votes(variant_id):
 #             await cursor.execute(
 #                 """
 #                 SELECT COUNT(*) FROM Members WHERE proxy IN
-#                 (SELECT member_id FROM Elections WHERE variant_id = ? AND status IN ('valid', 'lose', 'winner'))
+#                 (SELECT member_id FROM Elections WHERE variant_id = ? AND status IN ('valid', 'loser', 'winner'))
 #                 AND id NOT IN
-#                 (SELECT member_id FROM Elections WHERE status IN ('valid', 'lose', 'winner')
+#                 (SELECT member_id FROM Elections WHERE status IN ('valid', 'loser', 'winner')
 #                 AND variant_id IN
 #                 (SELECT id FROM Variants WHERE voting_id IN
 #                 (SELECT voting_id FROM Variants WHERE id = ?)))
@@ -573,7 +573,7 @@ async def count_proxy_votes(variant_id):
     - Участник НЕ голосовал (с valid) в текущем голосовании
     - Участник указал proxy (не NULL)
     - Представитель (proxy) имеет статус 'proxy'
-    - Представитель проголосовал за указанный вариант (status IN ('valid', 'lose', 'win'))
+    - Представитель проголосовал за указанный вариант (status IN ('valid', 'loser', 'win'))
     """
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -598,7 +598,7 @@ async def count_proxy_votes(variant_id):
                     FROM Elections e_proxy
                     WHERE e_proxy.member_id = m.proxy
                       AND e_proxy.variant_id = ?
-                      AND e_proxy.status IN ('valid', 'lose', 'win')
+                      AND e_proxy.status IN ('valid', 'loser', 'win')
                 )
                 -- Исключаем участников, которые сами проголосовали с valid в этом голосовании
                 AND NOT EXISTS (
@@ -720,7 +720,7 @@ async def election(member_id, variant_id):
 
 
 # Функция перевода вариантов в статус "проигравший" (loser)
-# Заодно отданные за проигравший вариант голоса отмечаются как lose
+# Заодно отданные за проигравший вариант голоса отмечаются как loser
 @log_function_call
 async def lose_variant(losers, voting_id=None, result=None, stager=None):
     if not losers:
@@ -758,10 +758,10 @@ async def lose_variant(losers, voting_id=None, result=None, stager=None):
                     (dir_votes, proxy_votes, empty_votes, item),
                 )
 
-                # Присваиваем голосам, отданным за проигравшиq вариант статус lose
+                # Присваиваем голосам, отданным за проигравшиq вариант статус loser
                 await cursor.execute(
                     """
-                    UPDATE Elections SET status = 'lose' WHERE variant_id = ? AND status = 'valid'
+                    UPDATE Elections SET status = 'loser' WHERE variant_id = ? AND status = 'valid'
                     """,
                     (item,),
                 )
@@ -851,10 +851,10 @@ async def delete_variant(variant_id, admin=None):
                 """,
                 (variant_id,),
             )
-            # Присваиваем голосам, отданным за удаленный вариант статус (хотя их не должно быть) статус lose
+            # Присваиваем голосам, отданным за удаленный вариант статус (хотя их не должно быть) статус loser
             await cursor.execute(
                 """
-                UPDATE Elections SET status = 'lose' WHERE variant_id = ?
+                UPDATE Elections SET status = 'loser' WHERE variant_id = ?
                 """,
                 (variant_id,),
             )
