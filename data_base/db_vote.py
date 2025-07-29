@@ -365,7 +365,7 @@ async def extract_member_choise(member_id, voting_id):
                 SELECT variant_id FROM Elections
                 WHERE member_id = ? AND variant_id IN
                 (SELECT id FROM Variants
-                WHERE voting_id = ?) AND status IN ('valid','loser','win')
+                WHERE voting_id = ?) AND status IN ('valid','loser','winner')
             """,
                 (member_id, voting_id),
             )
@@ -462,7 +462,7 @@ async def count_directly_votes(variant_id):
             SELECT COUNT(*)
             FROM Elections e
             WHERE e.variant_id = ?
-            AND e.status IN ('valid', 'loser', 'win')
+            AND e.status IN ('valid', 'loser', 'winner')
             AND EXISTS (
                 SELECT 1
                 FROM Status s
@@ -500,7 +500,7 @@ async def count_directly_empty_votes(variant_id):
                 SELECT COUNT(DISTINCT e.member_id)
                 FROM Elections e
                 WHERE e.variant_id = ?
-                  AND e.status IN ('valid', 'loser', 'win')
+                  AND e.status IN ('valid', 'loser', 'winner')
                   AND NOT EXISTS (
                       SELECT 1
                       FROM Status s
@@ -573,7 +573,7 @@ async def count_proxy_votes(variant_id):
     - Участник НЕ голосовал (с valid) в текущем голосовании
     - Участник указал proxy (не NULL)
     - Представитель (proxy) имеет статус 'proxy'
-    - Представитель проголосовал за указанный вариант (status IN ('valid', 'loser', 'win'))
+    - Представитель проголосовал за указанный вариант (status IN ('valid', 'loser', 'winner'))
     """
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -598,7 +598,7 @@ async def count_proxy_votes(variant_id):
                     FROM Elections e_proxy
                     WHERE e_proxy.member_id = m.proxy
                       AND e_proxy.variant_id = ?
-                      AND e_proxy.status IN ('valid', 'loser', 'win')
+                      AND e_proxy.status IN ('valid', 'loser', 'winner')
                 )
                 -- Исключаем участников, которые сами проголосовали с valid в этом голосовании
                 AND NOT EXISTS (
@@ -805,10 +805,10 @@ async def win_variant(winner_id, voting_id=None, result=None, stager=None):
                 """,
                 (dir_votes, proxy_votes, empty_votes, winner_id),
             )
-            # # Присваиваем голосам, отданным за победивший вариант статус win
+            # # Присваиваем голосам, отданным за победивший вариант статус winner
             # await cursor.execute(
             #     '''
-            #     UPDATE Elections SET status = 'win' WHERE variant_id = ? AND status = 'valid'
+            #     UPDATE Elections SET status = 'winner' WHERE variant_id = ? AND status = 'valid'
             #     ''', (winner_id,)
             # )
             # Присваиваем статус голосованию "Завершенное" и указываем вариант-победитель.
@@ -1367,7 +1367,7 @@ async def extract_proxy_choice(member_id, voting_id):
                 SELECT variant_id FROM Elections
                 WHERE member_id IN (SELECT proxy FROM Members WHERE id = ?)
                 AND variant_id IN (SELECT id FROM Variants WHERE voting_id = ?)
-                AND status IN ('valid','loser','win')
+                AND status IN ('valid','loser','winner')
             """,
                 (member_id, voting_id),
             )
