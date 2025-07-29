@@ -82,11 +82,12 @@ CREATE TABLE IF NOT EXISTS `Members` (
 	`description` TEXT,
 	`resume`     TEXT,
     `info_level`      TEXT,
-	`token` INTEGER REFERENCES Tokens (id),
+	`token` INTEGER,
 	`ban_expires_at` TEXT,
 FOREIGN KEY(`club_id`) REFERENCES `Clubs`(`id`),
 FOREIGN KEY(`user_id`) REFERENCES `Users`(`id`),
-FOREIGN KEY(`proxy`) REFERENCES `Members`(`id`),
+FOREIGN KEY(`proxy`) REFERENCES `Members`(`id`) ON DELETE SET NULL,
+FOREIGN KEY(`token`) REFERENCES Tokens (`id`) ON DELETE SET NULL,
 UNIQUE (`club_id`, `user_id`)
 );
 CREATE TABLE Tokens (
@@ -95,7 +96,7 @@ CREATE TABLE Tokens (
                            UNIQUE,
     `club_id`        INTEGER NOT NULL,
     `creator`        INTEGER,
-    `status`         TEXT    DEFAULT `valid`,
+    `status`         TEXT    DEFAULT 'valid',
     `validity`       TEXT,
     `time_of_action` TEXT,
     `lot`            INTEGER,
@@ -110,7 +111,7 @@ CREATE TABLE Tokens (
     FOREIGN KEY (
         `creator`
     )
-    REFERENCES Members (`id`)
+    REFERENCES Members (`id`) ON DELETE SET NULL
 );
 CREATE TABLE IF NOT EXISTS `Registrations` (
 	`id` integer primary key NOT NULL UNIQUE,
@@ -120,7 +121,7 @@ CREATE TABLE IF NOT EXISTS `Registrations` (
 	`registrator` INTEGER,
 	`status` TEXT,
 	`time_reg`    TEXT,
-FOREIGN KEY(`token_id`) REFERENCES `Tokens`(`id`),
+FOREIGN KEY(`token_id`) REFERENCES `Tokens`(`id`) ON DELETE SET NULL,
 FOREIGN KEY(`registrator`) REFERENCES `Members`(`id`)
 );
 CREATE TABLE IF NOT EXISTS `Status` (

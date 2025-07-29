@@ -637,6 +637,10 @@ async def count_proxy_votes(variant_id):
 async def election(member_id, variant_id):
     time_election = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     voting_id = await extract_voting_id(variant_id)
+    if not voting_id:
+        return False, "Голосование не найдено"
+    if not member_id:
+        return False, "Пользователь не передан"
     old_elect = await past_choise(member_id, voting_id)
 
     async with AsyncDatabase(path_db) as cursor:
@@ -730,6 +734,8 @@ async def lose_variant(losers, voting_id=None, result=None, stager=None):
     time_lose = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if not voting_id:
         voting_id = extract_voting_id(losers[0])
+        if not voting_id:
+            return False
 
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -782,6 +788,8 @@ async def win_variant(winner_id, voting_id=None, result=None, stager=None):
     time_win = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if not voting_id:
         voting_id = extract_voting_id(winner_id)
+        if not voting_id:
+            raise ValueError("Не удалось извлечь ID голосования из ID победителя")
     if not result:
         dir_votes = await count_directly_votes(
             winner_id
@@ -1134,6 +1142,8 @@ async def voting_complete(voting_id, finisher=None):
         res.items(),
         key=lambda item: (-item[1][0], item[0]),  # минус для сортировки по убыванию
     )
+    if not sorted_res:
+        return {"success": False, "message": "Нет вариантов для подсчёта"}
 
     winner_id = sorted_res[0][0]
     winner_res = sorted_res[0][1]
@@ -1209,6 +1219,7 @@ async def voting_complete(voting_id, finisher=None):
 async def confirmation_of_voting_results(voting_id, winner_id):
     logger.info(f"Запущено утверждение итогов голосования {voting_id}")
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Специальный ID для системных действий
     author = 0
     title = LEXICON.get("Don't make any decision", "Don't make any decision")
     async with AsyncDatabase(path_db) as cursor:
@@ -1377,7 +1388,7 @@ async def extract_proxy_choice(member_id, voting_id):
             else:
                 choise = None
             logger.info(
-                f"Результат выборки вариантов для member_id={member_id}, voting_id={voting_id}: {result}"
+                f"Результат выборки выбора представителя пользователя member_id={member_id}, voting_id={voting_id}: {result}"
             )
             return choise
         except aiosqlite.Error as e:

@@ -527,12 +527,8 @@ async def extract_status(member_id):
 @log_function_call
 async def is_username_uniq(username: str):
     async with AsyncDatabase(path_db) as cursor:
-        await cursor.execute("SELECT username FROM Users")
-        result = await cursor.fetchall()
-        if result is None:
-            return True
-        username_list = [item[0] for item in result]
-        return username not in username_list
+        await cursor.execute("SELECT 1 FROM Users WHERE username = ? LIMIT 1", (username,))
+        return (await cursor.fetchone()) is None
 
 
 """

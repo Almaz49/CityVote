@@ -89,7 +89,7 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
                 await callback.message.answer(  # type: ignore
                     text=(
                         f"🗳️ <b>{voting.get('title')}</b>\n"
-                        f"📝 Описание:\n{voting.get('description')}\n\n"
+                        f"📝 Описание:\n{voting.get('text')}\n\n"
                         f"<i>Выберите это голосование для просмотра вариантов.</i>"
                     ),
                     parse_mode="HTML",

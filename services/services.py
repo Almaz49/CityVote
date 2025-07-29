@@ -831,6 +831,8 @@ async def send_variants_by_status(
     if not variants:
         return False
 
+    # Если в строке варианта указано число голосов (то есть, вариант уже выбыл из голосования), то отправляем их.
+    # Если не указано - подсчитываем текущее число голосов за этот вариант
     for  variant in variants:
         if variant.get('directly_votes') == None: variant['directly_votes'] = await count_directly_votes(variant['id'])
         if variant.get('proxy_votes') == None: variant['proxy_votes'] = await count_proxy_votes(variant['id'])
@@ -873,7 +875,7 @@ async def send_variants_by_status(
         if choise and variant_id in choise:
             choise_mark = '📌 ***ВАШ ВЫБОР***\n'
 
-        if proxy_choice and variant_id == proxy_choice:
+        if proxy_choice and variant_id in proxy_choice:
             proxy_mark = '🔹 ***Выбор вашего представителя***\n'
 
         # Экранируем HTML
@@ -884,7 +886,7 @@ async def send_variants_by_status(
         markup = None
 
         if variant_status == 'valid':
-            if voting_status in ['ongoing', 'confirmation'] and 'member' in member_status:
+            if voting_status in ['ongoing', 'confirmation'] and 'member' in member_status and not choise_mark:
                 keyboard = {f'variant:{variant_id}': LEXICON["Vote for this variant"]}
                 markup = create_inline_kb(1, **keyboard)
             elif voting_status == 'add_variants' and 'admin' in member_status:
