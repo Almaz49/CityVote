@@ -108,7 +108,7 @@ async def process_entered_token_or_resume(message: Message, state: FSMContext, d
             return
         token_id = result.get("token_id")
         if token_id:
-            success, msg = await auto_approve_by_token(member_id, token_id)
+            success, msg = await auto_approve_by_token(member_id, club_id, token_id)
             if success:
                 await message.answer("Авторизация успешна! Вы участник группы.")
                 await state.clear()

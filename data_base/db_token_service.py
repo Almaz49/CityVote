@@ -21,7 +21,7 @@ def generate_numeric_token(length=9):
 @log_function_call
 async def is_token_unique(cursor, token: str) -> bool:
     await cursor.execute(
-        "SELECT 1 FROM Tokens WHERE token = ?",
+        "SELECT 1 FROM Tokens WHERE token = ? LIMIT 1",
         (token,)
     )
     result = await cursor.fetchone()
@@ -94,7 +94,7 @@ async def clear_old_attempts(member_id: int) -> None:
         )
 
 @log_function_call
-async def auto_approve_by_token(member_id: int, token_id: int = 0, token: str = "", registrator = None) -> tuple[bool, str]:
+async def auto_approve_by_token(member_id: int, club_id, token_id: int = 0, token: str = "", registrator = None) -> tuple[bool, str]:
     """
     Привязывает токен к пользователю и автоматически регистрирует его как member.
 
@@ -118,17 +118,19 @@ async def auto_approve_by_token(member_id: int, token_id: int = 0, token: str = 
                 return False, "Токен не найден."
             token_id = row[0]
 
-    # Проверяем, что токен не использован
+    # Проверяем, что токен не использован и что он не из чужого клуба
     async with AsyncDatabase(path_db) as cursor:
         await cursor.execute(
-            "SELECT status FROM Tokens WHERE id = ?", (token_id,)
+            "SELECT status, club_id FROM Tokens WHERE id = ?", (token_id,)
         )
         row = await cursor.fetchone()
         if not row:
             return False, "Токен не найден."
-        status = row[0]
+        status, club_bd = row[0]
     if status != 'valid':
         return False, "Токен уже использован или устарел."
+    if club_id != club_bd:
+        return False, "Токен не предназначен для этого клуба."
 
     # Обновляем статус пользователя на 'member'
     _, msg = await new_status(registrator, member_id=member_id, status="member", token_id=token_id)
@@ -302,7 +304,7 @@ async def create_formatted_tokens_for_lot(
     comment: str = ""  # Добавлен параметр
 ) -> dict:
     """
-    Создаёт указанное количество токенов для заданного лота или следующего свободного номера.
+    Создаёт и форматируетуказанное количество токенов для заданного лота или следующего свободного номера.
     :param club_id: ID клуба
     :param lot: Номер лота (если None — будет найден первый доступный)
     :param count: Количество токенов
@@ -314,12 +316,25 @@ async def create_formatted_tokens_for_lot(
     :return: {'tokens': {ключ - номер тоена в лоте, значение - токен}, 'lot': ...}
     """
 
-    tokens,lot = await create_tokens_for_lot(club_id, lot, count, token_length, validity_days, time_of_action_months, creator_id, comment)
-    for i, token in tokens.items():
-        tokens[i] = format_token(token)
+    result = await create_tokens_for_lot(
+        club_id=club_id,
+        lot=lot,
+        count=count,
+        token_length=token_length,
+        validity_days=validity_days,
+        time_of_action_months=time_of_action_months,
+        creator_id=creator_id,
+        comment=comment
+    )
+
+    # Теперь result — это словарь: {'tokens': {...}, 'lot': N}
+    formatted_tokens = {}
+    for number_in_lot, token in result['tokens'].items():
+        formatted_tokens[number_in_lot] = format_token(token)
+
     return {
-        'tokens': tokens,
-        'lot': lot
+        'tokens': formatted_tokens,
+        'lot': result['lot']
     }
 
 @log_function_call
@@ -396,14 +411,11 @@ async def create_formatted_tokens_without_lot(
     :param comment: Комментарий к каждому токену
     :return: Список созданных токенов
     """
-    formatted_tokens = []
     tokens = await create_tokens_without_lot(club_id=club_id,comment=comment,
         count=count, token_length=token_length, validity_days=validity_days,
         time_of_action_months=time_of_action_months, creator_id=creator_id
     )
-    for token in tokens:
-        formatted_tokens.append(format_token(token))
-    return formatted_tokens
+    return [format_token(token) for token in tokens]
 
 
 @log_function_call
@@ -450,8 +462,7 @@ async def get_lot_info(club_id: int, lot_number: int) -> dict:
 async def export_tokens_to_excel(
     club_id: int,
     lot_number: Optional[int] = None,
-    creator_id: Optional[int] = None,
-    filename: str = "tokens_export.xlsx"
+    creator_id: Optional[int] = None
 ) -> str:
     """
     Экспортирует токены в Excel-файл.
@@ -462,6 +473,7 @@ async def export_tokens_to_excel(
     :param filename: Имя файла для сохранения
     :return: Путь к файлу
     """
+    filename = f"export_tokens_{club_id}_{int(datetime.datetime.now().timestamp())}.xlsx"
 
     query = """
         SELECT id, token, validity, time_of_action, status, lot, number_in_lot, created_at, comment
@@ -508,7 +520,7 @@ async def mark_token_as_old(token: str) -> bool:
         return cursor.rowcount > 0
 
 @log_function_call
-async def mark_token_as_used(token: str, memder_id: int) -> bool:
+async def mark_token_as_used(token: str) -> bool:
     """
     Помечает токен как использованный.
     :param token: строка токена без разделителей
@@ -516,7 +528,7 @@ async def mark_token_as_used(token: str, memder_id: int) -> bool:
     """
     async with AsyncDatabase(path_db) as cursor:
         await cursor.execute("""
-            UPDATE Tokens SET status = 'used', member_id = ?
+            UPDATE Tokens SET status = 'used'
             WHERE token = ?
-        """, (memder_id, token))
+        """, (token))
         return cursor.rowcount > 0

@@ -153,7 +153,7 @@ async def setup_admin_tokens(club_id: int, admin_member_ids: List[int]):
                 logger.warning(f"Неверные данные токена: {token_info}")
                 continue
 
-            success, message = await auto_approve_by_token(member_id, token_id)
+            success, message = await auto_approve_by_token(member_id, club_id, token_id)
             if not success:
                 logger.warning(f"Не удалось привязать токен к админу: {message}")
             else:

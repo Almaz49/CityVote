@@ -135,7 +135,10 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
         return
 
     fsm_data = await state.get_data()
-    count = fsm_data["count"]
+    count = fsm_data.get("count")
+    if not isinstance(count, int) or count <= 0:
+        await message.answer("❌ Не указано количество токенов.")
+        return
     lot_number = fsm_data.get("lot_number")  # Может быть None
 
     if data.get('club_id'):
@@ -162,12 +165,12 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
         )
         tokens = result['tokens']
         tokens_list = ""
-        for i in result['tokens']:
-            tokens_list += f"{i}:     <code>{tokens[i]}</code>\n"
+        for number_in_lot, token in tokens.items():
+            tokens_list += f"{number_in_lot}:     <code>{token}</code>\n"
 
         logger.info(f"Пользователь {message.from_user.id} создал токены лота №{result['lot']}")
         await message.answer(
-            f"Создан токены лота №{result['lot']}:\n\n{tokens_list}",
+            f"Созданы токены лота №{result['lot']}:\n\n{tokens_list}",
             parse_mode = "HTML")
     except Exception as e:
         logger.error(f"Ошибка при создании лота: {e}")
@@ -344,13 +347,13 @@ async def handle_export_tokens(callback: CallbackQuery, data: dict):
             reply_markup=main_menu_markup
         )
 
-        # Удаляем файл после отправки
-        os.remove(file_path)
-        logger.info(f"Файл {file_path} удален после отправки.")
-
     except Exception as e:
         logger.error(f"Ошибка при экспорте токенов: {e}")
         await callback.message.answer("Не удалось экспортировать токены.")  # type: ignore
+    finally:
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+            logger.info(f"Файл {file_path} удалён.")
 
     await callback.message.answer("Меню управления токенами:", reply_markup=main_menu_markup)  # type: ignore
 

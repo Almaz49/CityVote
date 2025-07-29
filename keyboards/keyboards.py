@@ -102,9 +102,9 @@ buttons = {
         ],  # Для статуса 'owner'
     },
     "actions": {  # Категория: Действия
-        "user": ["registration"],  # Для статуса 'user'
-        "candidate": ["profile"],  # Для статуса 'candidate'
-        "member": ["profile"],  # Для статуса 'member'
+        "user": ["registration", "list_of_proxy"],  # Для статуса 'user'
+        "candidate": ["profile", "list_of_proxy"],  # Для статуса 'candidate'
+        "member": ["profile", "list_of_proxy"],  # Для статуса 'member'
         "proxy": ["mailing_followers"], # Для статуса 'proxy'
         "delegate": ["new_voting"],  # Для статуса 'delegate'
         "admin": ["mailing_list"],  # Для статуса 'admin'

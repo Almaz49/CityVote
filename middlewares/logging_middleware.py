@@ -25,12 +25,12 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
                 logger.info(f"Получено событие {event_type} от пользователя {tg_id}")
 
             # Извлекаем instance_name из data
+            # TODO: убрать всю логику с instance_name после того, как убежусь, что она не нужна
             instance_name = data.get("instance_name", None)
             if not instance_name:
                 logger.warning(
                     "instance_name не определён. Не передано название бота."
                 )
-                return
 
 
 

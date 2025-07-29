@@ -103,7 +103,7 @@ async def process_token(message: Message, state: FSMContext, data: dict):
             return
         token_id = result.get("token_id")
         if token_id:
-            success, msg = await auto_approve_by_token(member_id, token_id)
+            success, msg = await auto_approve_by_token(member_id, club_id, token_id)
             if success:
                 await message.answer(text="Авторизация успешна! Вы участник группы.",
                     reply_markup=return_to_main_menu_markup)

@@ -10,9 +10,6 @@
 │   └── create_db.py
 │   └── db_migration.log
 │   └── dbg1.db
-│   └── debug.log
-│   └── error.log
-│   └── info.log
 │   └── main.py
 │   └── print_structure.py
 │   └── requirements.txt
@@ -21,7 +18,6 @@
 │   └── structure.txt
 │   └── test.py
 │   └── test_script.py
-│   └── warning.log
 │   ├── configs/
 │   │   └── bot01.env
 │   │   └── example.env
@@ -43,6 +39,7 @@
 │   │   └── python_tools.sh
 │   │   └── readme1.txt
 │   │   └── systemctl_cheatsheet.sh
+│   │   └── systemd_and_cron.md
 │   ├── filters/
 │   │   └── filters.py
 │   ├── FSMs/
@@ -58,6 +55,7 @@
 │   │   └── member_handlers.py
 │   │   └── oll_users_handlers.py
 │   │   └── owner_handlers.py
+│   │   └── proxy_handlers.py
 │   │   └── reg_process_handlers copy.py
 │   │   └── reg_process_handlers.py
 │   │   └── registrator_handlers.py
@@ -67,6 +65,11 @@
 │   ├── LEXICON/
 │   │   └── LEXICON.py
 │   ├── logs/
+│   │   └── .gitkeep
+│   │   └── bot01_debug.log
+│   │   └── bot01_error.log
+│   │   └── bot01_info.log
+│   │   └── bot01_warning.log
 │   ├── manager/
 │   │   └── manager.py
 │   ├── middlewares/

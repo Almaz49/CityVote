@@ -8,9 +8,10 @@ from aiogram import F, Bot, Router
 from aiogram.filters import Command, CommandObject, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-from aiogram.types import (CallbackQuery,  Message)
+from aiogram.types import (CallbackQuery,  Message, InlineKeyboardButton,
+                           InlineKeyboardMarkup)
 from FSMs.FSMs import FSM_leave_club, FSMEnterToken
-from data_base.db_func import get_profile
+from data_base.db_func import get_profile, list_of_proxy
 from data_base.db_token_service import add_token_attempt, auto_approve_by_token, clear_old_attempts, get_token_attempts_count, is_valid_token
 from keyboards.keyboards import (confirm_markup, get_info_menu_keyboard, get_info_menu_keyboard, get_profile_menu_keyboard,  user_menu, return_to_main_menu_markup)
 from LEXICON.LEXICON import LEXICON
@@ -18,6 +19,7 @@ from manager.manager import leave_club
 from services.services import club_info, greetings_message, help_message, notify_super_registrator_short, profile_message
 
 from utils import log_handler_call
+from utils.utils import paginate
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -621,7 +623,7 @@ async def process_token(message: Message, state: FSMContext, data: dict):
             return
         token_id = result.get("token_id")
         if token_id:
-            success, msg = await auto_approve_by_token(member_id, token_id)
+            success, msg = await auto_approve_by_token(member_id, club_id, token_id)
             if success:
                 await message.answer(text="Авторизация успешна! Вы участник группы.",
                     reply_markup=return_to_main_menu_markup)
@@ -677,3 +679,204 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
         await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
     else:
         await callback.message.answer(text=result)
+
+
+# Хэндлер для кнопки 'list_of_proxy'
+@router.callback_query(
+    F.data.startswith("list_of_proxy")
+)
+@log_handler_call
+async def process_select_proxy(callback: CallbackQuery, data: dict):
+    try:
+        logger.info(
+            f"Пользователь {callback.from_user.id} запросил список представителей."
+        )
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        try:
+            # Проверяем, что callback.data существует
+            if callback.data is None:
+                logger.warning("Callback data отсутствует")
+                await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+                return
+            _, page = callback.data.split(":")
+            page = int(page) if page.isdigit() else 1
+        except ValueError:
+            page = 1
+
+        proxies = await list_of_proxy(data["club_id"])
+
+        if not proxies:
+            # Добавляем данные для SafeEditMiddleware
+            data["response_text"] = "В данный момент нет доступных представителей."
+            data["reply_markup"] = await user_menu(status= data["user_status"])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(  # type: ignore
+                text=data["response_text"], reply_markup=data["reply_markup"]
+            )
+            return
+
+        # Разделяем на страницы
+        paginated_proxies, total_pages = paginate(proxies, page)
+
+        # Создаем кнопки для представителей
+        proxy_buttons = []
+        message_text = f"Список представителей: \n (Псевдоним, число голосов)"
+        for proxy in paginated_proxies:
+            message_text += f"\n{proxy['username']} - {proxy['trusted_votes']}"
+            # Кнопка для получения подробной информации
+            details_button = InlineKeyboardButton(
+                text=f"{proxy['username']}",
+                callback_data=f"proxy_details:{proxy['member_id']}:{proxy['trusted_votes']}:{page}",
+            )
+            # Добавляем кнопки в список
+            proxy_buttons.append([details_button])
+
+        # Добавляем кнопки пагинации
+        pagination_buttons = []
+        if page > 1:
+            pagination_buttons.append(
+                InlineKeyboardButton(
+                    text="⬅️ Назад", callback_data=f"list_of_proxy:{page - 1}"
+                )
+            )
+        if page < total_pages:
+            pagination_buttons.append(
+                InlineKeyboardButton(
+                    text="➡️ Вперед", callback_data=f"list_of_proxy:{page + 1}"
+                )
+            )
+
+        # Добавляем кнопку "Главное меню"
+        main_menu_button = InlineKeyboardButton(
+            text="Главное меню", callback_data="main_menu"
+        )
+
+        # Создаем инлайн-клавиатуру
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=proxy_buttons + [pagination_buttons, [main_menu_button]]
+        )
+
+        # Редактируем сообщение
+        data["response_text"] = (
+            message_text + "\n\nДля подробной информации нажмите на одну из кнопок ниже:"
+        )
+        data["reply_markup"] = markup
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке кнопки 'list_of_proxy': {e}")
+
+        # Добавляем данные для SafeEditMiddleware
+        data["response_text"] = "Произошла ошибка при загрузке списка представителей."
+        data["reply_markup"] = await user_menu(status= data["user_status"])
+
+        # Редактируем сообщение в случае ошибки
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
+        )
+
+        raise  # Передаем исключение middleware для обработки
+
+
+# Хэндлер предоставления подробной информации
+@router.callback_query(F.data.startswith("proxy_details:"))
+@log_handler_call
+async def process_proxy_details(callback: CallbackQuery, data: dict):
+    try:
+        # Проверяем, что callback.data существует
+        if callback.data is None:
+            logger.warning("Callback data отсутствует")
+            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            return
+        proxy_id = int(callback.data.split(":")[1])
+        trusted_votes = int(callback.data.split(":")[2])
+        logger.info(
+            f"Пользователь {callback.from_user.id} запросил подробную информацию о представителе с ID {proxy_id}."
+        )
+        await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
+
+        # Получаем информацию о представителе
+        proxy_info = await get_profile(proxy_id)
+        if not proxy_info:
+            await callback.message.answer(  # type: ignore
+                text="Не найдена информация о представителе",
+                reply_markup=return_to_main_menu_markup,
+            )
+            return
+
+        # Формируем текст с подробной информацией
+        text = f"Username: {proxy_info['username']}\nОписание: {proxy_info['description']}\nЧисло доверенных голосов: {trusted_votes}"
+
+        try:
+            page = callback.data.split(":")[3]
+            page = int(page) if page.isdigit() else 1
+        except ValueError:
+            page = 1
+
+        proxies = await list_of_proxy(data["club_id"])
+
+        if not proxies:
+            # Добавляем данные для SafeEditMiddleware
+            data["response_text"] = "В данный момент нет доступных представителей."
+            data["reply_markup"] = await user_menu(status= data["user_status"])
+
+            # Редактируем сообщение
+            await callback.message.edit_text(  # type: ignore
+                text=data["response_text"], reply_markup=data["reply_markup"]
+            )
+            return
+
+        # Разделяем на страницы
+        paginated_proxies, total_pages = paginate(proxies, page)
+
+        # Создаем кнопки для представителей
+        proxy_buttons = []
+        for proxy in paginated_proxies:
+            # Кнопка для получения подробной информации
+            details_button = InlineKeyboardButton(
+                text=f"{proxy['username']}",
+                callback_data=f"proxy_details:{proxy['member_id']}:{proxy['trusted_votes']}:{page}",
+            )
+            # Добавляем кнопки в список
+            proxy_buttons.append([details_button])
+
+        # Добавляем кнопки пагинации
+        pagination_buttons = []
+        if page > 1:
+            pagination_buttons.append(
+                InlineKeyboardButton(
+                    text="⬅️ Назад", callback_data=f"list_of_proxy:{page - 1}"
+                )
+            )
+        if page < total_pages:
+            pagination_buttons.append(
+                InlineKeyboardButton(
+                    text="➡️ Вперед", callback_data=f"list_of_proxy:{page + 1}"
+                )
+            )
+
+        # Добавляем кнопку "Главное меню"
+        main_menu_button = InlineKeyboardButton(
+            text="Главное меню", callback_data="main_menu"
+        )
+
+        # Создаем инлайн-клавиатуру
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=proxy_buttons + [pagination_buttons, [main_menu_button]]
+        )
+
+        # Редактируем сообщение
+        data["response_text"] = text
+        data["reply_markup"] = markup
+
+        await callback.message.edit_text(  # type: ignore
+            text=data["response_text"], reply_markup=data["reply_markup"]
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при получении подробной информации о представителе: {e}")
+        await callback.message.answer("Произошла ошибка при получении информации о представителе.")  # type: ignore

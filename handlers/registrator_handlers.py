@@ -137,7 +137,7 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
             return
 
         # Привязываем токен к пользователю
-        succes, msg = await auto_approve_by_token(member_id, token=token, registrator=registrator)
+        succes, msg = await auto_approve_by_token(member_id, club_id, token=token, registrator=registrator)
 
         if not succes:
             await message.answer(
