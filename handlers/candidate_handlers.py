@@ -58,7 +58,7 @@ async def process_start_command(message: Message, command: CommandObject, data: 
             )
         else:
             # Обычный старт без параметра
-            markup = await user_menu(status= data["user_status"])
+            markup = await user_menu(status = data.get("user_status", ["user"]))
             text = await greetings_message(club_id=data["club_id"])
             text = text or ""
             text = text + "\nВаш статус в группе:"
@@ -66,7 +66,7 @@ async def process_start_command(message: Message, command: CommandObject, data: 
                 text += f"\n   - {LEXICON.get('user_status',{}).get(status, status)}"
 
         # Создаем клавиатуру
-        markup = await user_menu(status= data["user_status"])
+        markup = await user_menu(status = data.get("user_status", ["user"]))
 
         # Отправляем сообщение
         await message.answer(text=text, reply_markup=markup, parse_mode="HTML")
@@ -85,7 +85,7 @@ async def process_start_command(message: Message, command: CommandObject, data: 
             )
         await message.answer(
             text="Произошла ошибка при загрузке главного меню.",
-            reply_markup=await user_menu(status=data["user_status"]),
+            reply_markup=await user_menu(status = data.get("user_status", ["user"])),
         )
 
 
@@ -103,7 +103,7 @@ async def process_help_command(message: Message, data: dict):
     logger.info(f"Пользователь {message.from_user.id} запросил справку.")
     await message.answer(
         text=help_message(data["user_status"]),
-        reply_markup=await user_menu(status= data["user_status"]),
+        reply_markup=await user_menu(status = data.get("user_status", ["user"])),
         parse_mode="HTML",  # Указываем режим разметки
     )
 
@@ -121,7 +121,7 @@ async def process_help_callback(callback: CallbackQuery, data: dict):
 
     # Добавляем данные для SafeEditMiddleware
     data["response_text"] = help_message(data["user_status"])
-    data["reply_markup"] = await user_menu(status= data["user_status"])
+    data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
     # Отправляем сообщение со справкой в ответ
     await callback.message.answer(  # type: ignore
@@ -145,7 +145,7 @@ async def process_cancel_command(message: Message, data: dict):
     logger.info(
         f"Пользователь {message.from_user.id} попытался использовать /cancel вне машины состояний."
     )
-    markup = await user_menu(status= data["user_status"])
+    markup = await user_menu(status = data.get("user_status", ["user"]))
     await message.answer(text="Вы вышли в главное меню.", reply_markup=markup)
 
 
@@ -161,7 +161,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
     if not message.from_user:
         raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
     logger.info(f"Пользователь {message.from_user.id} вышел из машины состояний.")
-    markup = await user_menu(status= data["user_status"])
+    markup = await user_menu(status = data.get("user_status", ["user"]))
     await message.answer(
         text="Вы вышли из машины состояний и вернулись в главное меню.",
         reply_markup=markup,
@@ -182,7 +182,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
 #     )
 #     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-#     markup = await user_menu(status= data["user_status"])
+#     markup = await user_menu(status = data.get("user_status", ["user"]))
 
 #     # Добавляем данные для SafeEditMiddleware
 #     data["response_text"] = "Главное меню:"
@@ -208,7 +208,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
 #     )
 #     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-#     markup = await user_menu(status= data["user_status"])
+#     markup = await user_menu(status = data.get("user_status", ["user"]))
 
 #     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
 #     await state.clear()
@@ -230,7 +230,7 @@ async def return_to_main_menu(callback: CallbackQuery, state: FSMContext, data: 
     """
     await state.clear()
     if callback.message and isinstance(callback.message, Message):
-        markup = await user_menu(status=data["user_status"])
+        markup = await user_menu(status = data.get("user_status", ["user"]))
         try:
             await callback.message.edit_text(
                 "Вы возвращены в главное меню.",
@@ -261,10 +261,15 @@ async def process_club_info_command(message: Message, data: dict):
     if not message.from_user:
         raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
 
+    club_id = data.get("club_id")
+    if not club_id:
+        await message.answer("❌ Не удалось определить группу.")
+        return
+
     logger.info(f"Пользователь {message.from_user.id} запросил справку о группе.")
     await message.answer(
-        text=await club_info(data["club_id"]),
-        reply_markup=await user_menu(status= data["user_status"]),
+        text=await club_info(club_id),
+        reply_markup=await user_menu(status = data.get("user_status", ["user"])),
         parse_mode="HTML",  # Указываем режим разметки
     )
 
@@ -308,7 +313,7 @@ async def process_leave_the_group(
             )
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при загрузке списка голосований."
-        data["reply_markup"] = await user_menu(status= data["user_status"])
+        data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -338,11 +343,11 @@ async def process_leave_club_entry(
     try:
         # Запускаем процедуру выхода из группы
         member_id = data["member_id"]
-        status = data["user_status"]
+        status = data.get("user_status", ["user"])
         await leave_club(bot, member_id, status)
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Вы вышли из группы!"
-        data["reply_markup"] = await user_menu(status= data["user_status"])
+        data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Редактируем сообщение
         await callback.message.edit_text(  # type: ignore
@@ -362,7 +367,7 @@ async def process_leave_club_entry(
             )
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(status= data["user_status"])
+        data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -384,7 +389,7 @@ async def process_no_confirm_leave_club(
 
     # Добавляем данные для SafeEditMiddleware
     data["response_text"] = "Вы остались в группе"
-    data["reply_markup"] = await user_menu(status=data["user_status"])
+    data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(  # type: ignore
@@ -665,7 +670,7 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
     member_id = data["member_id"]
     club_id = data["club_id"]
     tg_id = callback.from_user.id
-    status = data["user_status"]
+    status = data.get("user_status", ["user"])
     if 'member' not in status:  # type: ignore
         await callback.message.answer(text='Вы не зарегистрированы в группе. Пройдите регистрацию')  # type: ignore
         return
@@ -709,7 +714,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
         if not proxies:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "В данный момент нет доступных представителей."
-            data["reply_markup"] = await user_menu(status= data["user_status"])
+            data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore
@@ -772,7 +777,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = "Произошла ошибка при загрузке списка представителей."
-        data["reply_markup"] = await user_menu(status= data["user_status"])
+        data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Редактируем сообщение в случае ошибки
         await callback.message.edit_text(  # type: ignore
@@ -792,8 +797,18 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
             logger.warning("Callback data отсутствует")
             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
             return
-        proxy_id = int(callback.data.split(":")[1])
-        trusted_votes = int(callback.data.split(":")[2])
+        parts = callback.data.split(":")
+        if len(parts) < 4:
+            await callback.answer("Некорректные данные.")
+            return
+
+        try:
+            proxy_id = int(parts[1])
+            trusted_votes = int(parts[2])
+            page = int(parts[3]) if len(parts) > 3 else 1
+        except (ValueError, IndexError):
+            await callback.answer("Ошибка в данных.")
+            return
         logger.info(
             f"Пользователь {callback.from_user.id} запросил подробную информацию о представителе с ID {proxy_id}."
         )
@@ -811,18 +826,12 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
         # Формируем текст с подробной информацией
         text = f"Username: {proxy_info['username']}\nОписание: {proxy_info['description']}\nЧисло доверенных голосов: {trusted_votes}"
 
-        try:
-            page = callback.data.split(":")[3]
-            page = int(page) if page.isdigit() else 1
-        except ValueError:
-            page = 1
-
         proxies = await list_of_proxy(data["club_id"])
 
         if not proxies:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = "В данный момент нет доступных представителей."
-            data["reply_markup"] = await user_menu(status= data["user_status"])
+            data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
             # Редактируем сообщение
             await callback.message.edit_text(  # type: ignore

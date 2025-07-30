@@ -6,10 +6,10 @@ from aiogram import F, Bot, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
-from data_base.db_member import new_status
+from data_base.db_func import get_club_info, list_of_members
+from data_base.db_member import new_status, update_member_data, update_user_data
 from data_base.db_token_service import (clear_old_attempts, get_token_attempts_count,
                                         add_token_attempt, auto_approve_by_token, is_valid_token)
-from data_base.telegram_bot_logic import get_club_info, list_of_members, new_status_tg, update_member_data, update_user_data
 from services.services import notify_registrator_short, notify_super_registrator_short
 from FSMs.FSMs import FSM_short_registration
 from keyboards.keyboards import  user_menu
@@ -175,7 +175,7 @@ async def process_entered_token_or_resume(message: Message, state: FSMContext, d
 
 @router.callback_query(
     StateFilter(FSM_short_registration.fill_registrator),
-    lambda x: x.data.isdigit() or x.data == "stranger",
+    F.data == "stranger" | F.data.isdigit(),
 )
 @log_handler_call
 async def process_registrator_choise(callback: CallbackQuery, state: FSMContext, data: dict):
@@ -212,7 +212,7 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         member_param = {"resume": user_dict.get("resume")}
         await update_member_data(member_id, **member_param)
 
-        success, result = await new_status_tg(data.get("club_ud"), None, tg_id, "candidate")
+        success, result = await new_status(None, member_id, "candidate")
         if not success:
             await callback.message.answer(text=result)
             return

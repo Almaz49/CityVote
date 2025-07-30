@@ -147,7 +147,7 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
     member_id = data["member_id"]
     club_id = data["club_id"]
     tg_id = callback.from_user.id
-    status = data["status"]
+    status = data.get("user_status", ["user"])
     if 'member' not in status:  # type: ignore
         await callback.message.answer(text='Вы не зарегистрированы в группе. Пройдите регистрацию')  # type: ignore
         return

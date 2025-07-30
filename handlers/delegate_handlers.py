@@ -154,7 +154,7 @@ async def process_new_voting_yes_confirm_press(
             data["response_text"] = (
                 "Спасибо! Голосование создано! Вы вышли из машины состояний."
             )
-            data["reply_markup"] = await user_menu(status=data["user_status"])
+            data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
             # Пытаемся отредактировать сообщение
             await callback.message.edit_text(  # type: ignore
@@ -176,7 +176,7 @@ async def process_new_voting_yes_confirm_press(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(status= data["user_status"])
+        data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -204,7 +204,7 @@ async def process_new_voting_no_confirm_press(
     data["response_text"] = (
         "Голосование не создано! Попробуйте еще раз. Вы вышли из машины состояний."
     )
-    data["reply_markup"] = await user_menu(status=data["user_status"])
+    data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(  # type: ignore
@@ -262,7 +262,7 @@ async def process_new_voting_no_confirm_press(
 #         if not list_of_votings:
 #             # Добавляем данные для SafeEditMiddleware
 #             data['response_text'] = 'Сейчас нет голосованийв стадии добавления варианта, вы не можете добавить вариант.'
-#             data['reply_markup'] = await user_menu(status = data['user_status'])  # Убираем клавиатуру
+#             data['reply_markup'] = await user_menu(status = data.get("user_status", ["user"]))  # Убираем клавиатуру
 
 #             # Пытаемся отредактировать сообщение
 #             await callback.message.edit_text(
@@ -458,7 +458,7 @@ async def process_new_variant_yes_confirm_press(
         else:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = f"Ошибка: {comment}"
-            data["reply_markup"] = await user_menu(status=data["user_status"])
+            data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
             # Пытаемся отредактировать сообщение
             await callback.message.edit_text(  # type: ignore
@@ -470,7 +470,7 @@ async def process_new_variant_yes_confirm_press(
 
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = f"Произошла ошибка: {str(e)}"
-        data["reply_markup"] = await user_menu(status= data["user_status"])
+        data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
         await callback.message.edit_text(  # type: ignore
@@ -546,7 +546,7 @@ async def process_finish_variant(
     data["response_text"] = (
         "Спасибо! Все варианты добавлены! Вы вышли из машины состояний."
     )
-    data["reply_markup"] = await user_menu(status=data["user_status"])
+    data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
     # Пытаемся отредактировать сообщение
     await callback.message.edit_text(  # type: ignore

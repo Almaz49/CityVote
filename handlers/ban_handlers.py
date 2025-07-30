@@ -41,7 +41,7 @@ async def ban_message_await(message: Message, data: dict):
         text=f'Вы забанены в группе до: "{ban_expiration}".\n'
         "Вы по прежнему можете голосовать и доверять свой голос.\n"
         "В случае несогласия с баном, пожалуйста, свяжитесь с администратором.",
-        reply_markup=await user_menu(status= data["user_status"])
+        reply_markup=await user_menu(status = data.get("user_status", ["user"]))
     )
 
 
@@ -61,5 +61,5 @@ async def ban_cb_await(callback: CallbackQuery, data: dict):
         text=f'Вы забанены в группе до: "{ban_expiration}".\n'
         "Вы по прежнему можете голосовать и доверять свой голос.\n"
         "В случае несогласия с баном, пожалуйста, свяжитесь с администратором.",
-        reply_markup=await user_menu(status= data["user_status"])
+        reply_markup=await user_menu(status = data.get("user_status", ["user"]))
     )

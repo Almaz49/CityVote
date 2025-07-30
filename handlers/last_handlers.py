@@ -35,7 +35,7 @@ async def send_echo(message: Message, data: dict):
         text=f'Вы написали: "{message.text}".\n'
         "Ваше сообщение не было обработано\n"
         "Если вам нужна помощь, используйте команду /help.",
-        reply_markup=await user_menu(status= data["user_status"])
+        reply_markup=await user_menu(status = data.get("user_status", ["user"]))
     )
 
 
@@ -52,5 +52,5 @@ async def send_echo_cb(callback: CallbackQuery, data: dict):
         text=f'Вы нажали кнопку: "{callback.data}".\n'
         "Она не была обработана"
         "Если вам нужна помощь, используйте команду /help.",
-        reply_markup=await user_menu(status= data["user_status"]),
+        reply_markup=await user_menu(status = data.get("user_status", ["user"])),
     )

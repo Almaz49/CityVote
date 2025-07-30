@@ -199,3 +199,23 @@ def paginate(items, page, items_per_page=10):
     end = start + items_per_page
     total_pages = (len(items) + items_per_page - 1) // items_per_page
     return items[start:end], total_pages
+
+
+async def safe_edit(callback, text, reply_markup=None, parse_mode=None):
+    """
+    Функция для замены edit_text на answer в том случае,
+    если сообщение, которое надо редатировать устарело (не подлежит редатированию) или не найдено
+    """
+    # TODO: Надо заменить на эту фнукцию все места где используется edit_text
+
+    try:
+        await callback.message.edit_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+    except Exception as e:
+        logger.error(f"Ошибка при редактировании: {e}")
+        await callback.message.answer(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+
+def normalize_token(token: str) -> str:
+    """
+    Нормализует токен, удаляя пробелы и дефисы
+    """
+    return token.strip().replace(" ", "").replace("-", "")

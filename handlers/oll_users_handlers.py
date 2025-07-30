@@ -561,7 +561,7 @@ async def press_username_entry(callback: CallbackQuery, state: FSMContext, data:
     fsm_data = await state.get_data()
     username = fsm_data["username"]
     user_id = data["user_id"]
-    status = data["user_status"]
+    status = data.get("user_status", ["user"])
 
     # Записываем username в базу данных
     await update_user_data(user_id=user_id, username=username)
@@ -673,7 +673,7 @@ async def process_description_sent(message: Message, state: FSMContext, data: di
     logger.info(f"Пользователь {message.from_user.id} ввел О СЕБЕ: {message.text}.")
     # member_data = {'description': message.text}
     member_id = data["member_id"]
-    status = data["user_status"]
+    status = data.get("user_status", ["user"])
 
     # Записываем username в базу данных
     await update_member_data(member_id=member_id, description=message.text)

@@ -1,3 +1,5 @@
+# handlers/owner_handlers.py
+
 import logging
 
 from aiogram import F, Bot, Router
@@ -766,12 +768,11 @@ async def process_stage_durations_input(message: Message, state: FSMContext):
             raise ValueError("Данные введены пустыми")
         # Разбиваем введенные данные на список чисел
         durations = list(map(int, message.text.split()))
-        if len(durations) != 4:
-            raise ValueError("Неверное количество значений")
+        if len(durations) != 4 or any(d <= 0 for d in durations):
+            await message.answer("Произошла ошибка: данные некорректны. Должно быть 4 положительных числа.")
+            logger.warning("Некорректные данные")
+            raise ValueError("Должно быть 4 положительных числа")
 
-        # Проверяем, что все значения положительные
-        if any(d <= 0 for d in durations):
-            raise ValueError("Значения должны быть положительными числами")
 
         # Сохраняем данные в FSM
         await state.update_data(
