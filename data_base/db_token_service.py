@@ -10,7 +10,7 @@ from collections import defaultdict
 import logging
 
 from data_base.db_member import new_status
-from utils.utils import log_function_call
+from utils.utils import log_function_call, normalize_token
 
 logger = logging.getLogger(__name__)
 
@@ -506,29 +506,89 @@ async def export_tokens_to_excel(
     # Сохраняем в Excel
     df.to_excel(filename, index=False)
     return os.path.abspath(filename)
-async def mark_token_as_old(token: str) -> bool:
+async def mark_token_as_old(token: str|None = None, token_id:int|None = None, member_id:int|None = None) -> bool:
     """
     Помечает токен как устаревший.
-    :param token: строка токена без разделителей
+    :param token: строка токена
     :return: True, если токен был обновлён
     """
-    async with AsyncDatabase(path_db) as cursor:
-        await cursor.execute("""
-            UPDATE Tokens SET status = 'old'
-            WHERE token = ?
-        """, (token,))
-        return cursor.rowcount > 0
+    if token:
+        token = normalize_token(token)
+        async with AsyncDatabase(path_db) as cursor:
+            await cursor.execute("""
+                UPDATE Tokens SET status = 'old'
+                WHERE token = ?
+            """, (token,))
+            return cursor.rowcount > 0
+    elif token_id:
+        async with AsyncDatabase(path_db) as cursor:
+            await cursor.execute("""
+                UPDATE Tokens SET status = 'old'
+                WHERE id = ?
+            """, (token_id,))
+            return cursor.rowcount > 0
+    elif member_id:
+        async with AsyncDatabase(path_db) as cursor:
+            await cursor.execute("""
+                UPDATE Tokens SET status = 'old'
+                WHERE member_id = ? AND status = 'used'
+            """, (member_id,))
+            return cursor.rowcount > 0
+    else:
+        raise ValueError("token or token_id must be provided")
 
 @log_function_call
-async def mark_token_as_used(token: str) -> bool:
+async def mark_token_as_used(token: str|None = None, token_id:int|None = None, member_id:int|None = None) -> bool:
     """
     Помечает токен как использованный.
-    :param token: строка токена без разделителей
+    :param token: строка токена
     :return: True, если токен был обновлён
     """
-    async with AsyncDatabase(path_db) as cursor:
-        await cursor.execute("""
-            UPDATE Tokens SET status = 'used'
-            WHERE token = ?
-        """, (token))
-        return cursor.rowcount > 0
+    if token:
+        token = normalize_token(token)
+        async with AsyncDatabase(path_db) as cursor:
+            await cursor.execute("""
+                UPDATE Tokens SET status = 'used'
+                WHERE token = ?
+            """, (token,))
+            success =  cursor.rowcount > 0
+    elif token_id:
+        async with AsyncDatabase(path_db) as cursor:
+            await cursor.execute("""
+                UPDATE Tokens SET status = 'used'
+                WHERE id = ?
+            """, (token_id,))
+            success =  cursor.rowcount > 0
+
+    if member_id:
+        if not success:
+            async with AsyncDatabase(path_db) as cursor:
+                await cursor.execute("""
+                    UPDATE Tokens SET status = 'used'
+                    WHERE member_id = ? AND status = 'valid'
+                """, (member_id,))
+                success = cursor.rowcount > 0
+        if token_id:
+            async with AsyncDatabase(path_db) as cursor:
+                await cursor.execute("""
+                    UPDATE Members SET token = ?
+                    WHERE member_id = ?
+                """, (token_id, member_id))
+                await cursor.execute("""
+                    UPDATE Tokens SET member_id = ?
+                    WHERE id = ?
+                """, (member_id, token_id))
+        if token:
+            token = normalize_token(token)
+            async with AsyncDatabase(path_db) as cursor:
+                await cursor.execute("""
+                    UPDATE Members SET token =
+                    (SELECT id FROM Tokens WHERE token = ?)
+                    WHERE member_id = ?
+                """, (token, member_id))
+                await cursor.execute("""
+                    UPDATE Tokens SET member_id = ?
+                    WHERE id = (SELECT id FROM Tokens WHERE token = ?)
+                """, (member_id, token))
+
+    raise ValueError("token or token_id must be provided")

@@ -11,6 +11,7 @@ from aiogram import Bot
 from data_base.db_func import get_club_info, list_of_channel, list_of_members, list_of_variants, list_of_votings
 from data_base.db_member import check_ban_status_all_members, check_token_expiration, extract_list_of_full_member_ids, is_votist, member_leave_club
 from data_base.db_vote import confirmation_of_voting_results_stop, extract_group_id, get_voting_info, voting_complete, voting_create, voting_final, voting_stage, voting_start
+from data_base.db_token_service import mark_token_as_old
 from keyboards.keyboards import create_inline_kb
 from services.services import (not_votist_because_proxy_quit,
                                send_notification_to_chat_or_channel,
@@ -232,6 +233,8 @@ async def leave_club(bot: Bot, member_id: int, status: str) -> None:
     """
     logger.info(f"Выход из группы: member_id={member_id}")
     await member_leave_club(member_id, status)
+    logger.info(f"Участник покинул группу: member_id={member_id}, удаляем токен")
+    await mark_token_as_old(member_id=member_id)
     if "proxy" in status:
         await not_votist_because_proxy_quit(bot, member_id)
 

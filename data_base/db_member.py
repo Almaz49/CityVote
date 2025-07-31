@@ -129,6 +129,7 @@ async def new_status(registrator, member_id, status, token_id=None):
                         (member_id,),
                     )
                     logger.info(f"Статус 'member' удавлен для member_id: {member_id}")
+
                 # Если удаляется стаус banned, то удаляем срок бана из таблицы Members
                 if status2 == "banned":
                     await cursor.execute(
