@@ -175,7 +175,7 @@ async def process_entered_token_or_resume(message: Message, state: FSMContext, d
 
 @router.callback_query(
     StateFilter(FSM_short_registration.fill_registrator),
-    F.data == "stranger" | F.data.isdigit(),
+    (F.data == "stranger") | (F.data.isdigit()),
 )
 @log_handler_call
 async def process_registrator_choise(callback: CallbackQuery, state: FSMContext, data: dict):

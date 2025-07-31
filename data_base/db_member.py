@@ -125,7 +125,7 @@ async def new_status(registrator, member_id, status, token_id=None):
                 if status2 == "member":
                     await cursor.execute(
                         """DELETE FROM Status WHERE member_id = ? AND
-                        status IN ("member", "registrator","admin","superregistrator","pre-registrator","votist","delegate","proxy") ?""",
+                        status IN ('member', 'registrator','admin','superregistrator','pre-registrator','votist','delegate','proxy')""",
                         (member_id,),
                     )
                     logger.info(f"Статус 'member' удавлен для member_id: {member_id}")
