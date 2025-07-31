@@ -126,7 +126,7 @@ async def auto_approve_by_token(member_id: int, club_id, token_id: int = 0, toke
         row = await cursor.fetchone()
         if not row:
             return False, "Токен не найден."
-        status, club_bd = row[0]
+        status, club_bd = row
     if status != 'valid':
         return False, "Токен уже использован или устарел."
     if club_id != club_bd:
