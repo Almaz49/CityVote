@@ -18,8 +18,7 @@ from LEXICON.LEXICON import LEXICON
 from manager.manager import leave_club
 from services.services import club_info, greetings_message, help_message, notify_super_registrator_short, profile_message
 
-from utils import log_handler_call
-from utils.utils import paginate
+from utils import log_handler_call, paginate, safe_edit
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -189,7 +188,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
 #     data["reply_markup"] = markup
 
 #     # Пытаемся отредактировать сообщение
-#     await callback.message.edit_text(  # type: ignore
+#     await safe_edit(callback,   # type: ignore
 #         text=data["response_text"], reply_markup=data["reply_markup"]
 #     )
 
@@ -218,7 +217,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
 #     data["reply_markup"] = markup
 
 #     # Пытаемся отредактировать сообщение
-#     await callback.message.edit_text(  # type: ignore
+#     await safe_edit(callback,  # type: ignore
 #         text=data["response_text"], reply_markup=data["reply_markup"]
     # )
 
@@ -231,17 +230,11 @@ async def return_to_main_menu(callback: CallbackQuery, state: FSMContext, data: 
     await state.clear()
     if callback.message and isinstance(callback.message, Message):
         markup = await user_menu(status = data.get("user_status", ["user"]))
-        try:
-            await callback.message.edit_text(
-                "Вы возвращены в главное меню.",
-                reply_markup=markup
-            )
-        except Exception:
-            await callback.answer("Сообщение устарело. Открываю главное меню.", show_alert=True)
-            await callback.message.answer(
-                "Вы возвращены в главное меню.",
-                reply_markup=markup
-            )
+
+        await safe_edit(callback,
+            "Вы возвращены в главное меню.",
+            reply_markup=markup)
+
     elif callback.message:
         await callback.answer("Не удалось отредактировать сообщение.", show_alert=True)
     else:
@@ -297,7 +290,7 @@ async def process_leave_the_group(
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,  # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -316,7 +309,7 @@ async def process_leave_the_group(
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,  # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -350,7 +343,7 @@ async def process_leave_club_entry(
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Редактируем сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -370,7 +363,7 @@ async def process_leave_club_entry(
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -392,7 +385,7 @@ async def process_no_confirm_leave_club(
     data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -449,7 +442,7 @@ async def process_club_info(callback: CallbackQuery, data: dict):
     data["reply_markup"] = get_info_menu_keyboard(exc="club_info")
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"],
         reply_markup=data["reply_markup"],
         parse_mode="HTML",  # Указываем режим разметки
@@ -472,7 +465,7 @@ async def process_info(callback: CallbackQuery, data: dict):
     data["reply_markup"] = get_info_menu_keyboard()
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"],
         reply_markup=data["reply_markup"],
         parse_mode="HTML",  # Указываем режим разметки
@@ -496,7 +489,7 @@ async def process_profile(callback: CallbackQuery, data: dict):
     )
     data["reply_markup"] = get_profile_menu_keyboard(data["user_status"])
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"],
         reply_markup=data["reply_markup"],
         parse_mode="HTML",  # Указываем режим разметки
@@ -521,7 +514,7 @@ async def process_bot_info(callback: CallbackQuery, data: dict):
     data["reply_markup"] = get_info_menu_keyboard(exc="bot_info")
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"],
         reply_markup=data["reply_markup"],
         parse_mode="HTML",  # Указываем режим разметки
@@ -547,7 +540,7 @@ async def process_aboute(callback: CallbackQuery, data: dict):
     reply_markup = get_info_menu_keyboard(exc="about")
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=response_text,
         reply_markup=reply_markup,
         parse_mode="HTML",  # Указываем режим разметки
@@ -593,7 +586,7 @@ async def enter_token(callback: CallbackQuery, state: FSMContext, data: dict):
         current_text = callback.message.text
         current_markup = callback.message.reply_markup
         if current_text != text or current_markup != markup:
-            await callback.message.edit_text(text=text, reply_markup=markup, parse_mode="HTML")
+            await safe_edit(callback, text=text, reply_markup=markup, parse_mode="HTML")
     else:
         await callback.message.answer(text=text, reply_markup=markup)
     await state.set_state(FSMEnterToken.fill_token)
@@ -656,7 +649,7 @@ async def process_token(message: Message, state: FSMContext, data: dict):
 """
 @router.callback_query(F.data == "request_token")
 @log_handler_call
-async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
+async def request_token(callback: CallbackQuery, data: dict):
     """
     Обработчик кнопки request_token.
     """
@@ -691,7 +684,7 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
     F.data.startswith("list_of_proxy")
 )
 @log_handler_call
-async def process_select_proxy(callback: CallbackQuery, data: dict):
+async def process_list_proxy(callback: CallbackQuery, data: dict):
     try:
         logger.info(
             f"Пользователь {callback.from_user.id} запросил список представителей."
@@ -717,7 +710,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
             data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
             # Редактируем сообщение
-            await callback.message.edit_text(  # type: ignore
+            await safe_edit(callback,   # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
             )
             return
@@ -733,7 +726,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
             # Кнопка для получения подробной информации
             details_button = InlineKeyboardButton(
                 text=f"{proxy['username']}",
-                callback_data=f"proxy_details:{proxy['member_id']}:{proxy['trusted_votes']}:{page}",
+                callback_data=f"show_proxy:{proxy['member_id']}:{proxy['trusted_votes']}:{page}",
             )
             # Добавляем кнопки в список
             proxy_buttons.append([details_button])
@@ -768,7 +761,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
             message_text + "\n\nДля подробной информации нажмите на одну из кнопок ниже:"
         )
         data["reply_markup"] = markup
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -780,7 +773,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -788,7 +781,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
 
 
 # Хэндлер предоставления подробной информации
-@router.callback_query(F.data.startswith("proxy_details:"))
+@router.callback_query(F.data.startswith("show_proxy:"))
 @log_handler_call
 async def process_proxy_details(callback: CallbackQuery, data: dict):
     try:
@@ -824,67 +817,67 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
             return
 
         # Формируем текст с подробной информацией
-        text = f"Username: {proxy_info['username']}\nОписание: {proxy_info['description']}\nЧисло доверенных голосов: {trusted_votes}"
+        response_text = f"Username: {proxy_info['username']}\nОписание: {proxy_info['description']}\nЧисло доверенных голосов: {trusted_votes}"
 
         proxies = await list_of_proxy(data["club_id"])
 
         if not proxies:
-            # Добавляем данные для SafeEditMiddleware
-            data["response_text"] = "В данный момент нет доступных представителей."
-            data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
+            response_text = "В данный момент нет доступных представителей."
+            reply_markup = await user_menu(status=data.get("user_status", ["user"]))
+
+            # Сохраняем в data для middleware
+            data["response_text"] = response_text
+            data["reply_markup"] = reply_markup
+        else:
+
+
+            # Разделяем на страницы
+            paginated_proxies, total_pages = paginate(proxies, page)
+
+            # Создаем кнопки для представителей
+            proxy_buttons = []
+            for proxy in paginated_proxies:
+                # Кнопка для получения подробной информации
+                details_button = InlineKeyboardButton(
+                    text=f"{proxy['username']}",
+                    callback_data=f"show_proxy:{proxy['member_id']}:{proxy['trusted_votes']}:{page}",
+                )
+                # Добавляем кнопки в список
+                proxy_buttons.append([details_button])
+
+            # Добавляем кнопки пагинации
+            pagination_buttons = []
+            if page > 1:
+                pagination_buttons.append(
+                    InlineKeyboardButton(
+                        text="⬅️ Назад", callback_data=f"list_of_proxy:{page - 1}"
+                    )
+                )
+            if page < total_pages:
+                pagination_buttons.append(
+                    InlineKeyboardButton(
+                        text="➡️ Вперед", callback_data=f"list_of_proxy:{page + 1}"
+                    )
+                )
+
+            # Добавляем кнопку "Главное меню"
+            main_menu_button = InlineKeyboardButton(
+                text="Главное меню", callback_data="main_menu"
+            )
+
+            # Создаем инлайн-клавиатуру
+            reply_markup = InlineKeyboardMarkup(
+                inline_keyboard=proxy_buttons + [pagination_buttons, [main_menu_button]]
+            )
 
             # Редактируем сообщение
-            await callback.message.edit_text(  # type: ignore
-                text=data["response_text"], reply_markup=data["reply_markup"]
-            )
-            return
+            data["response_text"] = response_text
+            data["reply_markup"] = reply_markup
 
-        # Разделяем на страницы
-        paginated_proxies, total_pages = paginate(proxies, page)
+            await safe_edit(callback, text=response_text, reply_markup=reply_markup)
 
-        # Создаем кнопки для представителей
-        proxy_buttons = []
-        for proxy in paginated_proxies:
-            # Кнопка для получения подробной информации
-            details_button = InlineKeyboardButton(
-                text=f"{proxy['username']}",
-                callback_data=f"proxy_details:{proxy['member_id']}:{proxy['trusted_votes']}:{page}",
-            )
-            # Добавляем кнопки в список
-            proxy_buttons.append([details_button])
 
-        # Добавляем кнопки пагинации
-        pagination_buttons = []
-        if page > 1:
-            pagination_buttons.append(
-                InlineKeyboardButton(
-                    text="⬅️ Назад", callback_data=f"list_of_proxy:{page - 1}"
-                )
-            )
-        if page < total_pages:
-            pagination_buttons.append(
-                InlineKeyboardButton(
-                    text="➡️ Вперед", callback_data=f"list_of_proxy:{page + 1}"
-                )
-            )
 
-        # Добавляем кнопку "Главное меню"
-        main_menu_button = InlineKeyboardButton(
-            text="Главное меню", callback_data="main_menu"
-        )
-
-        # Создаем инлайн-клавиатуру
-        markup = InlineKeyboardMarkup(
-            inline_keyboard=proxy_buttons + [pagination_buttons, [main_menu_button]]
-        )
-
-        # Редактируем сообщение
-        data["response_text"] = text
-        data["reply_markup"] = markup
-
-        await callback.message.edit_text(  # type: ignore
-            text=data["response_text"], reply_markup=data["reply_markup"]
-        )
 
     except Exception as e:
         logger.error(f"Ошибка при получении подробной информации о представителе: {e}")

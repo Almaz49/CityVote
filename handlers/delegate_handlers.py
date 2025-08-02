@@ -8,12 +8,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from aiogram.types import CallbackQuery, Message
 from data_base.db_vote import variant_create
-from data_base.telegram_bot_logic import *
 from filters.filters import StatusFilter
 from FSMs.FSMs import FSMNewVariant, FSMNewVoting
 from keyboards.keyboards import confirm_markup, user_menu, variant_markup
 from manager.manager import voting_create_manager
-from utils import check_fsm_data, log_handler_call
+from utils import check_fsm_data, log_handler_call, safe_edit
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -157,7 +156,7 @@ async def process_new_voting_yes_confirm_press(
             data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(  # type: ignore
+            await safe_edit(callback,   # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
             )
 
@@ -167,7 +166,7 @@ async def process_new_voting_yes_confirm_press(
             data["reply_markup"] = None  # Если клавиатура не нужна
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(  # type: ignore
+            await safe_edit(callback,   # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
             )
 
@@ -179,7 +178,7 @@ async def process_new_voting_yes_confirm_press(
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -207,7 +206,7 @@ async def process_new_voting_no_confirm_press(
     data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -265,7 +264,7 @@ async def process_new_voting_no_confirm_press(
 #             data['reply_markup'] = await user_menu(status = data.get("user_status", ["user"]))  # Убираем клавиатуру
 
 #             # Пытаемся отредактировать сообщение
-#             await callback.message.edit_text(
+#             await safe_edit(callback,
 #                 text=data['response_text'],
 #                 reply_markup=data['reply_markup']
 #             )
@@ -280,7 +279,7 @@ async def process_new_voting_no_confirm_press(
 #         data['reply_markup'] = create_inline_kb(1, **keyboards)
 
 #         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
+#         await safe_edit(callback,
 #             text=data['response_text'],
 #             reply_markup=data['reply_markup']
 #         )
@@ -294,7 +293,7 @@ async def process_new_voting_no_confirm_press(
 #         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
 
 #         # Пытаемся отредактировать сообщение
-#         await callback.message.edit_text(
+#         await safe_edit(callback,
 #             text=data['response_text'],
 #             reply_markup=data['reply_markup']
 #         )
@@ -320,7 +319,7 @@ async def process_new_voting_no_confirm_press(
 #     data['reply_markup'] = None  # Убираем клавиатуру
 
 #     # Пытаемся отредактировать сообщение
-#     await callback.message.edit_text(
+#     await safe_edit(callback,
 #         text=data['response_text'],
 #         reply_markup=data['reply_markup']
 #     )
@@ -358,7 +357,7 @@ async def process_variant_title_sent(
     data["reply_markup"] = None  # Убираем клавиатуру
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -448,7 +447,7 @@ async def process_new_variant_yes_confirm_press(
             data["reply_markup"] = variant_markup
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(  # type: ignore
+            await safe_edit(callback,   # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
             )
 
@@ -461,7 +460,7 @@ async def process_new_variant_yes_confirm_press(
             data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(  # type: ignore
+            await safe_edit(callback,   # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
             )
 
@@ -473,7 +472,7 @@ async def process_new_variant_yes_confirm_press(
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -492,7 +491,7 @@ async def process_new_variant_no_confirm_press(
     data["reply_markup"] = variant_markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -519,7 +518,7 @@ async def process_more_variant(callback: CallbackQuery, state: FSMContext, data:
     data["reply_markup"] = None  # Если клавиатура не нужна
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -549,6 +548,6 @@ async def process_finish_variant(
     data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )

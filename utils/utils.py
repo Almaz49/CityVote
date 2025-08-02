@@ -5,7 +5,7 @@ import asyncio
 import logging  # Добавляем импорт модуля logging
 from functools import wraps
 from typing import Any, Dict, List
-
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiosqlite import Cursor
@@ -201,17 +201,40 @@ def paginate(items, page, items_per_page=10):
     return items[start:end], total_pages
 
 
-async def safe_edit(callback, text, reply_markup=None, parse_mode=None):
+async def safe_edit(callback: CallbackQuery, text: str, reply_markup=None, parse_mode=None):
     """
     Функция для замены edit_text на answer в том случае,
-    если сообщение, которое надо редатировать устарело (не подлежит редатированию) или не найдено
+    если сообщение, которое надо редатировать устарело (не подлежит редатированию) или не найдено.
+    В случае, если сообщение не изменилось, то ничего не отправляем
     """
-    # TODO: Надо заменить на эту фнукцию все места где используется edit_text
-
+    # 🔹 Проверяем, что сообщение существует
+    if not callback.message:
+        logger.warning("CallbackQuery не содержит сообщение — невозможно редактировать или ответить")
+        return
     try:
-        await callback.message.edit_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+        # 🔹 Проверяем, изменилось ли сообщение
+        if (callback.message.text == text and  # type: ignore
+            callback.message.reply_markup == reply_markup): # type: ignore
+            # logger.debug("Сообщение не изменилось — пропускаем редактирование")
+            return  # Просто выходим
+
+        await callback.message.edit_text( # type: ignore
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e):
+            # Уже обработали выше, но на всякий случай
+            return
+        elif "message to edit not found" in str(e):
+            # Сообщение устарело — отправляем новое
+            await callback.message.answer(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+        else:
+            logger.error(f"Неизвестная ошибка при редактировании: {e}")
+            raise
     except Exception as e:
-        logger.error(f"Ошибка при редактировании: {e}")
+        logger.error(f"Неожиданная ошибка при редактировании: {e}")
         await callback.message.answer(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
 
 def normalize_token(token: str) -> str:

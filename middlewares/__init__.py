@@ -1,3 +1,3 @@
 from .logging_middleware import LoggingAndErrorHandlingMiddleware
-from .safe_edit_middleware import SafeEditMiddleware
+from .safe_edit_middleware import SafeEditMiddleware, SafeCallbackMiddleware
 from .StatusMiddleware import StatusMiddleware

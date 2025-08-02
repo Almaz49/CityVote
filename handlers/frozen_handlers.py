@@ -13,6 +13,7 @@ from FSMs.FSMs import FSMEnterToken
 from keyboards.keyboards import create_inline_kb, return_to_main_menu_markup
 from services.services import notify_super_registrator_short
 from utils import log_handler_call
+from utils.utils import safe_edit
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -68,7 +69,7 @@ async def enter_token(callback: CallbackQuery, state: FSMContext, data: dict):
         current_text = callback.message.text
         current_markup = callback.message.reply_markup
         if current_text != text or current_markup != markup:
-            await callback.message.edit_text(text=text, reply_markup=markup, parse_mode="HTML")
+            await safe_edit(callback, text=text, reply_markup=markup, parse_mode="HTML")
     else:
         await callback.message.answer(text=text, reply_markup=markup)
     await state.set_state(FSMEnterToken.fill_token)

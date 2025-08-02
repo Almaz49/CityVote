@@ -19,7 +19,7 @@ from keyboards.keyboards import (confirm_markup, create_inline_kb,
                                  return_to_main_menu_markup, user_menu)
 from LEXICON.LEXICON import LEXICON
 from services.services import (send_variants_by_status)
-from utils import log_handler_call, paginate
+from utils import log_handler_call, paginate, safe_edit
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
     # Проверяем, что callback.data существует
     if not callback.data:
         logger.warning("Данные callback пусты")
-        await callback.message.edit_text("Произошла ошибка: данные не найдены.")  # type: ignore
+        await safe_edit(callback, "Произошла ошибка: данные не найдены.")  # type: ignore
         raise ValueError("Callback data отсутствует")
     try:
         logger.info(
@@ -147,7 +147,7 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
     # Проверяем, что callback.data существует
     if not callback.data:
         logger.warning("Данные callback пусты")
-        await callback.message.edit_text("Произошла ошибка: данные не найдены.")  # type: ignore
+        await safe_edit(callback, "Произошла ошибка: данные не найдены.")  # type: ignore
         raise ValueError("Callback data отсутствует")
     try:
         logger.info(
@@ -319,7 +319,7 @@ async def process_proxy_list(callback: CallbackQuery, data: dict):
             data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Редактируем сообщение
-            await callback.message.edit_text(  # type: ignore
+            await safe_edit(callback,   # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
             )
             return
@@ -392,7 +392,7 @@ async def process_proxy_list(callback: CallbackQuery, data: dict):
         # Редактируем сообщение
         data["response_text"] = message_text
         data["reply_markup"] = markup
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"],
             reply_markup=data["reply_markup"],
             parse_mode="HTML",
@@ -406,7 +406,7 @@ async def process_proxy_list(callback: CallbackQuery, data: dict):
         data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Редактируем сообщение в случае ошибки
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -463,7 +463,7 @@ async def process_proxy_info(callback: CallbackQuery, data: dict):
         data["response_text"] = text
         data["reply_markup"] = markup
 
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -500,7 +500,7 @@ async def press_edit_username(callback: CallbackQuery, state: FSMContext, data: 
     data["reply_markup"] = return_to_main_menu_markup
 
     # Редактируем сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -571,7 +571,7 @@ async def press_username_entry(callback: CallbackQuery, state: FSMContext, data:
     data["reply_markup"] = get_profile_menu_keyboard(status)
 
     # Редактируем сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -598,7 +598,7 @@ async def process_no_confirm_username_press(
     data["reply_markup"] = return_to_main_menu_markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -653,7 +653,7 @@ async def press_edit_description(
     data["reply_markup"] = return_to_main_menu_markup
 
     # Редактируем сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -715,7 +715,7 @@ async def press_edit_info_level(callback: CallbackQuery, state: FSMContext, data
     data["reply_markup"] = create_inline_kb(1, *menu_list)
 
     # Редактируем сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
     await state.set_state(FSM_profile.fill_info_level)
@@ -772,7 +772,7 @@ async def process_info_level_selection(
         )  # Меняем клавиатуру после выбора
 
         # Редактируем сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
     except Exception as e:
@@ -780,7 +780,7 @@ async def process_info_level_selection(
         logger.error(
             f"Ошибка при обновлении уровня информирования для пользователя {member_id}: {e}"
         )
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text="Произошла ошибка при сохранении уровня информирования. Попробуйте позже.",
             reply_markup=None,
         )

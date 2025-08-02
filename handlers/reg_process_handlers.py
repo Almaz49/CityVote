@@ -15,6 +15,7 @@ from FSMs.FSMs import FSM_short_registration
 from keyboards.keyboards import  user_menu
 from LEXICON.LEXICON import LEXICON
 from utils import log_handler_call
+from utils.utils import safe_edit
 
 
 # Настройка логирования
@@ -74,7 +75,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         current_text = callback.message.text
         current_markup = callback.message.reply_markup
         if current_text != text or current_markup != markup:
-            await callback.message.edit_text(text=text, reply_markup=markup, parse_mode="HTML")
+            await safe_edit(callback, text=text, reply_markup=markup, parse_mode="HTML")
     else:
         await callback.message.answer(text=text, reply_markup=markup)
 

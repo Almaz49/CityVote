@@ -14,7 +14,7 @@ from FSMs.FSMs import AdminStates, FSMNewStatus
 from keyboards.keyboards import *
 from LEXICON.LEXICON import LEXICON
 from services.services import process_channel_info
-from utils import log_handler_call
+from utils import log_handler_call, safe_edit
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ async def process_new_status_cb(callback: CallbackQuery, state: FSMContext, data
     data["reply_markup"] = None  # Если клавиатура не нужна, устанавливаем None
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -230,7 +230,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -245,7 +245,7 @@ async def process_status_choice(callback: CallbackQuery, state: FSMContext, data
         data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -272,7 +272,7 @@ async def process_no_confirm_status_press(
     data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -330,7 +330,7 @@ async def process_new_status_confirm(
         data["reply_markup"] = confirm_markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -346,7 +346,7 @@ async def process_new_status_confirm(
         data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -387,7 +387,7 @@ async def process_new_status_entry(
             data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(  # type: ignore
+            await safe_edit(callback,   # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
             )
         else:
@@ -404,7 +404,7 @@ async def process_new_status_entry(
                 data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
                 # Пытаемся отредактировать сообщение
-                await callback.message.edit_text(  # type: ignore
+                await safe_edit(callback,   # type: ignore
                     text=data["response_text"], reply_markup=data["reply_markup"]
                 )
                 return
@@ -419,7 +419,7 @@ async def process_new_status_entry(
             data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(  # type: ignore
+            await safe_edit(callback,   # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
             )
 
@@ -431,7 +431,7 @@ async def process_new_status_entry(
         data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -460,7 +460,7 @@ async def process_no_confirm_status(
     data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -494,7 +494,7 @@ async def warning_new_status(message: Message):
 @log_handler_call
 async def admin_menu(callback: CallbackQuery):
     markup = get_admin_menu_keyboard()
-    await callback.message.edit_text("Выберите действие:", reply_markup=markup)  # type: ignore
+    await safe_edit(callback, "Выберите действие:", reply_markup=markup)  # type: ignore
 
 
 # Изменение имени группы
@@ -740,7 +740,7 @@ async def process_set_stage_durations_cb(
     data["reply_markup"] = reply_markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -835,7 +835,7 @@ async def confirm_stage_durations(
     markup = await user_menu(status= data.get("user_status", "user"))
 
     # Отправляем ответ и завершаем машину состояний
-    await callback.message.edit_text(text=response_text, reply_markup=markup)  # type: ignore
+    await safe_edit(callback, text=response_text, reply_markup=markup)  # type: ignore
     await state.clear()
 
 
@@ -856,7 +856,7 @@ async def cancel_stage_durations(
     # Отправляем сообщение об отмене
     response_text = "Установка продолжительности этапов отменена."
     markup = await user_menu(status= data.get("user_status", "user"))
-    await callback.message.edit_text(text=response_text, reply_markup=markup)  # type: ignore
+    await safe_edit(callback, text=response_text, reply_markup=markup)  # type: ignore
 
 
 # Установка электоральных порогов для делегатов.
@@ -898,7 +898,7 @@ async def process_set_threshold_cb(
     data["reply_markup"] = None  # Клавиатура не нужна
 
     # Редактируем сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -982,7 +982,7 @@ async def confirm_thresholds(callback: CallbackQuery, state: FSMContext, data: d
     markup = await user_menu(status= data.get("user_status", "user"))
 
     # Отправляем ответ и завершаем машину состояний
-    await callback.message.edit_text(text=response_text, reply_markup=markup)  # type: ignore
+    await safe_edit(callback, text=response_text, reply_markup=markup)  # type: ignore
     await state.clear()
 
 
@@ -1001,4 +1001,4 @@ async def cancel_thresholds(callback: CallbackQuery, state: FSMContext, data: di
     # Отправляем сообщение об отмене
     response_text = "Установка порогов доверенных голосов отменена."
     markup = await user_menu(status= data.get("user_status", "user"))
-    await callback.message.edit_text(text=response_text, reply_markup=markup)  # type: ignore
+    await safe_edit(callback, text=response_text, reply_markup=markup)  # type: ignore

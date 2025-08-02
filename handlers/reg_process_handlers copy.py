@@ -18,6 +18,7 @@ from LEXICON.LEXICON import LEXICON
 from services.services import (notify_registrator_short,
                                notify_super_registrator_short)
 from utils import log_handler_call
+from utils.utils import safe_edit
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -90,7 +91,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
             current_text != data["response_text"]
             or current_markup != data["reply_markup"]
         ):
-            await callback.message.edit_text(
+            await safe_edit(callback,
                 text=data["response_text"],
                 reply_markup=data["reply_markup"],
                 parse_mode="HTML",
@@ -111,7 +112,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 
         # Пытаемся отредактировать сообщение
         try:
-            await callback.message.edit_text(  # type: ignore
+            await safe_edit(callback,   # type: ignore
                 text=data["response_text"], reply_markup=data["reply_markup"]
             )
         except Exception as edit_error:
@@ -229,7 +230,7 @@ async def process_registrator_choise(
         # Проверяем, что callback.data существует
         if not callback.data:
             logger.warning("Данные callback пусты")
-            await callback.message.edit_text("Произошла ошибка: данные не найдены.")  # type: ignore
+            await safe_edit(callback, "Произошла ошибка: данные не найдены.")  # type: ignore
             raise ValueError("Callback data отсутствует")
 
         if not callback.bot:

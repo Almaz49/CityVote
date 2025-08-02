@@ -31,13 +31,9 @@ class SafeEditMiddleware(BaseMiddleware):
             )
             return result
         except TelegramBadRequest as e:
-            if "message is not modified" in str(
-                e
-            ) or "message to edit not found" in str(e):
+            if "message to edit not found" in str(e):
                 if isinstance(event, CallbackQuery):
-                    logger.warning(
-                        "Переход на message.answer из-за ошибки при редактировании сообщения"
-                    )
+                    logger.warning("Сообщение для редактирования не найдено — возможно, устарело")
                     text = data.get(
                         "response_text", "Произошла ошибка при обновлении сообщения"
                     )
@@ -45,7 +41,26 @@ class SafeEditMiddleware(BaseMiddleware):
                     await event.message.answer(text=text, reply_markup=reply_markup)  # type: ignore
                 else:
                     logger.error("Необработанное событие при редактировании сообщения")
+            elif "message is not modified" in str(e):
+                # Это нормально, можно просто проигнорировать
+                logger.debug("Пропущено редактирование — сообщение не изменилось")
+                return None
             else:
                 logger.error(f"Ошибка при редактировании сообщения: {e}")
                 raise
             return None  # Прекращаем дальнейшую обработку
+
+
+class SafeCallbackMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        if isinstance(event, CallbackQuery):
+            try:
+                return await handler(event, data)
+            except TelegramBadRequest as e:
+                if "query is too old" in str(e):
+                    logger.info("Игнорируем устаревший callback от %s", event.from_user.id)
+                    return None
+                else:
+                    raise
+        else:
+            return await handler(event, data)

@@ -16,7 +16,7 @@ from handlers import (admin_handlers, chat_member_handlers, delegate_handlers,
                       registrator_handlers, token_handlers, frozen_handlers, ban_handlers)
 from manager.manager import check_votist_status_for_all_members, voting_task, check_token_for_oll_members
 from middlewares import (LoggingAndErrorHandlingMiddleware, SafeEditMiddleware,
-                         StatusMiddleware)
+                         StatusMiddleware, SafeCallbackMiddleware)
 from utils import setup_logger, cleanup_old_logs
 
 # Получаем имя экземпляра бота из переменной окружения
@@ -137,6 +137,7 @@ async def on_shutdown():
 # Регистрируем middleware
 dp.update.middleware(LoggingAndErrorHandlingMiddleware())  # Первым идет логгирование
 dp.update.middleware(StatusMiddleware())
+dp.update.middleware(SafeCallbackMiddleware())
 dp.update.middleware(SafeEditMiddleware())  # Затем middleware для safe_edit
 
 # Регистрируем роутеры

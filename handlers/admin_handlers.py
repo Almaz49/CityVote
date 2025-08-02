@@ -18,7 +18,7 @@ from FSMs.FSMs import FSMExportMembers, FSMNewRegistrator, FSMBan, FSMTextMailin
 from keyboards.keyboards import *
 from manager.manager import *
 from services.services import send_file_to_user, send_notification_to_members, send_notification_to_user
-from utils import log_handler_call
+from utils import log_handler_call, safe_edit
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ async def process_new_registrator_cb(
     data["reply_markup"] = None  # Если клавиатура не нужна, устанавливаем None
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
     # Устанавливаем состояние ожидания ввода ID
@@ -254,7 +254,7 @@ async def process_yes_registrator_press(
                 status = data.get("user_status", ["user"])
             )
             # Пытаемся отредактировать сообщение
-            await callback.message.edit_text(text=data["response_text"], reply_markup=data["reply_markup"])  # type: ignore
+            await safe_edit(callback, text=data["response_text"], reply_markup=data["reply_markup"])  # type: ignore
             return
 
         # Завершаем машину состояний
@@ -293,7 +293,7 @@ async def process_yes_registrator_press(
         )
 
         # Отправляем в чат сообщение о выходе из машины состояний
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -323,7 +323,7 @@ async def process_no_registrator_press(
     data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -386,7 +386,7 @@ async def process_registrators_list(callback: CallbackQuery, data: dict):
         )
 
         # Редактируем сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
         return
@@ -485,7 +485,7 @@ async def process_remove_registrator(callback: CallbackQuery, data: dict):
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -499,7 +499,7 @@ async def process_remove_registrator(callback: CallbackQuery, data: dict):
         )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -541,7 +541,7 @@ async def process_promote_to_super(callback: CallbackQuery, data: dict):
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -555,7 +555,7 @@ async def process_promote_to_super(callback: CallbackQuery, data: dict):
         )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -599,7 +599,7 @@ async def process_remove_superregistrator(callback: CallbackQuery, data: dict):
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -613,7 +613,7 @@ async def process_remove_superregistrator(callback: CallbackQuery, data: dict):
         )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -661,7 +661,7 @@ async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -675,7 +675,7 @@ async def process_demote_to_registrator(callback: CallbackQuery, data: dict):
         )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -831,7 +831,7 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -845,7 +845,7 @@ async def process_voting_start_cb(callback: CallbackQuery, data: dict):
         )
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -895,7 +895,7 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -907,7 +907,7 @@ async def process_voting_stage_cb(callback: CallbackQuery, data: dict):
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -957,7 +957,7 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -969,7 +969,7 @@ async def process_voting_final_cb(callback: CallbackQuery, data: dict):
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -1018,7 +1018,7 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -1030,7 +1030,7 @@ async def process_voting_complete_cb(callback: CallbackQuery, data: dict):
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -1074,7 +1074,7 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -1086,7 +1086,7 @@ async def process_delete_variant_cb(callback: CallbackQuery, data: dict):
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -1135,7 +1135,7 @@ async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
         data["reply_markup"] = markup
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -1148,7 +1148,7 @@ async def process_stop_confirmation_cb(callback: CallbackQuery, data: dict):
 
 
         # Пытаемся отредактировать сообщение
-        await callback.message.edit_text(  # type: ignore
+        await safe_edit(callback,   # type: ignore
             text=data["response_text"], reply_markup=data["reply_markup"]
         )
 
@@ -1204,7 +1204,7 @@ async def ban_user(callback: CallbackQuery, state: FSMContext, data:dict) -> Non
     data["reply_markup"] = None  # Если клавиатура не нужна, устанавливаем None
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -1339,7 +1339,7 @@ async def process_ban_period_choice(callback: CallbackQuery, state: FSMContext, 
     data["reply_markup"] = markup
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 
@@ -1368,7 +1368,7 @@ async def process_no_confirm_ban_press(
     data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
     # Пытаемся отредактировать сообщение
-    await callback.message.edit_text(  # type: ignore
+    await safe_edit(callback,   # type: ignore
         text=data["response_text"], reply_markup=data["reply_markup"]
     )
 

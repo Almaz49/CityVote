@@ -18,6 +18,7 @@ from services.services import send_notification_to_user
 from utils import log_handler_call
 from FSMs.FSMs import FSMRegistration
 from data_base.db_token_service import create_formatted_tokens_without_lot
+from utils.utils import safe_edit
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -65,7 +66,7 @@ async def process_registrator_yes_press(
         # Извлекаем Telegram ID пользователя из callback_data
         if not callback.data:
             logger.warning("Данные callback пусты")
-            await callback.message.edit_text("Произошла ошибка: данные не найдены.")
+            await safe_edit(callback, "Произошла ошибка: данные не найдены.")
             raise ValueError("Callback data отсутствует")
 
         tg_id = int(callback.data.split(":")[1])
@@ -185,7 +186,7 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
     # Проверяем, что callback.data существует
     if not callback.data:
         logger.warning("Данные callback пусты")
-        await callback.message.edit_text("Произошла ошибка: данные не найдены.")  # type: ignore
+        await safe_edit(callback, "Произошла ошибка: данные не найдены.")  # type: ignore
         raise ValueError("Callback data отсутствует")
     try:
         # Извлекаем Telegram ID пользователя из callback_data

@@ -21,7 +21,7 @@ from keyboards.keyboards import (
     main_menu_markup,
 )
 from services.services import send_file_to_user
-from utils import log_handler_call
+from utils import log_handler_call, safe_edit
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ async def tokens_menu(callback: CallbackQuery, state: FSMContext):
     }
 
     markup = create_inline_kb(width=1, **menu_buttons)
-    await callback.message.edit_text("Выберите действие:", reply_markup=markup)  # type: ignore
+    await safe_edit(callback, "Выберите действие:", reply_markup=markup)  # type: ignore
     await state.clear()
 
 

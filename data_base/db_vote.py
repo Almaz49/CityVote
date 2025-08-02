@@ -6,7 +6,7 @@ import logging
 import traceback
 
 import aiosqlite
-
+from typing import Dict, Any
 from data_base.db_func import AsyncDatabase, extract_status, list_of_variants, path_db
 from LEXICON.LEXICON import LEXICON
 from utils import fetch_as_dict, log_function_call
@@ -197,7 +197,7 @@ async def variant_create(voting_id, author, title, text=None, variant_status="va
 # Функция старта голосования. Меняем статус голосования на 'ongoing'.
 # Указываем, кто запустил голосование (если не автоматически).
 @log_function_call
-async def voting_start(voting_id, starter=None):
+async def voting_start(voting_id, starter=None) -> Dict[str, Any]:
     time_start = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     async with AsyncDatabase(path_db) as cursor:
         try:
@@ -888,7 +888,7 @@ async def delete_variant(variant_id, admin=None):
 # Оставшиеся варианты должны в сумме набирать 50% голосов от имеющих право голоса.
 # Возвращает кортеж из ID проигравших вариантов.
 @log_function_call
-async def voting_stage(voting_id, club_id=None, stager=None):
+async def voting_stage(voting_id, club_id=None, stager=None) -> Dict[str, Any]:
     # Проверяем club_id
     if club_id is None:
         club_id = await extract_group_id(voting_id)
@@ -1027,7 +1027,7 @@ async def voting_stage(voting_id, club_id=None, stager=None):
 # Функция создания финального этапа голосования (где голосуется два варианта или больше, если есть варианты,
 # которые набрали столько же, сколько второй)
 @log_function_call
-async def voting_final(voting_id, finaler=None):
+async def voting_final(voting_id, finaler=None) -> Dict[str, Any]:
     time_final = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(voting_id, "valid")
 
@@ -1105,7 +1105,7 @@ async def voting_final(voting_id, finaler=None):
 # запускается утверждение итогов голосования. То есть выбор между вариантом-победителем
 # и вариантом  "Лучше не принимать никакого решения"
 @log_function_call
-async def voting_complete(voting_id, finisher=None):
+async def voting_complete(voting_id, finisher=None) -> Dict[str, Any]:
     time_finish = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(voting_id, "valid")
     club_id = await extract_group_id(voting_id)
@@ -1250,7 +1250,7 @@ async def confirmation_of_voting_results(voting_id, winner_id):
 # Функция завершения утврждения голосования. Определяет вариант - победитель (или отсутствие победителя).
 # При прочих равных (что вряд ли) побеждает тот вариант, который создан раньше.
 @log_function_call
-async def confirmation_of_voting_results_stop(voting_id, finisher=None):
+async def confirmation_of_voting_results_stop(voting_id, finisher=None) -> Dict[str, Any]:
     time_finish = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(voting_id, "valid")
     club_id = await extract_group_id(voting_id)
