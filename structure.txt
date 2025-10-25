@@ -64,12 +64,13 @@
 │   │   └── keyboards.py
 │   ├── LEXICON/
 │   │   └── LEXICON.py
+│   │   └── __init__.py
+│   │   └── lexicon_loader.py
+│   │   ├── RU/
+│   │   │   └── LEXICON_RU.py
+│   │   │   └── LEXIICON_admin_ru.py
 │   ├── logs/
 │   │   └── .gitkeep
-│   │   └── bot01_debug.log
-│   │   └── bot01_error.log
-│   │   └── bot01_info.log
-│   │   └── bot01_warning.log
 │   ├── manager/
 │   │   └── manager.py
 │   ├── middlewares/

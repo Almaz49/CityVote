@@ -129,7 +129,7 @@ async def process_user_id_sent(message: Message, state: FSMContext, data: dict):
 @router.message(StateFilter(FSMNewStatus.fill_ID_User), F.contact)
 @log_handler_call
 async def process_user_contact_sent(
-    message: Message, state: FSMContext, contact: Contact, data: dict
+    message: Message, state: FSMContext, data: dict
 ):
     if message.contact is None:
         await message.answer("Пожалуйста, отправьте контакт.")

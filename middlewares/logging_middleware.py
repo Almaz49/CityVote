@@ -18,11 +18,25 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
         logger.info("\n\n Начинаем работу с апдейтом. Middleware logging_middleware started work\n\n")
         try:
             # Логируем тип события и пользователя
+            user = data.get("event_from_user")
+            lang = "ru"  # fallback по умолчанию
             if isinstance(event, Update):
-                user = data.get("event_from_user")
                 tg_id = user.id if user else "Unknown"
                 event_type = event.__class__.__name__
                 logger.info(f"Получено событие {event_type} от пользователя {tg_id}")
+            else:
+                tg_id = "Unknown"
+                event_type = "Unknown"
+                logger.info(f"Получено событие {event_type} от неизвестного пользователя {tg_id}")
+
+            # Получаем язык пользователя
+            if user and user.language_code:
+                user_lang = user.language_code[:2]  # 'en-US' → 'en'
+                if user_lang in ('ru', 'en'):       # поддерживаемые языки
+                    lang = user_lang
+                else:
+                    logger.debug(f"Неподдерживаемый язык пользователя: {user.language_code}, используем 'ru'")
+
 
             # Извлекаем instance_name из data
             # TODO: убрать всю логику с instance_name после того, как убежусь, что она не нужна
@@ -62,6 +76,7 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
                     "user_id": user_id,
                     "member_id": member_id,
                     "instance_name": instance_name,
+                    "lang": lang,
                 }
                 logger.info(
                     f'Создан словарь дата в мидлваре логирования {pformat(data["data"])}'
