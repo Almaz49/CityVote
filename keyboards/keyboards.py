@@ -9,7 +9,10 @@ from aiogram.types import (InlineKeyboardButton, InlineKeyboardMarkup,
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
-from LEXICON.LEXICON import *
+# В самом начале keyboards/keyboards.py, после импортов aiogram
+from LEXICON.RU.LEXICON_RU import LEXICON_RU
+# Ensure LEXICON_RU is not None, fallback to empty dict
+LEXICON: dict = LEXICON_RU if LEXICON_RU is not None else {}
 from utils import log_function_call
 
 # Настройка логирования

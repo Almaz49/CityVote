@@ -1,4 +1,4 @@
-# Модуль reg_process_handlers
+# Модуль short_reg_process_handlers
 # Содержит хэндлеры процесса регистрации
 
 import logging
@@ -9,12 +9,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message)
 
+from LEXICON import get_text
 from data_base.telegram_bot_logic import (get_club_info, list_of_members,
                                           new_status_tg, update_member_data,
                                           update_user_data)
 from FSMs.FSMs import FSM_short_registration
 from keyboards.keyboards import return_to_main_menu_markup, user_menu
-from LEXICON.LEXICON import LEXICON
+from LEXICON.LEXICON import LEXICON_dict
 from services.services import (notify_registrator_short,
                                notify_super_registrator_short)
 from utils import log_handler_call
@@ -47,7 +48,9 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 
         if "member" in data["user_status"]:
             await callback.message.answer(  # type: ignore
-                text="Вы уже зарегистрированы в группе",
+#                 text="Вы уже зарегистрированы в группе",
+                text=get_text("short_reg_process.you_already_registered_in_group", lang=data.get("lang","ru")),
+
                 reply_markup=return_to_main_menu_markup,
             )
             return
@@ -57,14 +60,18 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         club_info = await get_club_info(club_id)
         if not club_info:
             logger.error("Нет информации о группе")
-            await callback.message.answer(text="Ошибка. Не найдена информация о группе")  # type: ignore
+#             await callback.message.answer(text="Ошибка. Не найдена информация о группе")  # type: ignore
+            await callback.message.answer(text=get_text("short_reg_process.error_not_found_info_about_group", lang=data.get("lang","ru")))  # type: ignore
+
             return
 
         # Логируем club_info для отладки
         logger.debug(f"Club info: {club_info}")
 
-        text0 = LEXICON.get("registration_message", "Напишите о себе")
-        text1 = LEXICON.get("reg_cancel_info")
+#         text0 = LEXICON.get("registration_message", "Напишите о себе")
+        text0 = LEXICON_dict.get("registration_message", get_text("short_reg_process.write_about_about_yourself", lang=data.get("lang","ru")))
+
+        text1 = LEXICON_dict.get("reg_cancel_info")
 
         # Проверяем, что club_info содержит вопросы
         questions = club_info.get("questions_for_the_candidate")
@@ -81,7 +88,9 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         # Убеждаемся, что это доступное сообщение
         if not isinstance(callback.message, Message):
             logger.warning("Сообщение недоступно (InaccessibleMessage)")
-            await callback.answer("Сообщение недоступно")
+#             await callback.answer("Сообщение недоступно")
+            await callback.answer(get_text("short_reg_process.message_unavailable", lang=data.get("lang","ru")))
+
             return
 
         # Теперь можно безопасно использовать .text и .reply_markup
@@ -107,7 +116,9 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         logger.error(f"Текущие данные: {data}")
 
         # Добавляем данные для SafeEditMiddleware
-        data["response_text"] = "Произошла ошибка при начале процесса регистрации."
+#         data["response_text"] = "Произошла ошибка при начале процесса регистрации."
+        data["response_text"] = get_text("short_reg_process.occurred_error_with_start_process_registration", lang=data.get("lang","ru"))
+
         data["reply_markup"] = await user_menu(status= data.get("user_status", "user"))
 
         # Пытаемся отредактировать сообщение
@@ -149,7 +160,9 @@ async def process_resume_sent(message: Message, state: FSMContext, data: dict):
     buttons.append(
         [
             InlineKeyboardButton(
-                text="Никого из регистраторов не знаю", callback_data="stranger"
+#                 text="Никого из регистраторов не знаю", callback_data="stranger"
+                text=get_text("short_reg_process.nobody_from_registrators_not_know", lang=data.get("lang","ru")), callback_data="stranger"
+
             )
         ]
     )
@@ -158,7 +171,9 @@ async def process_resume_sent(message: Message, state: FSMContext, data: dict):
 
     # Отправляем пользователю клавиатуру для выбора регистратора
     await message.answer(
-        text="Спасибо!\nВыберите регистратора, которого знаете,\nчтобы он смог подтвердить вашу личность\nЕсли никого не знаете,\nНажмите кнопку 'Никого не знаю'",
+#         text="Спасибо!\nВыберите регистратора, которого знаете,\nчтобы он смог подтвердить вашу личность\nЕсли никого не знаете,\nНажмите кнопку 'Никого не знаю'",
+        text=get_text("short_reg_process.thank_you_choose_registrator_whose_know_to_he_could_confirm_", lang=data.get("lang","ru")),
+
         reply_markup=markup,  # клавиатура подтверждения
     )
     # Устанавливаем состояние ожидания выбора регистратора
@@ -223,7 +238,9 @@ async def process_registrator_choise(
 
         # Отправляем в чат сообщение о выходе из машины состояний
         await callback.message.answer(  # type: ignore
-            text="Спасибо! Ваши данные сохранены.\nАдминистрация их проверит и даст вам соответствующие права\nВы вышли из машины состояний",
+#             text="Спасибо! Ваши данные сохранены.\nАдминистрация их проверит и даст вам соответствующие права\nВы вышли из машины состояний",
+            text=get_text("short_reg_process.thank_you_yours_data_saved_admin_team_them_confirm_and_given", lang=data.get("lang","ru")),
+
             reply_markup=await user_menu(status= data.get("user_status", "user"))
         )
 
@@ -243,17 +260,23 @@ async def process_registrator_choise(
                 bot, int(callback.data), tg_id, user_dict
             )
             if not success:
-                await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")  # type: ignore
+#                 await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")  # type: ignore
+                await callback.message.answer(text=get_text("short_reg_process.error_with_notification_registrator_value", lang=data.get("lang","ru")).format(result=result))  # type: ignore
+
         elif callback.data == "stranger":
             logger.info(f"Пользователь {tg_id} выбрал 'Никого не знаю'.")
             club_id = data["club_id"]
             success, result = await notify_super_registrator_short(bot, club_id, tg_id, user_dict)
             if not success:
-                await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")  # type: ignore
+#                 await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")  # type: ignore
+                await callback.message.answer(text=get_text("short_reg_process.error_with_notification_super_registrator_value", lang=data.get("lang","ru")).format(result=result))  # type: ignore
+
             # Здесь тоже нужна функция уведомления администрации
     except Exception as e:
         logger.error(f"Ошибка при выборе регистратора: {e}")
-        await callback.message.answer(text=f"Произошла ошибка: {str(e)}")  # type: ignore
+#         await callback.message.answer(text=f"Произошла ошибка: {str(e)}")  # type: ignore
+        await callback.message.answer(text=get_text("short_reg_process.occurred_error_value", lang=data.get("lang","ru")).format(/*** NEED MANUAL FIX ***/))  # type: ignore
+
         # Завершаем машину состояний
         await state.clear()
 
@@ -262,7 +285,7 @@ async def process_registrator_choise(
 # будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSM_short_registration.fill_registrator))
 @log_handler_call
-async def warning_not_registrator(message: Message):
+async def warning_not_registrator(message: Message,data: dict):
     # Проверям, существует ли message.from_user
     if not message.from_user:
         raise ValueError("Отправитель сообщения отсутствует (from_user == None)")
@@ -271,5 +294,7 @@ async def warning_not_registrator(message: Message):
         f"Некорректный ввод при выборе модератора от пользователя {message.from_user.id}"
     )
     await message.answer(
-        text="Пожалуйста, пользуйтесь кнопками при выборе модератора.\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel"
+#         text="Пожалуйста, пользуйтесь кнопками при выборе модератора.\n\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel"
+        text=get_text("short_reg_process.please_use_buttons_with_choice_moderator_if_you_want_cancel_", lang=data.get("lang","ru"))
+
     )

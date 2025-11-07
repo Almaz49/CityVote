@@ -7,6 +7,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from aiogram.types import CallbackQuery, Message
+from LEXICON import get_text
 from data_base.db_vote import variant_create
 from filters.filters import StatusFilter
 from FSMs.FSMs import FSMNewVariant, FSMNewVoting
@@ -36,13 +37,15 @@ router.callback_query.filter(StatusFilter(required_status=["delegate"]))
 # и переводить бота в состояние ожидания ввода названия голосования
 @router.message(Command(commands="new_voting"), StateFilter(default_state))
 @log_handler_call
-async def process_new_voting_start_command(message: Message, state: FSMContext):
+async def process_new_voting_start_command(message: Message, state: FSMContext, data: dict):
     """
     Обработчик команды /new_voting.
     Запускает процесс создания нового голосования.
     """
     logger.info(f"Пользователь {message.from_user.id} начал создание голосования.")  # type: ignore
-    await message.answer(text="Пожалуйста, введите название голосования.")
+#     await message.answer(text="Пожалуйста, введите название голосования.")
+    await message.answer(text=get_text("delegate.please_enter_title_voting", lang=data.get("lang","ru")))
+
     await state.set_state(FSMNewVoting.fill_voting_title)
 
 
@@ -56,7 +59,9 @@ async def process_new_voting_start(callback: CallbackQuery, state: FSMContext):
     Запускает процесс создания нового голосования.
     """
     logger.info(f"Пользователь {callback.from_user.id} начал создание голосования.")
-    await callback.message.answer(text="Пожалуйста, введите название голосования.")  # type: ignore
+#     await callback.message.answer(text="Пожалуйста, введите название голосования.")  # type: ignore
+    await callback.message.answer(text=get_text("delegate.please_enter_title_voting_1", lang=data.get("lang","ru")))  # type: ignore
+
     await state.set_state(FSMNewVoting.fill_voting_title)
 
 
@@ -64,7 +69,7 @@ async def process_new_voting_start(callback: CallbackQuery, state: FSMContext):
 # и переводить бота в состояние ожидания ввода описания голосования
 @router.message(StateFilter(FSMNewVoting.fill_voting_title))
 @log_handler_call
-async def process_new_voting_title_sent(message: Message, state: FSMContext):
+async def process_new_voting_title_sent(message: Message, state: FSMContext, data: dict):
     """
     Обработчик ввода названия голосования.
     Сохраняет название и запрашивает описание.
@@ -75,11 +80,15 @@ async def process_new_voting_title_sent(message: Message, state: FSMContext):
     logger.info(f"Пользователь {message.from_user.id} ввел название голосования: {message.text}.")  # type: ignore
     if len(message.text) > 40:
         await message.answer(
-            "Название не должно быть длиннее 40 символов. Попробуйте снова."
+#             "Название не должно быть длиннее 40 символов. Попробуйте снова."
+            get_text("delegate.title_not_must_be_longer_40_characters_try_again", lang=data.get("lang","ru"))
+
         )
         return
     await state.update_data(title=message.text)
-    await message.answer(text="Пожалуйста, введите описание голосования.")
+#     await message.answer(text="Пожалуйста, введите описание голосования.")
+    await message.answer(text=get_text("delegate.please_enter_description_voting", lang=data.get("lang","ru")))
+
     await state.set_state(FSMNewVoting.fill_voting_description)
 
 
@@ -88,7 +97,7 @@ async def process_new_voting_title_sent(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMNewVoting.fill_voting_description))
 @log_handler_call
 @check_fsm_data
-async def process_new_voting_description_sent(message: Message, state: FSMContext):
+async def process_new_voting_description_sent(message: Message, state: FSMContext, data: dict):
     """
     Обработчик ввода описания голосования.
     Запрашивает подтверждение данных.
@@ -101,9 +110,11 @@ async def process_new_voting_description_sent(message: Message, state: FSMContex
 
     # Отправляем сообщение с подтверждением
     await message.answer(
-        text=f"""Пожалуйста, подтвердите, правильно ли введены название и описание голосования?
-Название: {title}
-Описание: {description}""",
+#         text=f"""Пожалуйста, подтвердите, правильно ли введены название и описание голосования?
+# Название: {title}
+# Описание: {description}""",
+        text=get_text("delegate.please_confirm_correct_is_entered_title_and_description_voti", lang=data.get("lang","ru")).format(description=description, title=title),
+
         reply_markup=confirm_markup,
     )
     await state.set_state(FSMNewVoting.fill_OK)
@@ -151,7 +162,9 @@ async def process_new_voting_yes_confirm_press(
 
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = (
-                "Спасибо! Голосование создано! Вы вышли из машины состояний."
+#                 "Спасибо! Голосование создано! Вы вышли из машины состояний."
+                get_text("delegate.thank_you_voting_created_you_exited_from_machines_consisting", lang=data.get("lang","ru"))
+
             )
             data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
@@ -162,7 +175,9 @@ async def process_new_voting_yes_confirm_press(
 
         else:
             # Добавляем данные для SafeEditMiddleware
-            data["response_text"] = f"Ошибка: {comment}"
+#             data["response_text"] = f"Ошибка: {comment}"
+            data["response_text"] = get_text("delegate.error_value", lang=data.get("lang","ru")).format(comment=comment)
+
             data["reply_markup"] = None  # Если клавиатура не нужна
 
             # Пытаемся отредактировать сообщение
@@ -174,7 +189,10 @@ async def process_new_voting_yes_confirm_press(
         logger.error(f"Ошибка при создании голосования: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data["response_text"] = f"Произошла ошибка: {str(e)}"
+#         data["response_text"] = f"Произошла ошибка: {str(e)}"
+        err = str(e)
+        data["response_text"] = get_text("delegate.occurred_error_value", lang=data.get("lang","ru")).format(err = err)
+
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
@@ -201,7 +219,9 @@ async def process_new_voting_no_confirm_press(
 
     # Добавляем данные для SafeEditMiddleware
     data["response_text"] = (
-        "Голосование не создано! Попробуйте еще раз. Вы вышли из машины состояний."
+#         "Голосование не создано! Попробуйте еще раз. Вы вышли из машины состояний."
+        get_text("delegate.voting_not_created_try_also_time_you_exited_from_machines_co", lang=data.get("lang","ru"))
+
     )
     data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
@@ -214,118 +234,6 @@ async def process_new_voting_no_confirm_press(
 """
 Добавление варианта
 """
-
-# # Этот хэндлер будет срабатывать на команду /new_variant
-# # и переводить бота в состояние ожидания выбора голосования
-# @router.message(Command(commands='new_variant'), StateFilter(default_state))
-# @log_handler_call
-# async def process_new_variant_start(message: Message, state: FSMContext, data:dict):
-#     """
-#     Обработчик команды /new_variant.
-#     Запрашивает выбор голосования для добавления варианта.
-#     """
-#     logger.info(f"Пользователь {message.from_user.id} начал добавление варианта.")
-#     try:
-#         list_of_votings = await list_of_votings_tg('add_variants')
-#         if not list_of_votings:
-#             await message.answer(text='Сейчас нет активных голосований, вы не можете добавить вариант.',
-#                                  reply_markup=await user_menu(message.from_user.id))
-#             return
-
-#         # Создаем клавиатуру с активными голосованиями
-#         keyboards = {str(item[0]): item[1] for item in list_of_votings}
-#         markup = create_inline_kb(1, **keyboards)
-
-#         await message.answer(text='Пожалуйста, выберите, к какому голосованию вы хотите добавить вариант:',
-#                             reply_markup=markup)
-#         await state.set_state(FSMNewVariant.fill_voting_choise)
-#     except Exception as e:
-#         logger.error(f"Ошибка при получении списка голосований: {e}")
-#         await message.answer(
-#             text=f"Произошла ошибка: {str(e)}",
-#             reply_markup=await user_menu(message.from_user.id, data['user_status'])
-#             )
-
-# # Этот хэндлер будет срабатывать на нажатие кнопки new_variant
-# # и переводить бота в состояние ожидания выбора голосования
-# @router.callback_query(F.data =='new_variant', StateFilter(default_state))
-# @log_handler_call
-# async def process_new_variant_cb_start(callback: CallbackQuery, state: FSMContext, data:dict):
-#     """
-#     Обработчик кнопки new_variant.
-#     Запрашивает выбор голосования для добавления варианта.
-#     """
-#     logger.info(f"Пользователь {callback.from_user.id} начал добавление варианта.")
-#     try:
-#         list_of_votings = await list_of_votings_tg('add_variants')
-#         if not list_of_votings:
-#             # Добавляем данные для SafeEditMiddleware
-#             data['response_text'] = 'Сейчас нет голосованийв стадии добавления варианта, вы не можете добавить вариант.'
-#             data['reply_markup'] = await user_menu(status = data.get("user_status", ["user"]))  # Убираем клавиатуру
-
-#             # Пытаемся отредактировать сообщение
-#             await safe_edit(callback,
-#                 text=data['response_text'],
-#                 reply_markup=data['reply_markup']
-#             )
-
-#             return
-
-#         # Создаем клавиатуру с активными голосованиями
-#         keyboards = {str(item[0]): item[1] for item in list_of_votings}
-
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = 'Пожалуйста, выберите, к какому голосованию вы хотите добавить вариант:'
-#         data['reply_markup'] = create_inline_kb(1, **keyboards)
-
-#         # Пытаемся отредактировать сообщение
-#         await safe_edit(callback,
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#         await state.set_state(FSMNewVariant.fill_voting_choise)
-
-#     except Exception as e:
-#         logger.error(f"Ошибка при получении списка голосований: {e}")
-#         # Добавляем данные для SafeEditMiddleware
-#         data['response_text'] = f"Произошла ошибка: {str(e)}"
-#         data['reply_markup'] = await user_menu(callback.from_user.id, data['user_status'])
-
-#         # Пытаемся отредактировать сообщение
-#         await safe_edit(callback,
-#             text=data['response_text'],
-#             reply_markup=data['reply_markup']
-#         )
-
-#         await state.clear()
-
-
-# # Этот хэндлер будет срабатывать на нажатие кнопки с названием голосования в машине
-# # состояний добавления вариантов
-# @router.callback_query(StateFilter(FSMNewVariant.fill_voting_choise), F.data.isdigit())
-# @log_handler_call
-# async def process_variant_title_sent(callback: CallbackQuery, state: FSMContext, data: dict):
-#     """
-#     Обработчик выбора голосования.
-#     Запрашивает ввод названия варианта.
-#     """
-#     logger.info(f"Пользователь {callback.from_user.id} выбрал голосование ID={callback.data}.")
-#     voting_id = int(callback.data)
-#     await state.update_data(voting_id=voting_id)
-
-#     # Добавляем данные для SafeEditMiddleware
-#     data['response_text'] = 'Пожалуйста, введите название варианта.'
-#     data['reply_markup'] = None  # Убираем клавиатуру
-
-#     # Пытаемся отредактировать сообщение
-#     await safe_edit(callback,
-#         text=data['response_text'],
-#         reply_markup=data['reply_markup']
-#     )
-
-#     # Устанавливаем следующее состояние
-#     await state.set_state(FSMNewVariant.fill_variant_title)
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки с добавлением варианта к конкретному голосованию
@@ -344,7 +252,9 @@ async def process_variant_title_sent(
     # Проверяем, что callback.data существует
     if callback.data is None:
         logger.warning("Callback data отсутствует")
-        await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+#         await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+        await callback.answer(get_text("delegate.occurred_error_please_try_again", lang=data.get("lang","ru")))
+
         return
     logger.info(
         f"Пользователь {callback.from_user.id} начал добавление варианта к голосованию ID={callback.data}."
@@ -353,7 +263,9 @@ async def process_variant_title_sent(
     await state.update_data(voting_id=voting_id)
 
     # Добавляем данные для SafeEditMiddleware
-    data["response_text"] = "Пожалуйста, введите название варианта."
+#     data["response_text"] = "Пожалуйста, введите название варианта."
+    data["response_text"] = get_text("delegate.please_enter_title_option", lang=data.get("lang","ru"))
+
     data["reply_markup"] = None  # Убираем клавиатуру
 
     # Пытаемся отредактировать сообщение
@@ -369,7 +281,7 @@ async def process_variant_title_sent(
 # и переводить бота в состояние ожидания ввода описания
 @router.message(StateFilter(FSMNewVariant.fill_variant_title))
 @log_handler_call
-async def process_variant_description_sent(message: Message, state: FSMContext):
+async def process_variant_description_sent(message: Message, state: FSMContext, data: dict):
     """
     Обработчик ввода названия варианта.
     Запрашивает ввод описания.
@@ -380,11 +292,15 @@ async def process_variant_description_sent(message: Message, state: FSMContext):
     logger.info(f"Пользователь {message.from_user.id} ввел название варианта: {message.text}.")  # type: ignore
     if len(message.text) > 40:
         await message.answer(
-            "Название не должно быть длиннее 40 символов. Попробуйте снова."
+#             "Название не должно быть длиннее 40 символов. Попробуйте снова."
+            get_text("delegate.title_not_must_be_longer_40_characters_try_again_1", lang=data.get("lang","ru"))
+
         )
         return
     await state.update_data(title=message.text)
-    await message.answer(text="Пожалуйста, введите описание варианта.")
+#     await message.answer(text="Пожалуйста, введите описание варианта.")
+    await message.answer(text=get_text("delegate.please_enter_description_option", lang=data.get("lang","ru")))
+
     await state.set_state(FSMNewVariant.fill_variant_description)
 
 
@@ -405,9 +321,11 @@ async def process_new_variant_description_sent(message: Message, state: FSMConte
 
     # Отправляем сообщение с подтверждением
     await message.answer(
-        text=f"""Пожалуйста, подтвердите, правильно ли введены название и описание варианта?
-Название: {title}
-Описание: {description}""",
+#         text=f"""Пожалуйста, подтвердите, правильно ли введены название и описание варианта?
+# Название: {title}
+# Описание: {description}""",
+        text=get_text("delegate.please_confirm_correct_is_entered_title_and_description_opti", lang=data.get("lang","ru")).format(description=description, title=title),
+
         reply_markup=confirm_markup,
     )
     await state.set_state(FSMNewVariant.fill_OK)
@@ -442,7 +360,9 @@ async def process_new_variant_yes_confirm_press(
         if flag:
             # Добавляем данные для SafeEditMiddleware
             data["response_text"] = (
-                "Спасибо! Вариант создан!\nХотите ли добавить ещё вариант?"
+#                 "Спасибо! Вариант создан!\nХотите ли добавить ещё вариант?"
+                get_text("delegate.thank_you_option_created_nkhotite_is_add_eshch_option", lang=data.get("lang","ru"))
+
             )
             data["reply_markup"] = variant_markup
 
@@ -456,7 +376,9 @@ async def process_new_variant_yes_confirm_press(
 
         else:
             # Добавляем данные для SafeEditMiddleware
-            data["response_text"] = f"Ошибка: {comment}"
+#             data["response_text"] = f"Ошибка: {comment}"
+            data["response_text"] = get_text("delegate.error_value_1", lang=data.get("lang","ru")).format(comment=comment)
+
             data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
             # Пытаемся отредактировать сообщение
@@ -468,7 +390,10 @@ async def process_new_variant_yes_confirm_press(
         logger.error(f"Ошибка при добавлении варианта: {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data["response_text"] = f"Произошла ошибка: {str(e)}"
+#         data["response_text"] = f"Произошла ошибка: {str(e)}"
+        err = str(e)
+        data["response_text"] = get_text("delegate.occurred_error_value_1", lang=data.get("lang","ru")).format(err=err)
+
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
@@ -487,7 +412,9 @@ async def process_new_variant_no_confirm_press(
     callback: CallbackQuery, state: FSMContext, data: dict
 ):
     # Добавляем данные для SafeEditMiddleware
-    data["response_text"] = "Вариант не создан! Хотите ли добавить другой вариант?"
+#     data["response_text"] = "Вариант не создан! Хотите ли добавить другой вариант?"
+    data["response_text"] = get_text("delegate.option_not_created_want_is_add_another_option", lang=data.get("lang","ru"))
+
     data["reply_markup"] = variant_markup
 
     # Пытаемся отредактировать сообщение
@@ -514,7 +441,9 @@ async def process_more_variant(callback: CallbackQuery, state: FSMContext, data:
     )
 
     # Добавляем данные для SafeEditMiddleware
-    data["response_text"] = "Пожалуйста, введите название варианта."
+#     data["response_text"] = "Пожалуйста, введите название варианта."
+    data["response_text"] = get_text("delegate.please_enter_title_option_1", lang=data.get("lang","ru"))
+
     data["reply_markup"] = None  # Если клавиатура не нужна
 
     # Пытаемся отредактировать сообщение
@@ -543,7 +472,9 @@ async def process_finish_variant(
 
     # Добавляем данные для SafeEditMiddleware
     data["response_text"] = (
-        "Спасибо! Все варианты добавлены! Вы вышли из машины состояний."
+#         "Спасибо! Все варианты добавлены! Вы вышли из машины состояний."
+        get_text("delegate.thank_you_all_options_added_you_exited_from_machines_consist", lang=data.get("lang","ru"))
+
     )
     data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 

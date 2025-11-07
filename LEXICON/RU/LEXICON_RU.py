@@ -1,9 +1,10 @@
 # LEXICON\RU\LEXICON_RU.py
 
-from LEXICON.RU.LEXICON_admin_ru import admin
+from LEXICON.RU.LEXICON_handlers_ru import LEXICON_HANDLERS_RU
+# from LEXICON.RU.LEXICON_user_ru import user
+# from LEXICON.RU.LEXICON_voting_ru import voting
+
 LEXICON_RU = {
-    # Тексты для админа
-    "admin": admin,
     # Названия статусов участников
     "user_status": {
         "all members": "Все участники",
@@ -141,7 +142,7 @@ LEXICON_RU = {
     "An error occurred, please try again": "Произошла ошибка, попробуйте еще раз",
     "info_menu": "Выберите интересующую вас информацию",
     # Информация о профиле
-    "profile":("ID: {id}\n"
+    "profile_info":("ID: {id}\n"
             "Имя: {first_name}\n"
             "Фамилия: {last_name}\n"
             "Псевдоним: {username}\n"
@@ -368,3 +369,5 @@ LEXICON_RU = {
     'Тем самым устраняется основной недостаток преставительной демократии "вы нас избрали и вы нам больше не нужны".'
     "\nНо если вам не нравится система делегирования голоса представителю - вы можете просто всегда голосовать самостоятельно.\n\n",
 }
+
+LEXICON_RU.update(LEXICON_HANDLERS_RU)

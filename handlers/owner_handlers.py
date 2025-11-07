@@ -12,7 +12,7 @@ from data_base.telegram_bot_logic import *
 from filters.filters import StatusFilter
 from FSMs.FSMs import AdminStates, FSMNewStatus
 from keyboards.keyboards import *
-from LEXICON.LEXICON import LEXICON
+from LEXICON.LEXICON import LEXICON_dict
 from services.services import process_channel_info
 from utils import log_handler_call, safe_edit
 
@@ -320,7 +320,7 @@ async def process_new_status_confirm(
             raise ValueError("Нет member_ID пользователя")
         user_profile = await get_profile(member_id)
         if user_profile:
-            status_text = LEXICON.get(status, status)
+            status_text = LEXICON_dict.get(status, status)
             text = f"""Данные участника которому вы меняете статус:\nИмя: {user_profile.get('first_name')},
 Фамилия: {user_profile.get('last_name')}, \n Телефон: {user_profile.get('tg_phone_number')}\n
 Псевдоним: {user_profile.get('username')}\nВы хотите изменить его статус:

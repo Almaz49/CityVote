@@ -8,6 +8,7 @@ from aiogram.filters import StateFilter
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 
+from LEXICON import get_text
 from filters.filters import StatusFilter
 from FSMs.FSMs import FSMTokenManagement
 from data_base.db_token_service import (
@@ -67,42 +68,52 @@ async def tokens_menu(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "create_lot")
 @log_handler_call
-async def handle_create_lot(callback: CallbackQuery, state: FSMContext):
+async def handle_create_lot(callback: CallbackQuery, state: FSMContext, data: dict):
     logger.info(f"Пользователь {callback.from_user.id} выбрал создание лота.")
     if not callback.message:
         raise ValueError("CallbackQuery.message is None")
     # Клавиатура с кнопкой "Пропустить"
-    markup = create_inline_kb(width=1, skip_lot="Пропустить (автоматический номер)")
+#     markup = create_inline_kb(width=1, skip_lot="Пропустить (автоматический номер)")
+    markup = create_inline_kb(width=1, skip_lot=get_text("token.skip_avtomaticheskiy_number", lang=data.get("lang","ru")))
+
 
     await callback.message.answer(
-        "Введите номер существующего лота или нажмите кнопку ниже, если лот новый:",
+#         "Введите номер существующего лота или нажмите кнопку ниже, если лот новый:",
+        get_text("token.enter_number_existing_lot_or_press_button_below_if_lot_new", lang=data.get("lang","ru")),
+
         reply_markup=markup
     )
     await state.set_state(FSMTokenManagement.fill_lot_number)
 
 @router.callback_query(StateFilter(FSMTokenManagement.fill_lot_number), F.data == "skip_lot")
 @log_handler_call
-async def process_skip_lot(callback: CallbackQuery, state: FSMContext):
+async def process_skip_lot(callback: CallbackQuery, state: FSMContext, data: dict):
     logger.info(f"Пользователь {callback.from_user.id} пропустил ввод номера лота.")
     if not callback.message:
         raise ValueError("Нет сообщения для ответа")
 
     # Устанавливаем lot_number = None → автоматический выбор
     await state.update_data(lot_number=None)
-    await callback.message.answer("Сколько токенов создать?")
+#     await callback.message.answer("Сколько токенов создать?")
+    await callback.message.answer(get_text("token.how_much_tokens_create", lang=data.get("lang","ru")))
+
     await state.set_state(FSMTokenManagement.fill_token_count)
 
 @router.message(StateFilter(FSMTokenManagement.fill_lot_number))
 @log_handler_call
-async def process_lot_number(message: Message, state: FSMContext):
+async def process_lot_number(message: Message, state: FSMContext, data: dict):
     lot_number = message.text.strip() if message.text else None
 
     if lot_number and not lot_number.isdigit():
-        await message.answer("Номер лота должен быть числом. Попробуйте ещё раз:")
+#         await message.answer("Номер лота должен быть числом. Попробуйте ещё раз:")
+        await message.answer(get_text("token.number_lot_must_be_chislom_try_once_more_time", lang=data.get("lang","ru")))
+
         return
 
     await state.update_data(lot_number=int(lot_number) if lot_number else None)
-    await message.answer("Сколько токенов создать?")
+#     await message.answer("Сколько токенов создать?")
+    await message.answer(get_text("token.how_much_tokens_create_1", lang=data.get("lang","ru")))
+
     await state.set_state(FSMTokenManagement.fill_token_count)
 
 
@@ -114,30 +125,40 @@ async def process_token_count(message: Message, state: FSMContext, data: dict):
         raise ValueError("Отправтель сообщения отсутствует (from_user == None)")
     count = message.text.strip() if message.text else "30"
     if not count.isdigit():
-        await message.answer("Введите корректное число.")
+#         await message.answer("Введите корректное число.")
+        await message.answer(get_text("token.enter_correct_number", lang=data.get("lang","ru")))
+
         return
 
     await state.update_data(count=int(count))
-    await message.answer("Введите комментарий для этих токенов:")
+#     await message.answer("Введите комментарий для этих токенов:")
+    await message.answer(get_text("token.enter_comment_for_these_tokens", lang=data.get("lang","ru")))
+
     await state.set_state(FSMTokenManagement.fill_token_comment)
 
 @router.message(StateFilter(FSMTokenManagement.fill_token_comment))
 @log_handler_call
 async def process_token_comment(message: Message, state: FSMContext, data: dict):
     if not message.text:
-        await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+#         await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("token.comment_not_can_be_empty_try_once_more_time", lang=data.get("lang","ru")))
+
         return
     if not message.from_user:
         raise ValueError("Отправтель сообщения отсутствует (from_user == None)")
     comment = message.text.strip()
     if not comment:
-        await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+#         await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("token.comment_not_can_be_empty_try_once_more_time_1", lang=data.get("lang","ru")))
+
         return
 
     fsm_data = await state.get_data()
     count = fsm_data.get("count")
     if not isinstance(count, int) or count <= 0:
-        await message.answer("❌ Не указано количество токенов.")
+#         await message.answer("❌ Не указано количество токенов.")
+        await message.answer(get_text("token.not_specified_quantity_tokens", lang=data.get("lang","ru")))
+
         return
     lot_number = fsm_data.get("lot_number")  # Может быть None
 
@@ -170,14 +191,20 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
 
         logger.info(f"Пользователь {message.from_user.id} создал токены лота №{result['lot']}")
         await message.answer(
-            f"Созданы токены лота №{result['lot']}:\n\n{tokens_list}",
+#             f"Созданы токены лота №{result['lot']}:\n\n{tokens_list}",
+            get_text("token.created_tokeny_lot_value_value", lang=data.get("lang","ru"))+f"{result['lot']}:\n\n{tokens_list}",
+
             parse_mode = "HTML")
     except Exception as e:
         logger.error(f"Ошибка при создании лота: {e}")
-        await message.answer("Не удалось создать лот токенов.")
+#         await message.answer("Не удалось создать лот токенов.")
+        await message.answer(get_text("token.not_success_create_lot_tokens", lang=data.get("lang","ru")))
+
 
     await state.clear()
-    await message.answer("Возврат в главное меню:", reply_markup=main_menu_markup)
+#     await message.answer("Возврат в главное меню:", reply_markup=main_menu_markup)
+    await message.answer(get_text("token.return_in_main_menu", lang=data.get("lang","ru")), reply_markup=main_menu_markup)
+
 
     # fsm_data = await state.get_data()
     # if data.get('club_id'):
@@ -213,7 +240,9 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
 @log_handler_call
 async def handle_issue_token(callback: CallbackQuery, state: FSMContext):
     logger.info(f"Пользователь {callback.from_user.id} запросил выдачу токенов без лота.")
-    await callback.message.answer("Сколько токенов выдать?")  # type: ignore
+#     await callback.message.answer("Сколько токенов выдать?")  # type: ignore
+    await callback.message.answer(get_text("token.how_much_tokens_issue", lang=data.get("lang","ru")))  # type: ignore
+
     await state.set_state(FSMTokenManagement.fill_token_count_issue)
 
 
@@ -222,25 +251,33 @@ async def handle_issue_token(callback: CallbackQuery, state: FSMContext):
 async def process_issue_token_count(message: Message, state: FSMContext, data: dict):
     count = message.text.strip() if message.text else "1"
     if not count.isdigit():
-        await message.answer("Введите корректное число.")
+#         await message.answer("Введите корректное число.")
+        await message.answer(get_text("token.enter_correct_number_1", lang=data.get("lang","ru")))
+
         return
 
     await state.update_data(count=int(count))
-    await message.answer("Введите комментарий для этих токенов:")
+#     await message.answer("Введите комментарий для этих токенов:")
+    await message.answer(get_text("token.enter_comment_for_these_tokens_1", lang=data.get("lang","ru")))
+
     await state.set_state(FSMTokenManagement.fill_token_comment_issue)
 
 @router.message(StateFilter(FSMTokenManagement.fill_token_comment_issue))
 @log_handler_call
 async def process_issue_token_comment(message: Message, state: FSMContext, data: dict):
     if not message.text:
-        await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+#         await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("token.comment_not_can_be_empty_try_once_more_time_2", lang=data.get("lang","ru")))
+
         return
     if not message.from_user:
         raise ValueError("Отправтель сообщения отсутствует (from_user == None)")
 
     comment = message.text.strip()
     if not comment:
-        await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+#         await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("token.comment_not_can_be_empty_try_once_more_time_3", lang=data.get("lang","ru")))
+
         return
 
     fsm_data = await state.get_data()
@@ -259,38 +296,50 @@ async def process_issue_token_comment(message: Message, state: FSMContext, data:
 
         tokens_list = "<code>" + "</code>\n<code>".join(tokens) + "</code>"
         await message.answer(
-            text=f"Выданы токены:\n{tokens_list}",
+#             text=f"Выданы токены:\n{tokens_list}",
+            text=get_text("token.issued_tokeny_value", lang=data.get("lang","ru")).format(tokens_list=tokens_list),
+
             parse_mode="HTML")
     except Exception as e:
         logger.error(f"Ошибка при выдаче токенов: {e}")
-        await message.answer("Не удалось выдать токены.")
+#         await message.answer("Не удалось выдать токены.")
+        await message.answer(get_text("token.not_success_issue_tokeny", lang=data.get("lang","ru")))
+
 
     await state.clear()
-    await message.answer("Меню управления токенами:", reply_markup=main_menu_markup)
+#     await message.answer("Меню управления токенами:", reply_markup=main_menu_markup)
+    await message.answer(get_text("token.menu_management_tokens", lang=data.get("lang","ru")), reply_markup=main_menu_markup)
+
 
 
 # --- ВЫДАЧА ОДНОГО ТОКЕНА ---
 
 @router.callback_query(F.data == "issue_1_token")
 @log_handler_call
-async def handle_issue_1_token(callback: CallbackQuery, state: FSMContext):
+async def handle_issue_1_token(callback: CallbackQuery, state: FSMContext, data: dict):
     logger.info(f"Пользователь {callback.from_user.id} запросил выдачу одного токена.")
     if not callback.message:
         raise ValueError("Нет сообщения для ответа ")
-    await callback.message.answer("Введите комментарий для этого токена:")
+#     await callback.message.answer("Введите комментарий для этого токена:")
+    await callback.message.answer(get_text("token.enter_comment_for_this_token", lang=data.get("lang","ru")))
+
     await state.set_state(FSMTokenManagement.fill_1_token_comment)
 
 @router.message(StateFilter(FSMTokenManagement.fill_1_token_comment))
 @log_handler_call
 async def process_issue_1_token_comment(message: Message, state: FSMContext, data: dict):
     if not message.text:
-        await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+#         await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("token.comment_not_can_be_empty_try_once_more_time_4", lang=data.get("lang","ru")))
+
         return
     if not message.from_user:
         raise ValueError("Отправтель сообщения отсутствует (from_user == None)")
     comment = message.text.strip()
     if not comment:
-        await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+#         await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("token.comment_not_can_be_empty_try_once_more_time_5", lang=data.get("lang","ru")))
+
         return
 
     club_id = data.get('club_id')
@@ -307,15 +356,21 @@ async def process_issue_1_token_comment(message: Message, state: FSMContext, dat
 
         tokens_list = "\n".join(tokens)
         await message.answer(
-            text = f"Выдан токен:\n\n<code>{tokens_list}</code>",
+#             text = f"Выдан токен:\n\n<code>{tokens_list}</code>",
+            text = get_text("token.issued_token_value", lang=data.get("lang","ru")).format(tokens_list=tokens_list),
+
             parse_mode="HTML"
 )
     except Exception as e:
         logger.error(f"Ошибка при выдаче токенов: {e}")
-        await message.answer("Не удалось выдать токены.")
+#         await message.answer("Не удалось выдать токены.")
+        await message.answer(get_text("token.not_success_issue_tokeny_1", lang=data.get("lang","ru")))
+
 
     await state.clear()
-    await message.answer("Меню управления токенами:", reply_markup=main_menu_markup)
+#     await message.answer("Меню управления токенами:", reply_markup=main_menu_markup)
+    await message.answer(get_text("token.menu_management_tokens_1", lang=data.get("lang","ru")), reply_markup=main_menu_markup)
+
 
 
 # --- ЭКСПОРТ ТОКЕНОВ В EXCEL ---
@@ -343,19 +398,25 @@ async def handle_export_tokens(callback: CallbackQuery, data: dict):
             bot=bot,
             tg_id=callback.from_user.id,
             file_path=file_path,
-            caption="Экспорт токенов",
+#             caption="Экспорт токенов",
+            caption=get_text("token.export_tokens", lang=data.get("lang","ru")),
+
             reply_markup=main_menu_markup
         )
 
     except Exception as e:
         logger.error(f"Ошибка при экспорте токенов: {e}")
-        await callback.message.answer("Не удалось экспортировать токены.")  # type: ignore
+#         await callback.message.answer("Не удалось экспортировать токены.")  # type: ignore
+        await callback.message.answer(get_text("token.not_success_export_tokeny", lang=data.get("lang","ru")))  # type: ignore
+
     finally:
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
             logger.info(f"Файл {file_path} удалён.")
 
-    await callback.message.answer("Меню управления токенами:", reply_markup=main_menu_markup)  # type: ignore
+#     await callback.message.answer("Меню управления токенами:", reply_markup=main_menu_markup)  # type: ignore
+    await callback.message.answer(get_text("token.menu_management_tokens_2", lang=data.get("lang","ru")), reply_markup=main_menu_markup)  # type: ignore
+
 
 
 # --- ПОМЕТКА ТОКЕНА КАК УСТАРЕВШИЙ ---
@@ -364,30 +425,43 @@ async def handle_export_tokens(callback: CallbackQuery, data: dict):
 @log_handler_call
 async def handle_mark_expired(callback: CallbackQuery, state: FSMContext):
     logger.info(f"Пользователь {callback.from_user.id} хочет пометить токен как устаревший.")
-    await callback.message.answer("Введите токен для пометки как устаревший:")  # type: ignore
+#     await callback.message.answer("Введите токен для пометки как устаревший:")  # type: ignore
+    await callback.message.answer(get_text("token.enter_token_for_mark_kak_obsolete", lang=data.get("lang","ru")))  # type: ignore
+
     await state.set_state(FSMTokenManagement.fill_token_value)
 
 
 @router.message(StateFilter(FSMTokenManagement.fill_token_value))
 @log_handler_call
-async def process_token_value(message: Message, state: FSMContext):
+async def process_token_value(message: Message, state: FSMContext, data: dict):
     if not message.text:
-        await message.answer("Введите корректный токен.")
+#         await message.answer("Введите корректный токен.")
+        await message.answer(get_text("token.enter_correct_token", lang=data.get("lang","ru")))
+
         return
     token = message.text.replace('-', '')  # убираем разделители
     if not token.isdigit():
-        await message.answer("Введите корректный токен.")
+#         await message.answer("Введите корректный токен.")
+        await message.answer(get_text("token.enter_correct_token_1", lang=data.get("lang","ru")))
+
         return
 
     try:
         success = await mark_token_as_old(token=token)
         if success:
-            await message.answer("Токен успешно помечен как устаревший.")
+#             await message.answer("Токен успешно помечен как устаревший.")
+            await message.answer(get_text("token.token_success_marked_kak_obsolete", lang=data.get("lang","ru")))
+
         else:
-            await message.answer("Токен не найден или уже устарел.")
+#             await message.answer("Токен не найден или уже устарел.")
+            await message.answer(get_text("token.token_not_found_or_already_expired", lang=data.get("lang","ru")))
+
     except Exception as e:
         logger.error(f"Ошибка при пометке токена как устаревшего: {e}")
-        await message.answer("Не удалось обновить статус токена.")
+#         await message.answer("Не удалось обновить статус токена.")
+        await message.answer(get_text("token.not_success_update_status_token", lang=data.get("lang","ru")))
+
 
     await state.clear()
-    await message.answer("Меню управления токенами:", reply_markup=main_menu_markup)
+#     await message.answer("Меню управления токенами:", reply_markup=main_menu_markup)
+    await message.answer(get_text("token.menu_management_tokens_3", lang=data.get("lang","ru")), reply_markup=main_menu_markup)

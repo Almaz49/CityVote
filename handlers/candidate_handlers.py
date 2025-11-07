@@ -1,6 +1,7 @@
 # Модуль candidate_handlers
 # В нем хэндлеры, которые работают для всех пользователей
 # Даже для тех, у кого нет токена или он просрочен
+from __future__ import annotations
 import logging
 import traceback
 
@@ -14,11 +15,12 @@ from FSMs.FSMs import FSM_leave_club, FSMEnterToken
 from data_base.db_func import get_profile, list_of_proxy
 from data_base.db_token_service import add_token_attempt, auto_approve_by_token, clear_old_attempts, get_token_attempts_count, is_valid_token
 from keyboards.keyboards import (confirm_markup, get_info_menu_keyboard, get_info_menu_keyboard, get_profile_menu_keyboard,  user_menu, return_to_main_menu_markup)
-from LEXICON.LEXICON import LEXICON
+from LEXICON.LEXICON import LEXICON_dict
 from manager.manager import leave_club
 from services.services import club_info, greetings_message, help_message, notify_super_registrator_short, profile_message
 
 from utils import log_handler_call, paginate, safe_edit
+from LEXICON import get_text
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -47,22 +49,25 @@ async def process_start_command(message: Message, command: CommandObject, data: 
 
         # Логика обработки параметра
         if args == "start":
+            logger.info(f"Пользователь {message.from_user.id} перешел по ссылке с параметром 'start'.")
             # Пользователь перешел по ссылке с параметром "start"
             text = (
-                "🎉 Добро пожаловать! Вы перешли по специальной ссылке.\n"
-                "Это бот для проведения голосований.\n"
-                "Пожалуйста, пройдите регистрацию, чтобы пользоваться ботом.\n"
-                "Тогда вы получите право голоса и возможность голосовать.\n"
-                'Для более подробной информации, нажмите кнопку "Информация".'
+#                 "🎉 Добро пожаловать! Вы перешли по специальной ссылке.\n"
+#                 "Это бот для проведения голосований.\n"
+#                 "Пожалуйста, пройдите регистрацию, чтобы пользоваться ботом.\n"
+#                 "Тогда вы получите право голоса и возможность голосовать.\n"
+#                 'Для более подробной информации, нажмите кнопку "Информация".'
+get_text("candidate.good_welcome_you_passed_by_special_link_this_bot_for_provede", lang=data.get("lang","ru"))
             )
         else:
+            logger.info(f"Пользователь {message.from_user.id} перешел по ссылке с параметром '{args}'.")
             # Обычный старт без параметра
             markup = await user_menu(status = data.get("user_status", ["user"]))
             text = await greetings_message(club_id=data["club_id"])
             text = text or ""
-            text = text + "\nВаш статус в группе:"
+            text = text + get_text("candidate.your_status_in_group", lang=data.get("lang","ru"))
             for status in data["user_status"]:
-                text += f"\n   - {LEXICON.get('user_status',{}).get(status, status)}"
+                text += f"\n   - {LEXICON_dict.get('user_status',{}).get(status, status)}"
 
         # Создаем клавиатуру
         markup = await user_menu(status = data.get("user_status", ["user"]))
@@ -71,7 +76,7 @@ async def process_start_command(message: Message, command: CommandObject, data: 
         await message.answer(text=text, reply_markup=markup, parse_mode="HTML")
 
         logger.info(
-            f"Пользователь {message.from_user.id} начал работу с ботом. Параметр: {args}"
+            f"Пользователь {message.from_user.id} начал работу с ботом. Параметр пригласительной ссылки: {args}"
         )
 
     except Exception as e:
@@ -83,9 +88,11 @@ async def process_start_command(message: Message, command: CommandObject, data: 
                 f"функция: {frame.name}, код: {frame.line}"
             )
         await message.answer(
-            text="Произошла ошибка при загрузке главного меню.",
+#             text="Произошла ошибка при загрузке главного меню.",
+            text=get_text("candidate.occurred_error_with_loading_main_menu", lang=data.get("lang","ru")),
             reply_markup=await user_menu(status = data.get("user_status", ["user"])),
         )
+        logger.info(f"Пользователь {message.from_user.id} вернулся в главное меню c ошибкой загрузки главного меню.") # type: ignore
 
 
 # Хэндлер для команды /help
@@ -145,7 +152,8 @@ async def process_cancel_command(message: Message, data: dict):
         f"Пользователь {message.from_user.id} попытался использовать /cancel вне машины состояний."
     )
     markup = await user_menu(status = data.get("user_status", ["user"]))
-    await message.answer(text="Вы вышли в главное меню.", reply_markup=markup)
+#     await message.answer(text="Вы вышли в главное меню.", reply_markup=markup)
+    await message.answer(text=get_text("candidate.you_exited_in_main_menu", lang=data.get("lang","ru")), reply_markup=markup)
 
 
 # Хэндлер для команды /cancel в любом состоянии, кроме состояния по умолчанию
@@ -162,7 +170,8 @@ async def process_cancel_command_state(message: Message, state: FSMContext, data
     logger.info(f"Пользователь {message.from_user.id} вышел из машины состояний.")
     markup = await user_menu(status = data.get("user_status", ["user"]))
     await message.answer(
-        text="Вы вышли из машины состояний и вернулись в главное меню.",
+#         text="Вы вышли из машины состояний и вернулись в главное меню.",
+        text=get_text("candidate.you_exited_from_machines_consisting_and_return_in_main_menu", lang=data.get("lang","ru")),
         reply_markup=markup,
     )
     # Сбрасываем состояние и очищаем данные
@@ -232,13 +241,16 @@ async def return_to_main_menu(callback: CallbackQuery, state: FSMContext, data: 
         markup = await user_menu(status = data.get("user_status", ["user"]))
 
         await safe_edit(callback,
-            "Вы возвращены в главное меню.",
+#             "Вы возвращены в главное меню.",
+            get_text("candidate.you_returned_in_main_menu", lang=data.get("lang","ru")),
             reply_markup=markup)
 
     elif callback.message:
-        await callback.answer("Не удалось отредактировать сообщение.", show_alert=True)
+#         await callback.answer("Не удалось отредактировать сообщение.", show_alert=True)
+        await callback.answer(get_text("candidate.not_success_edit_message", lang=data.get("lang","ru")), show_alert=True)
     else:
-        await callback.answer("Ошибка: нет сообщения для редактирования.", show_alert=True)
+#         await callback.answer("Ошибка: нет сообщения для редактирования.", show_alert=True)
+        await callback.answer(get_text("candidate.error_no_messages_for_edit", lang=data.get("lang","ru")), show_alert=True)
     await callback.answer()
 
 
@@ -256,7 +268,8 @@ async def process_club_info_command(message: Message, data: dict):
 
     club_id = data.get("club_id")
     if not club_id:
-        await message.answer("❌ Не удалось определить группу.")
+#         await message.answer("❌ Не удалось определить группу.")
+        await message.answer(get_text("candidate.not_success_determine_group", lang=data.get("lang","ru")))
         return
 
     logger.info(f"Пользователь {message.from_user.id} запросил справку о группе.")
@@ -282,7 +295,7 @@ async def process_leave_the_group(
         )
         await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
-        text = "Вы действительно хотите выйти из группы?\nВсё верно?"
+        text = get_text("candidate.you_valid_want_exit_from_group_vs_correct", lang=data.get("lang","ru"))
         markup = confirm_markup
 
         # Добавляем данные для SafeEditMiddleware
@@ -305,7 +318,8 @@ async def process_leave_the_group(
                 f"функция: {frame.name}, код: {frame.line}"
             )
         # Добавляем данные для SafeEditMiddleware
-        data["response_text"] = "Произошла ошибка при загрузке списка голосований."
+#         data["response_text"] = "Произошла ошибка при загрузке списка голосований."
+        data["response_text"] = get_text("candidate.occurred_error_with_loading_list_voting", lang=data.get("lang","ru"))
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
@@ -339,7 +353,8 @@ async def process_leave_club_entry(
         status = data.get("user_status", ["user"])
         await leave_club(bot, member_id, status)
         # Добавляем данные для SafeEditMiddleware
-        data["response_text"] = "Вы вышли из группы!"
+#         data["response_text"] = "Вы вышли из группы!"
+        data["response_text"] = get_text("candidate.you_exited_from_group", lang=data.get("lang","ru"))
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Редактируем сообщение
@@ -359,7 +374,8 @@ async def process_leave_club_entry(
                 f"функция: {frame.name}, код: {frame.line}"
             )
         # Добавляем данные для SafeEditMiddleware
-        data["response_text"] = f"Произошла ошибка: {str(e)}"
+        err = str(e)
+        data["response_text"] = get_text("candidate.occurred_error", lang=data.get("lang","ru")).format(err=err)
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Пытаемся отредактировать сообщение
@@ -381,7 +397,8 @@ async def process_no_confirm_leave_club(
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Добавляем данные для SafeEditMiddleware
-    data["response_text"] = "Вы остались в группе"
+#     data["response_text"] = "Вы остались в группе"
+    data["response_text"] = get_text("candidate.you_consisting_in_group", lang=data.get("lang","ru"))
     data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
     # Пытаемся отредактировать сообщение
@@ -398,7 +415,7 @@ async def process_no_confirm_leave_club(
 # Если при выходе из группы будет введено/отправлено что-то некорректное
 @router.message(StateFilter(FSM_leave_club.fill_OK))
 @log_handler_call
-async def warning_leave_club(message: Message):
+async def warning_leave_club(message: Message, data: dict):
     """
     Функция предупреждает пользователя о некорректном вводе во время состояния выхода из клуба.
     Она логирует предупреждение и предлагает пользователю использовать кнопки или отправить команду /cancel для отмены действия.
@@ -419,9 +436,7 @@ async def warning_leave_club(message: Message):
     )
     # Ответ пользователю с предложением использовать кнопки или отменить действие
     await message.answer(
-        text="Пожалуйста, воспользуйтесь кнопками!\n\n"
-        "Если вы хотите прервать изменение статуса - "
-        "отправьте команду /cancel"
+        text= get_text("candidate.please_use_buttons_if_you_want_cancel_change_status_send_com", lang=data.get("lang","ru"))
     )
 
 
@@ -461,7 +476,8 @@ async def process_info(callback: CallbackQuery, data: dict):
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Добавляем данные для SafeEditMiddleware
-    data["response_text"] = LEXICON.get("info_menu", "Выберите интересующую информацию")
+#     data["response_text"] = LEXICON.get("info_menu", "Выберите интересующую информацию")
+    data["response_text"] = LEXICON_dict.get("info_menu", get_text("candidate.choose_interesting_info", lang=data.get("lang","ru")))
     data["reply_markup"] = get_info_menu_keyboard()
 
     # Пытаемся отредактировать сообщение
@@ -508,8 +524,9 @@ async def process_bot_info(callback: CallbackQuery, data: dict):
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     # Добавляем данные для SafeEditMiddleware
-    data["response_text"] = LEXICON.get(
-        "bot_info_text", "Здесь должна была быть информаия о боте"
+    data["response_text"] = LEXICON_dict.get(
+#         "bot_info_text", "Здесь должна была быть информация о боте"
+        "bot_info_text", get_text("candidate.here_should_was_be_info_about_bote", lang=data.get("lang","ru"))
     )
     data["reply_markup"] = get_info_menu_keyboard(exc="bot_info")
 
@@ -534,7 +551,8 @@ async def process_aboute(callback: CallbackQuery, data: dict):
     await callback.answer()
 
     # Получаем текст из LEXICON
-    response_text = LEXICON.get("about_text", "Здесь должна была быть теория о ньюдеме")
+#     response_text = LEXICON.get("about_text", "Здесь должна была быть теория о ньюдеме")
+    response_text = LEXICON_dict.get("about_text", get_text("candidate.here_should_was_be_theory_about_newdem", lang=data.get("lang","ru")))
 
     # Создаем клавиатуру, исключая кнопку 'about'
     reply_markup = get_info_menu_keyboard(exc="about")
@@ -568,12 +586,14 @@ async def enter_token(callback: CallbackQuery, state: FSMContext, data: dict):
     await clear_old_attempts(member_id)
     attempts = await get_token_attempts_count(member_id)
     if attempts >= 3:
-        await callback.message.answer("Превышено количество попыток ввода токена.")
+#         await callback.message.answer("Превышено количество попыток ввода токена.")
+        await callback.message.answer(get_text("candidate.prevysheno_quantity_attempts_input_token", lang=data.get("lang","ru")))
         return
 
     # Формируем сообщение: ввести токен
     text = (
-        "Введите уникальный токен (если он у вас есть).\n"
+#         "Введите уникальный токен (если он у вас есть).\n"
+get_text("candidate.enter_unique_token_if_he_to_you_exists", lang=data.get("lang","ru"))
     )
 
     markup = return_to_main_menu_markup
@@ -600,7 +620,8 @@ async def process_token(message: Message, state: FSMContext, data: dict):
     В случае, если введен токен, то он проверяется на действительность.
     """
     if not message.text:
-        await message.answer("Токен не может быть пустым. Попробуйте ещё раз:")
+#         await message.answer("Токен не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("candidate.token_not_can_be_empty_try_eshch_time", lang=data.get("lang","ru")))
         return
     if not message.from_user:
         raise ValueError("Отправтель сообщения отсутствует (from_user == None)")
@@ -615,7 +636,8 @@ async def process_token(message: Message, state: FSMContext, data: dict):
         result = await is_valid_token(clean_token, club_id)
         if not result or result.get("status") not in ["valid"]:
             await message.answer(
-                text = "Токен не действителен. Попробуйте снова или продолжите анкету.",
+#                 text = "Токен не действителен. Попробуйте снова или продолжите анкету.",
+                text = get_text("candidate.token_not_valid_try_again_or_continue_questionnaire", lang=data.get("lang","ru")),
                 reply_markup=return_to_main_menu_markup)
             await add_token_attempt(member_id)
             return
@@ -623,7 +645,8 @@ async def process_token(message: Message, state: FSMContext, data: dict):
         if token_id:
             success, msg = await auto_approve_by_token(member_id, club_id, token_id)
             if success:
-                await message.answer(text="Авторизация успешна! Вы участник группы.",
+#                 await message.answer(text="Авторизация успешна! Вы участник группы.",
+                await message.answer(text=get_text("candidate.auth_success_you_member_group", lang=data.get("lang","ru")),
                     reply_markup=return_to_main_menu_markup)
                 await state.clear()
                 return
@@ -633,14 +656,16 @@ async def process_token(message: Message, state: FSMContext, data: dict):
                 await add_token_attempt(member_id)
                 return
         else:
-            await message.answer(text="Токен недействителен. Попробуйте снова или продолжите анкету.",
+#             await message.answer(text="Токен недействителен. Попробуйте снова или продолжите анкету.",
+            await message.answer(text=get_text("candidate.token_invalid_try_again_or_continue_questionnaire", lang=data.get("lang","ru")),
                 reply_markup=return_to_main_menu_markup)
             await add_token_attempt(member_id)
             return
     else:
         # Это не токен
         logger.info(f"Вместо токена постпило сообщение: {token_input} от пользователя {member_id}")
-        await message.answer(text="То, что вы ввели не похоже на токен. Попробуйте снова или наберите /cancel.",
+#         await message.answer(text="То, что вы ввели не похоже на токен. Попробуйте снова или наберите /cancel.",
+        await message.answer(text=get_text("candidate.to_chto_you_entered_not_seems_to_token_try_again_or_type_can", lang=data.get("lang","ru")),
                 reply_markup=return_to_main_menu_markup)
         await state.set_state(FSMEnterToken.fill_token)
 
@@ -665,16 +690,23 @@ async def request_token(callback: CallbackQuery, data: dict):
     tg_id = callback.from_user.id
     status = data.get("user_status", ["user"])
     if 'member' not in status:  # type: ignore
-        await callback.message.answer(text='Вы не зарегистрированы в группе. Пройдите регистрацию')  # type: ignore
+#         await callback.message.answer(text='Вы не зарегистрированы в группе. Пройдите регистрацию')  # type: ignore
+        await callback.message.answer(text=get_text("candidate.you_not_registered_in_group_proceed_registration", lang=data.get("lang","ru")))  # type: ignore
         return
     profile = await get_profile(member_id)
     if not profile:  # type: ignore
-        await callback.message.answer(text='Не найден профиль пользователя')  # type: ignore
+#         await callback.message.answer(text='Не найден профиль пользователя')  # type: ignore
+        await callback.message.answer(text=get_text("candidate.not_found_profile_user", lang=data.get("lang","ru")))  # type: ignore
         return
     profile['status'] = status
     success, result = await notify_super_registrator_short(bot=bot, club_id=club_id, candidate_tg_id= tg_id, user_dict= profile)
     if not success:
-        await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
+        await callback.message.answer(
+            text=get_text(
+                "candidate.error_with_notification_super_registrator",
+                lang=data.get("lang","ru")
+                ).format(result=result)
+            )
     else:
         await callback.message.answer(text=result)
 
@@ -695,7 +727,8 @@ async def process_list_proxy(callback: CallbackQuery, data: dict):
             # Проверяем, что callback.data существует
             if callback.data is None:
                 logger.warning("Callback data отсутствует")
-                await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+#                 await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+                await callback.answer(get_text("candidate.occurred_error_please_try_again_1", lang=data.get("lang","ru")))
                 return
             _, page = callback.data.split(":")
             page = int(page) if page.isdigit() else 1
@@ -706,7 +739,8 @@ async def process_list_proxy(callback: CallbackQuery, data: dict):
 
         if not proxies:
             # Добавляем данные для SafeEditMiddleware
-            data["response_text"] = "В данный момент нет доступных представителей."
+#             data["response_text"] = "В данный момент нет доступных представителей."
+            data["response_text"] = get_text("candidate.in_this_moment_no_available_representatives_1", lang=data.get("lang","ru"))
             data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
             # Редактируем сообщение
@@ -720,7 +754,7 @@ async def process_list_proxy(callback: CallbackQuery, data: dict):
 
         # Создаем кнопки для представителей
         proxy_buttons = []
-        message_text = f"Список представителей: \n (Псевдоним, число голосов)"
+        message_text = get_text("candidate.list_representatives_username_number_votes", lang=data.get("lang","ru"))
         for proxy in paginated_proxies:
             message_text += f"\n{proxy['username']} - {proxy['trusted_votes']}"
             # Кнопка для получения подробной информации
@@ -736,19 +770,22 @@ async def process_list_proxy(callback: CallbackQuery, data: dict):
         if page > 1:
             pagination_buttons.append(
                 InlineKeyboardButton(
-                    text="⬅️ Назад", callback_data=f"list_of_proxy:{page - 1}"
+#                     text="⬅️ Назад", callback_data=f"list_of_proxy:{page - 1}"
+                    text=get_text("candidate.back_1", lang=data.get("lang","ru")), callback_data=f"list_of_proxy:{page - 1}"
                 )
             )
         if page < total_pages:
             pagination_buttons.append(
                 InlineKeyboardButton(
-                    text="➡️ Вперед", callback_data=f"list_of_proxy:{page + 1}"
+#                     text="➡️ Вперед", callback_data=f"list_of_proxy:{page + 1}"
+                    text=get_text("candidate.before_1", lang=data.get("lang","ru")), callback_data=f"list_of_proxy:{page + 1}"
                 )
             )
 
         # Добавляем кнопку "Главное меню"
         main_menu_button = InlineKeyboardButton(
-            text="Главное меню", callback_data="main_menu"
+#             text="Главное меню", callback_data="main_menu"
+            text=get_text("candidate.main_menu_1", lang=data.get("lang","ru")), callback_data="main_menu"
         )
 
         # Создаем инлайн-клавиатуру
@@ -758,7 +795,8 @@ async def process_list_proxy(callback: CallbackQuery, data: dict):
 
         # Редактируем сообщение
         data["response_text"] = (
-            message_text + "\n\nДля подробной информации нажмите на одну из кнопок ниже:"
+#             message_text + "\n\nДля подробной информации нажмите на одну из кнопок ниже:"
+get_text("candidate.for_detailed_information_press_to_one_from_buttons_below", lang=data.get("lang","ru"))
         )
         data["reply_markup"] = markup
         await safe_edit(callback,   # type: ignore
@@ -769,7 +807,8 @@ async def process_list_proxy(callback: CallbackQuery, data: dict):
         logger.error(f"Ошибка при обработке кнопки 'list_of_proxy': {e}")
 
         # Добавляем данные для SafeEditMiddleware
-        data["response_text"] = "Произошла ошибка при загрузке списка представителей."
+#         data["response_text"] = "Произошла ошибка при загрузке списка представителей."
+        data["response_text"] = get_text("candidate.occurred_error_with_loading_list_representatives", lang=data.get("lang","ru"))
         data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
         # Редактируем сообщение в случае ошибки
@@ -788,11 +827,13 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
         # Проверяем, что callback.data существует
         if callback.data is None:
             logger.warning("Callback data отсутствует")
-            await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+#             await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+            await callback.answer(get_text("candidate.occurred_error_please_try_again", lang=data.get("lang","ru")))
             return
         parts = callback.data.split(":")
         if len(parts) < 4:
-            await callback.answer("Некорректные данные.")
+#             await callback.answer("Некорректные данные.")
+            await callback.answer(get_text("candidate.incorrect_data", lang=data.get("lang","ru")))
             return
 
         try:
@@ -800,7 +841,8 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
             trusted_votes = int(parts[2])
             page = int(parts[3]) if len(parts) > 3 else 1
         except (ValueError, IndexError):
-            await callback.answer("Ошибка в данных.")
+#             await callback.answer("Ошибка в данных.")
+            await callback.answer(get_text("candidate.error_in_data", lang=data.get("lang","ru")))
             return
         logger.info(
             f"Пользователь {callback.from_user.id} запросил подробную информацию о представителе с ID {proxy_id}."
@@ -811,18 +853,26 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
         proxy_info = await get_profile(proxy_id)
         if not proxy_info:
             await callback.message.answer(  # type: ignore
-                text="Не найдена информация о представителе",
+#                 text="Не найдена информация о представителе",
+                text=get_text("candidate.not_found_info_about_representative_info", lang=data.get("lang","ru")),
                 reply_markup=return_to_main_menu_markup,
             )
             return
 
+        username = proxy_info["username"]
+        description = proxy_info["description"]
+
         # Формируем текст с подробной информацией
-        response_text = f"Username: {proxy_info['username']}\nОписание: {proxy_info['description']}\nЧисло доверенных голосов: {trusted_votes}"
+        response_text = get_text(
+            "candidate.number_trusted_votes",
+            lang=data.get("lang","ru")
+            ).format(trusted_votes=trusted_votes, username=username, description=description)
 
         proxies = await list_of_proxy(data["club_id"])
 
         if not proxies:
-            response_text = "В данный момент нет доступных представителей."
+#             response_text = "В данный момент нет доступных представителей."
+            response_text = get_text("candidate.in_this_moment_no_available_representatives", lang=data.get("lang","ru"))
             reply_markup = await user_menu(status=data.get("user_status", ["user"]))
 
             # Сохраняем в data для middleware
@@ -850,19 +900,22 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
             if page > 1:
                 pagination_buttons.append(
                     InlineKeyboardButton(
-                        text="⬅️ Назад", callback_data=f"list_of_proxy:{page - 1}"
+#                         text="⬅️ Назад", callback_data=f"list_of_proxy:{page - 1}"
+                        text=get_text("candidate.back", lang=data.get("lang","ru")), callback_data=f"list_of_proxy:{page - 1}"
                     )
                 )
             if page < total_pages:
                 pagination_buttons.append(
                     InlineKeyboardButton(
-                        text="➡️ Вперед", callback_data=f"list_of_proxy:{page + 1}"
+#                         text="➡️ Вперед", callback_data=f"list_of_proxy:{page + 1}"
+                        text=get_text("candidate.before", lang=data.get("lang","ru")), callback_data=f"list_of_proxy:{page + 1}"
                     )
                 )
 
             # Добавляем кнопку "Главное меню"
             main_menu_button = InlineKeyboardButton(
-                text="Главное меню", callback_data="main_menu"
+#                 text="Главное меню", callback_data="main_menu"
+                text=get_text("candidate.main_menu", lang=data.get("lang","ru")), callback_data="main_menu"
             )
 
             # Создаем инлайн-клавиатуру
@@ -881,4 +934,5 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
 
     except Exception as e:
         logger.error(f"Ошибка при получении подробной информации о представителе: {e}")
-        await callback.message.answer("Произошла ошибка при получении информации о представителе.")  # type: ignore
+#         await callback.message.answer("Произошла ошибка при получении информации о представителе.")  # type: ignore
+        await callback.message.answer(get_text("candidate.occurred_error_with_getting_information_about_representative", lang=data.get("lang","ru")))  # type: ignore

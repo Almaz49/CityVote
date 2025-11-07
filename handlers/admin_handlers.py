@@ -124,7 +124,7 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
     }
 
 
-        user_info = get_text("profile",lang=lang).format(**short_profile)
+        user_info = get_text("profile_info",lang=lang).format(**short_profile)
         # Добавляем данные для SafeEditMiddleware
         response_text = get_text("admin.confirm_new_registrator", lang=lang).format(user_info=user_info)
         data["response_text"] = response_text

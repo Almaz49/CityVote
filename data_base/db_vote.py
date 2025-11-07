@@ -8,7 +8,7 @@ import traceback
 import aiosqlite
 from typing import Dict, Any
 from data_base.db_func import AsyncDatabase, extract_status, list_of_variants, path_db
-from LEXICON.LEXICON import LEXICON
+from LEXICON.LEXICON import LEXICON_dict
 from utils import fetch_as_dict, log_function_call
 
 # Настройка логирования
@@ -1221,7 +1221,7 @@ async def confirmation_of_voting_results(voting_id, winner_id):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # Специальный ID для системных действий
     author = 0
-    title = LEXICON.get("Don't make any decision", "Don't make any decision")
+    title = LEXICON_dict.get("Don't make any decision", "Don't make any decision")
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(

@@ -33,7 +33,9 @@ async def mailing_list_start_proxy(callback: CallbackQuery, state: FSMContext, d
     """
     if not callback.message: return
     await callback.answer()
-    await callback.message.answer(text="Введите текст рассылки:", reply_markup=return_to_main_menu_markup)
+#     await callback.message.answer(text="Введите текст рассылки:", reply_markup=return_to_main_menu_markup)
+    await callback.message.answer(text=get_text("proxy.enter_text_rassylki", lang=data.get("lang","ru")), reply_markup=return_to_main_menu_markup)
+
     await state.set_state(FSMTextMailing.fill_text)
 
 @router.message(F.text, FSMTextMailing.fill_text)
@@ -43,11 +45,15 @@ async def fill_mailing_text_for_followers(message: Message, state: FSMContext, d
     Хэндлер для отправки текста рассылки
     """
     if not message.text:
-        await message.answer("Текст не может быть пустым. Попробуйте ещё раз:")
+#         await message.answer("Текст не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("proxy.text_not_can_be_empty_try_eshch_time", lang=data.get("lang","ru")))
+
         return
     if len(message.text) > 4000:
         await message.answer(
-            text = "Сообщение слишком длинное (макс. 4000 символов). попробуйте снова",
+#             text = "Сообщение слишком длинное (макс. 4000 символов). попробуйте снова",
+            text = get_text("proxy.message_slishkom_dlinnoe_maks_4000_characters_try_again", lang=data.get("lang","ru")),
+
             reply_markup=return_to_main_menu_markup)
         return
     message_text = message.text

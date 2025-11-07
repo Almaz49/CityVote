@@ -5,6 +5,7 @@ import logging
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 from aiogram.filters import StateFilter
+from LEXICON import get_text
 from data_base.db_token_service import add_token_attempt, auto_approve_by_token, clear_old_attempts, get_token_attempts_count, is_valid_token
 from data_base.db_func import get_profile
 from filters.filters import StatusFilter
@@ -39,6 +40,7 @@ async def enter_token(callback: CallbackQuery, state: FSMContext, data: dict):
     Обработчик кнопки enter_token.
     """
 
+    lang = data.get("lang", "ru")
     logger.info(f"Пользователь {callback.from_user.id} хочет ввести новый токен.")
     await callback.answer()
     if not callback.message:
@@ -51,12 +53,13 @@ async def enter_token(callback: CallbackQuery, state: FSMContext, data: dict):
     await clear_old_attempts(member_id)
     attempts = await get_token_attempts_count(member_id)
     if attempts >= 3:
-        await callback.message.answer("Превышено количество попыток ввода токена.")
+        await callback.message.answer(get_text("frozen.", lang=lang),
+            "Превышено количество попыток ввода токена.")
         return
 
     # Формируем сообщение: ввести токен
     text = (
-        "Введите уникальный токен (если он у вас есть).\n"
+        get_text("frozen.enter_a_unique_token", lang=lang)
     )
 
     markup = return_to_main_menu_markup
@@ -82,8 +85,9 @@ async def process_token(message: Message, state: FSMContext, data: dict):
     Обработчик текстовых сообщений, введенных пользователем в машину состояний FSMEnterToken.
     В случае, если введен токен, то он проверяется на действительность.
     """
+    lang = data.get("lang", "ru")
     if not message.text:
-        await message.answer("Токен не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("frozen.token cannot be empty", lang=lang))
         return
     if not message.from_user:
         raise ValueError("Отправтель сообщения отсутствует (from_user == None)")
@@ -98,7 +102,8 @@ async def process_token(message: Message, state: FSMContext, data: dict):
         result = await is_valid_token(clean_token, club_id)
         if not result or result.get("status") not in ["valid"]:
             await message.answer(
-                text = "Токен не действителен. Попробуйте снова или продолжите анкету.",
+# text = "Токен не действителен. Попробуйте снова или продолжите анкету.",
+                text = get_text("frozen.token_not_valid_try_again_or_continue_questionnaire", lang=lang),
                 reply_markup=return_to_main_menu_markup)
             await add_token_attempt(member_id)
             return
@@ -106,7 +111,8 @@ async def process_token(message: Message, state: FSMContext, data: dict):
         if token_id:
             success, msg = await auto_approve_by_token(member_id, club_id, token_id)
             if success:
-                await message.answer(text="Авторизация успешна! Вы участник группы.",
+# await message.answer(text="Авторизация успешна! Вы участник группы.",
+                await message.answer(text=get_text("frozen.auth_success_you_member_group", lang=lang),
                     reply_markup=return_to_main_menu_markup)
                 await state.clear()
                 return
@@ -116,14 +122,16 @@ async def process_token(message: Message, state: FSMContext, data: dict):
                 await add_token_attempt(member_id)
                 return
         else:
-            await message.answer(text="Токен недействителен. Попробуйте снова или продолжите анкету.",
+# await message.answer(text="Токен недействителен. Попробуйте снова или продолжите анкету.",
+            await message.answer(text=get_text("frozen.token_invalid_try_again_or_continue_questionnaire", lang=lang),
                 reply_markup=return_to_main_menu_markup)
             await add_token_attempt(member_id)
             return
     else:
         # Это не токен
         logger.info(f"Вместо токена постпило сообщение: {token_input} от пользователя {member_id}")
-        await message.answer(text="То, что вы ввели не похоже на токен. Попробуйте снова или наберите /cancel.",
+# await message.answer(text="То, что вы ввели не похоже на токен. Попробуйте снова или наберите /cancel.",
+        await message.answer(text=get_text("frozen.to_chto_you_entered_not_seems_to_token_try_again_or_type_can", lang=lang),
                 reply_markup=return_to_main_menu_markup)
         await state.set_state(FSMEnterToken.fill_token)
 
@@ -136,6 +144,7 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
     """
     Обработчик кнопки request_token.
     """
+    lang = data.get("lang", "ru")
     logger.info(f"Пользователь {callback.from_user.id} хочет получить новый токен.")
     if not callback.bot:
         raise ValueError("Бот не найден")
@@ -150,16 +159,18 @@ async def request_token(callback: CallbackQuery, state: FSMContext, data: dict):
     tg_id = callback.from_user.id
     status = data.get("user_status", ["user"])
     if 'member' not in status:  # type: ignore
-        await callback.message.answer(text='Вы не зарегистрированы в группе. Пройдите регистрацию')  # type: ignore
+# await callback.message.answer(text='Вы не зарегистрированы в группе. Пройдите регистрацию')  # type: ignore
+        await callback.message.answer(text=get_text("frozen.you_not_registered_in_group_proydite_registratsiyu", lang=lang))  # type: ignore
         return
     profile = await get_profile(member_id)
     if not profile:  # type: ignore
-        await callback.message.answer(text='Не найден профиль пользователя')  # type: ignore
+# await callback.message.answer(text='Не найден профиль пользователя')  # type: ignore
+        await callback.message.answer(text=get_text("frozen.not_found_profile_user", lang=lang))  # type: ignore
         return
     profile['status'] = status
     success, result = await notify_super_registrator_short(bot=bot, club_id=club_id, candidate_tg_id= tg_id, user_dict= profile)
     if not success:
-        await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
+        await callback.message.answer(text=get_text("frozen.error_notify_super_registrator", lang=lang).format(result=result))
     else:
         await callback.message.answer(text=result)
 
@@ -178,6 +189,7 @@ async def frozen_message_await(message: Message, data: dict):
     """
     Обработчик сообщений от пользователя, с просроченным или отсутствующим токеном.
     """
+    lang = data.get("lang", "ru")
     logger.info(f"Замороженный пользователь {message.from_user.id} отправил сообщение: {message.text}.")  # type: ignore
     buttons = {
         "request_token":"Запросить токен",
@@ -185,8 +197,7 @@ async def frozen_message_await(message: Message, data: dict):
     }
     markup = create_inline_kb(1, **buttons)
     await message.answer(
-        text=f'У вас нет подтверждающего токена или истек срок его действия".\n'
-        "Попросите у администрации новый токен.",
+        text=get_text("frozen.you_don't_have_verification_token", lang=lang),
         reply_markup=markup,  # type: ignore
     )
 
@@ -198,6 +209,7 @@ async def frozen_cb_await(callback: CallbackQuery, data: dict):
     """
     Обработчик нажатия кнопок пользователем, находящимся  бане.
     """
+    lang = data.get("lang", "ru")
     logger.info(f"Замороженный пользователь {callback.from_user.id} нажал кнопку: {callback.data}.")
     buttons = {
         "request_token":"Запросить токен",
@@ -205,7 +217,6 @@ async def frozen_cb_await(callback: CallbackQuery, data: dict):
     }
     markup = create_inline_kb(1, **buttons)
     await callback.message.answer(  # type: ignore
-        text=f'У вас нет подтверждающего токена или истек срок его действия".\n'
-        "Попросите у администрации новый токен.",
+        text=get_text("frozen.t_have_verification_token", lang=lang),
         reply_markup=markup,
     )

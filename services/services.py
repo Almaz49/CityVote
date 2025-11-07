@@ -20,7 +20,7 @@ from data_base.db_func import AsyncDatabase, add_telegram_channel, count_member,
 from data_base.db_member import is_user_available, is_votist, mark_user_as_unavailable
 from data_base.db_vote import count_directly_empty_votes, count_directly_votes, count_proxy_votes, extract_member_choise, extract_proxy_choice, get_voting_info
 from keyboards.keyboards import create_inline_kb, main_menu_markup
-from LEXICON.LEXICON import LEXICON
+from LEXICON import LEXICON_init
 from utils import log_function_call
 
 # Настройка логирования
@@ -554,11 +554,11 @@ async def votist_because_proxy_returned(bot: Bot, proxy: int):
 
 # Функция создания приветственного обращения. Использует информацию о группе
 @log_function_call
-async def greetings_message(club_id:int):
+async def greetings_message(club_id:int, lang:str = 'ru'):
     result = await get_club_info(club_id)
     if result:
         # name, description,father_group, tg_bot, channel_link, conditions_of_entry = result
-        response = f"<b>👋 Привет! Я — бот для голосований группы {result.get('name')}.</b>" + LEXICON.get('greetings',
+        response = f"<b>👋 Привет! Я — бот для голосований группы {result.get('name')}.</b>" + LEXICON_init.get('greetings',
         'Пройдите регистрацию, чтобы воспользоваться всеми моими возможностями')
         if result.get('channel_link'):
             logger.debug('Текст приветствия успешно составлен')
@@ -576,8 +576,8 @@ def help_message(status_list: list):
     text = "<b>Справка по вашим ролям:</b>\n\n"  # Заголовок
 
     for item in sorted(status):  # Сортируем роли для удобства
-        role_help = LEXICON.get(item + '_help', f'Для статуса {item} пока нет справки.')
-        text += f"📌 <b>{LEXICON.get(item, item.capitalize())}:</b>\n{role_help}\n\n"
+        role_help = LEXICON_init.get(item + '_help', f'Для статуса {item} пока нет справки.')
+        text += f"📌 <b>{LEXICON_init.get(item, item.capitalize())}:</b>\n{role_help}\n\n"
 
     logger.debug(f'Сформирована справка:\n{text}')
     return text
@@ -790,7 +790,7 @@ async def profile_message(member_id, status):
             text += f"Ваш представитель: {profile.get('proxy_username')}\n"
     if profile.get('token'):
         text += f"Ваш токен: {profile.get('token')}\n"
-    text+=LEXICON.get('profile_menu','Выберите, что хотите поменять в профиле') # Сюда вставить функцию создания текста
+    text+=LEXICON_init.get('profile_menu','Выберите, что хотите поменять в профиле') # Сюда вставить функцию создания текста
     return text
 
 
@@ -850,7 +850,7 @@ async def send_variants_by_status(
     proxy_choice = await extract_proxy_choice(member_id, voting_id)
 
     # Формируем заголовок
-    status_title_map = LEXICON.get('status_title_map')
+    status_title_map = LEXICON_init.get('status_title_map')
 
     if status_title_map:
         title_text = status_title_map.get(variant_status, f'Варианты со статусом "{variant_status}"')
@@ -887,10 +887,10 @@ async def send_variants_by_status(
 
         if variant_status == 'valid':
             if voting_status in ['ongoing', 'confirmation'] and 'member' in member_status and not choise_mark:
-                keyboard = {f'variant:{variant_id}': LEXICON["Vote for this variant"]}
+                keyboard = {f'variant:{variant_id}': LEXICON_init["Vote for this variant"]}
                 markup = create_inline_kb(1, **keyboard)
             elif voting_status == 'add_variants' and 'admin' in member_status:
-                keyboard = {f'delete_variant:{variant_id}': LEXICON["delete variant"]}
+                keyboard = {f'delete_variant:{variant_id}': LEXICON_init["delete variant"]}
                 markup = create_inline_kb(1, **keyboard)
 
         # Формируем текст

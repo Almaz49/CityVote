@@ -486,7 +486,7 @@ async def extract_variant_data(variant_id):
 
 
 @log_function_call
-async def extract_status(member_id):
+async def extract_status(member_id) -> List[str]:
     async with AsyncDatabase(path_db) as cursor:
         await cursor.execute(
             "SELECT status FROM Status WHERE member_id = ?", (member_id,)

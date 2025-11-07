@@ -7,6 +7,7 @@ from aiogram.filters import StateFilter
 from aiogram import F, Bot, Router
 from aiogram.types import CallbackQuery, Message
 
+from LEXICON import get_text
 from data_base.db_func import (
     extract_user_member_id
 )
@@ -59,7 +60,9 @@ async def process_registrator_yes_press(
 
     if not isinstance(callback.message, Message):
         logger.warning("Получено InaccessibleMessage, нельзя удалить клавиатуру")
-        await callback.answer("Сообщение недоступно")
+#         await callback.answer("Сообщение недоступно")
+        await callback.answer(get_text("registrator.message_unavailable", lang=data.get("lang","ru")))
+
         return
 
     try:
@@ -78,13 +81,17 @@ async def process_registrator_yes_press(
         await state.update_data(tg_id=tg_id)
 
         # Переходим к вводу комментария
-        await callback.message.answer("Введите комментарий для токена:")
+#         await callback.message.answer("Введите комментарий для токена:")
+        await callback.message.answer(get_text("registrator.enter_comment_for_token", lang=data.get("lang","ru")))
+
         await state.set_state(FSMRegistration.fill_comment)
 
     except Exception as e:
         logger.error(f"Ошибка при подтверждении членства пользователя {tg_id}: {e}")
         await callback.message.answer(
-            text="Произошла ошибка при подтверждении членства."
+#             text="Произошла ошибка при подтверждении членства."
+            text=get_text("registrator.occurred_error_with_confirmation_membership", lang=data.get("lang","ru"))
+
         )
 
 # Хэндлер для ввода комментария и выдачи токена
@@ -92,18 +99,24 @@ async def process_registrator_yes_press(
 @log_handler_call
 async def process_token_comment(message: Message, state: FSMContext, data: dict):
     if not message.text:
-        await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+#         await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("registrator.comment_not_can_be_empty_try_once_more_time", lang=data.get("lang","ru")))
+
         return
 
     if not message.bot:
         raise ValueError("Бот не найден")
     bot:Bot = message.bot
     if not message.from_user:
-        await message.answer("Не удалось получить ID пользователя. Пожалуйста, попробуйте ещё раз.")
+#         await message.answer("Не удалось получить ID пользователя. Пожалуйста, попробуйте ещё раз.")
+        await message.answer(get_text("registrator.not_success_get_id_user_please_try_once_more_time", lang=data.get("lang","ru")))
+
         return
     comment = message.text.strip()
     if not comment:
-        await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+#         await message.answer("Комментарий не может быть пустым. Попробуйте ещё раз:")
+        await message.answer(get_text("registrator.comment_not_can_be_empty_try_once_more_time_1", lang=data.get("lang","ru")))
+
         return
 
     # Получаем данные из FSM
@@ -114,7 +127,9 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
 
     if not tg_id or not club_id:
         logger.error("Не удалось получить tg_id или club_id")
-        await message.answer("Внутренняя ошибка. Попробуйте позже.")
+#         await message.answer("Внутренняя ошибка. Попробуйте позже.")
+        await message.answer(get_text("registrator.internal_error_try_later", lang=data.get("lang","ru")))
+
         await state.clear()
         return
 
@@ -134,7 +149,9 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
         # Получаем user_id и member_id
         user_id, member_id = await extract_user_member_id(club_id, tg_id)
         if not member_id:
-            await message.answer(f"Пользователь с ID {tg_id} не найден.")
+#             await message.answer(f"Пользователь с ID {tg_id} не найден.")
+            await message.answer(get_text("registrator.user_with_id_value_not_found", lang=data.get("lang","ru")).format(tg_id=tg_id))
+
             return
 
         # Привязываем токен к пользователю
@@ -142,13 +159,17 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
 
         if not succes:
             await message.answer(
-                text = f"Ошибка при привязке токена к пользователю: {msg}",
+#                 text = f"Ошибка при привязке токена к пользователю: {msg}",
+                text = get_text("registrator.error_with_binding_token_to_user_value", lang=data.get("lang","ru")).format(msg=msg),
+
                 reply_markup=await user_menu(status= data.get("user_status", "user"))
                 )
         else:
             # Уведомляем регистратора
             await message.answer(
-                text=f"Спасибо! Пользователь {tg_id} получил статус 'Участник'.",
+#                 text=f"Спасибо! Пользователь {tg_id} получил статус 'Участник'.",
+                text=get_text("registrator.thank_you_user_value_received_status_member", lang=data.get("lang","ru")).format(tg_id=tg_id),
+
                 reply_markup=await user_menu(status= data.get("user_status", "user"))
             )
 
@@ -157,14 +178,16 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
                 bot,
                 tg_id,
                 message_text=(
-                    "Поздравляем! Ваша заявка на вступление в группу одобрена (либо ваши права участника восстановлены). Теперь вы полноправный участник группы и можете принимать участие в голосованиях.\n\n"
-                    "Обратите внимание - чтобы ваш голос учитывался, вам нужно либо выбрать себе представителя, либо сами стать представителем.\n"
-                    "Выбор представителя не ограничивает вашу возможность голосовать самому в любом голосовании.\n"
-                    "Но если вы не приняли участие в голосовании, будет учитываться то, как за вас проголосовал ваш представитель.\n"
-                    "Если вас не будет устраивать то, как за вас голосует ваш представитель, вы в любой момент сможете его поменять, либо сами стать представителем.\n"
-                    "Статус представителя накладывает обязательства, например — участие во всех голосованиях.\n"
-                    "Представитель может выбрать себе заместителя, который будет голосовать за него в случае отсутствия.\n"
-                    "Представитель несёт ответственность за голосование своего заместителя, как за своё собственное."
+#                     "Поздравляем! Ваша заявка на вступление в группу одобрена (либо ваши права участника восстановлены). Теперь вы полноправный участник группы и можете принимать участие в голосованиях.\n\n"
+                    get_text("registrator.congratulate_your_application_to_join_in_group_approved_or_y", lang=data.get("lang","ru"))
+
+                    # "Обратите внимание - чтобы ваш голос учитывался, вам нужно либо выбрать себе представителя, либо сами стать представителем.\n"
+                    # "Выбор представителя не ограничивает вашу возможность голосовать самому в любом голосовании.\n"
+                    # "Но если вы не приняли участие в голосовании, будет учитываться то, как за вас проголосовал ваш представитель.\n"
+                    # "Если вас не будет устраивать то, как за вас голосует ваш представитель, вы в любой момент сможете его поменять, либо сами стать представителем.\n"
+                    # "Статус представителя накладывает обязательства, например — участие во всех голосованиях.\n"
+                    # "Представитель может выбрать себе заместителя, который будет голосовать за него в случае отсутствия.\n"
+                    # "Представитель несёт ответственность за голосование своего заместителя, как за своё собственное."
                 ),
             )
 
@@ -172,7 +195,9 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
 
     except Exception as e:
         logger.error(f"Ошибка при выдаче токена или обновлении статуса для {tg_id}: {e}")
-        await message.answer("Не удалось завершить регистрацию.")
+#         await message.answer("Не удалось завершить регистрацию.")
+        await message.answer(get_text("registrator.not_success_finish_registration", lang=data.get("lang","ru")))
+
         await state.clear()
 
 # Этот хэндлер срабатывает при нажатии регистратором кнопки "Не подтверждаю"
@@ -203,14 +228,18 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
         # Получаем member_id пользователя
         user_id, member_id = await extract_user_member_id(club_id, tg_id)
         if not member_id:
-            await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.")  # type: ignore
+#             await callback.message.answer(text=f"Пользователь с ID {tg_id} не найден.")  # type: ignore
+            await callback.message.answer(text=get_text("registrator.user_with_id_value_not_found_1", lang=data.get("lang","ru")).format(tg_id=tg_id))  # type: ignore
+
             return
         if not callback.message:
             raise ValueError("Callback message is None")
 
         if not isinstance(callback.message, Message):
             logger.warning("Получено InaccessibleMessage, нельзя удалить клавиатуру")
-            await callback.answer("Получено InaccessibleMessage")
+#             await callback.answer("Получено InaccessibleMessage")
+            await callback.answer(get_text("registrator.received_inaccessiblemessage", lang=data.get("lang","ru")))
+
             raise ValueError("Callback message is None")
 
         # Обновляем поле "familiar" пользователя в базе данных
@@ -219,12 +248,16 @@ async def process_registrator_no_press(callback: CallbackQuery, data):
 
         # Отправляем уведомление об отказе
         await callback.message.answer(
-            text=f"Спасибо! Пользователь {tg_id} не получил статус 'Участник'.",
+#             text=f"Спасибо! Пользователь {tg_id} не получил статус 'Участник'.",
+            text=get_text("registrator.thank_you_user_value_not_received_status_member", lang=data.get("lang","ru")).format(tg_id=tg_id),
+
             reply_markup=await user_menu(status= data.get("user_status", "user"))
         )
     except Exception as e:
         logger.error(f"Ошибка при отклонении членства пользователя {tg_id}: {e}")
         await callback.message.answer(  # type: ignore
-            text="Произошла ошибка при отклонении членства.",
+#             text="Произошла ошибка при отклонении членства.",
+            text=get_text("registrator.occurred_error_with_rejection_membership", lang=data.get("lang","ru")),
+
             reply_markup=await user_menu(status= data.get("user_status", "user"))
         )

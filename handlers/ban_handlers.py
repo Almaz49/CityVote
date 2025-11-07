@@ -4,6 +4,7 @@ import logging
 
 from aiogram import Router
 from aiogram.types import CallbackQuery, Message
+from LEXICON import get_text
 from data_base.db_member import check_ban_status
 from filters.filters import StatusFilter
 
@@ -38,9 +39,7 @@ async def ban_message_await(message: Message, data: dict):
     ban_expiration = await check_ban_status(member_id)
     logger.info(f"Забаненный пользователь {message.from_user.id} отправил сообщение: {message.text}.")  # type: ignore
     await message.answer(
-        text=f'Вы забанены в группе до: "{ban_expiration}".\n'
-        "Вы по прежнему можете голосовать и доверять свой голос.\n"
-        "В случае несогласия с баном, пожалуйста, свяжитесь с администратором.",
+        text=get_text("ban.user_banned_for_days", lang=data.get("lang", "ru")).format(ban_expiration = ban_expiration),
         reply_markup=await user_menu(status = data.get("user_status", ["user"]))
     )
 
@@ -58,8 +57,6 @@ async def ban_cb_await(callback: CallbackQuery, data: dict):
     ban_expiration = await check_ban_status(member_id)
     logger.info(f"Забаненный пользователь {callback.from_user.id} нажал кнопку: {callback.data}.")
     await callback.message.answer(  # type: ignore
-        text=f'Вы забанены в группе до: "{ban_expiration}".\n'
-        "Вы по прежнему можете голосовать и доверять свой голос.\n"
-        "В случае несогласия с баном, пожалуйста, свяжитесь с администратором.",
+        text=get_text("ban.user_banned_for_days", lang=data.get("lang", "ru")).format(ban_expiration = ban_expiration),
         reply_markup=await user_menu(status = data.get("user_status", ["user"]))
     )

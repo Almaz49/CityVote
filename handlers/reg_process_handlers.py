@@ -6,6 +6,7 @@ from aiogram import F, Bot, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
+from LEXICON import get_text
 from data_base.db_func import get_club_info, list_of_members
 from data_base.db_member import new_status, update_member_data, update_user_data
 from data_base.db_token_service import (clear_old_attempts, get_token_attempts_count,
@@ -13,7 +14,7 @@ from data_base.db_token_service import (clear_old_attempts, get_token_attempts_c
 from services.services import notify_registrator_short, notify_super_registrator_short
 from FSMs.FSMs import FSM_short_registration
 from keyboards.keyboards import  user_menu
-from LEXICON.LEXICON import LEXICON
+from LEXICON.LEXICON import LEXICON_dict
 from utils import log_handler_call
 from utils.utils import safe_edit
 
@@ -38,7 +39,9 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
     await callback.answer()  # Отвечаем на callback, чтобы избежать "крутки часов"
 
     if "member" in data["user_status"]:
-        await callback.message.answer(text="Вы уже зарегистрированы в группе.")
+#         await callback.message.answer(text="Вы уже зарегистрированы в группе.")
+        await callback.message.answer(text=get_text("reg_process.you_already_registered_in_group", lang=data.get("lang","ru")))
+
         return
 
     member_id = data["member_id"]
@@ -47,21 +50,29 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
     club_info = await get_club_info(club_id)
     if not club_info:
         logger.error("Нет информации о группе")
-        await callback.message.answer(text="Ошибка. Не найдена информация о группе")
+#         await callback.message.answer(text="Ошибка. Не найдена информация о группе")
+        await callback.message.answer(text=get_text("reg_process.error_not_found_info_about_group", lang=data.get("lang","ru")))
+
         return
 
     # Очистка старых попыток ввода токена
     await clear_old_attempts(member_id)
     attempts = await get_token_attempts_count(member_id)
     if attempts >= 3:
-        await callback.message.answer("Превышено количество попыток ввода токена.")
+#         await callback.message.answer("Превышено количество попыток ввода токена.")
+        await callback.message.answer(get_text("reg_process.exceeded_quantity_attempts_input_token", lang=data.get("lang","ru")))
+
         return
 
     # Формируем сообщение: ввести токен ИЛИ ответить на вопросы
-    questions = club_info.get("questions_for_the_candidate") or LEXICON.get("registration_message", "Напишите о себе")
+#     questions = club_info.get("questions_for_the_candidate") or LEXICON.get("registration_message", "Напишите о себе")
+    questions = club_info.get("questions_for_the_candidate") or LEXICON_dict.get("registration_message", get_text("reg_process.write_about_about_yourself", lang=data.get("lang","ru")))
+
     text = (
-        "Введите уникальный токен (если он у вас есть).\n"
-        "Если нет — ответьте на вопросы администрации.\n\n"
+#         "Введите уникальный токен (если он у вас есть).\n"
+        get_text("reg_process.enter_unique_token_if_he_to_you_exists", lang=data.get("lang","ru")) +
+
+        # "Если нет — ответьте на вопросы администрации.\n\n"
         f"{questions}"
     )
 
@@ -90,7 +101,9 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 @log_handler_call
 async def process_entered_token_or_resume(message: Message, state: FSMContext, data: dict):
     if not message.text:
-        await message.answer("Введите текст.")
+#         await message.answer("Введите текст.")
+        await message.answer(get_text("reg_process.enter_text", lang=data.get("lang","ru")))
+
         return
     if not message.from_user:
         raise ValueError("Отправтель сообщения отсутствует (from_user == None)")
@@ -104,14 +117,18 @@ async def process_entered_token_or_resume(message: Message, state: FSMContext, d
         # Это токен — проверяем его валидность
         result = await is_valid_token(clean_token, club_id)
         if not result or result.get("status") not in ["valid"]:
-            await message.answer("Токен не действителен. Попробуйте снова или продолжите анкету.")
+#             await message.answer("Токен не действителен. Попробуйте снова или продолжите анкету.")
+            await message.answer(get_text("reg_process.token_not_valid_try_again_or_continue_questionnaire", lang=data.get("lang","ru")))
+
             await add_token_attempt(member_id)
             return
         token_id = result.get("token_id")
         if token_id:
             success, msg = await auto_approve_by_token(member_id, club_id, token_id)
             if success:
-                await message.answer("Авторизация успешна! Вы участник группы.")
+#                 await message.answer("Авторизация успешна! Вы участник группы.")
+                await message.answer(get_text("reg_process.auth_success_you_member_group", lang=data.get("lang","ru")))
+
                 await state.clear()
                 return
             else:
@@ -119,7 +136,9 @@ async def process_entered_token_or_resume(message: Message, state: FSMContext, d
                 await add_token_attempt(member_id)
                 return
         else:
-            await message.answer("Токен недействителен. Попробуйте снова или продолжите анкету.")
+#             await message.answer("Токен недействителен. Попробуйте снова или продолжите анкету.")
+            await message.answer(get_text("reg_process.token_invalid_try_again_or_continue_questionnaire", lang=data.get("lang","ru")))
+
             await add_token_attempt(member_id)
             return
     else:
@@ -153,12 +172,16 @@ async def process_entered_token_or_resume(message: Message, state: FSMContext, d
         buttons = []
         for item in registrators:
             buttons.append([InlineKeyboardButton(text=item.get("username", "Unknown"), callback_data=str(item.get("tg_id")))])
-        buttons.append([InlineKeyboardButton(text="Никого из регистраторов не знаю", callback_data="stranger")])
+#         buttons.append([InlineKeyboardButton(text="Никого из регистраторов не знаю", callback_data="stranger")])
+        buttons.append([InlineKeyboardButton(text=get_text("reg_process.nobody_from_registratorov_not_know", lang=data.get("lang","ru")), callback_data="stranger")])
+
         markup = InlineKeyboardMarkup(inline_keyboard=buttons)
 
         await message.answer(
-            text="Спасибо!\nВыберите регистратора, которого знаете,\nчтобы он мог подтвердить вашу личность.\n"
-                 "Если никого не знаете — нажмите 'Никого не знаю'",
+#             text="Спасибо!\nВыберите регистратора, которого знаете,\nчтобы он мог подтвердить вашу личность.\n"
+            text=get_text("reg_process.thank_you_choose_registrator", lang=data.get("lang","ru")),
+
+                #  "Если никого не знаете — нажмите 'Никого не знаю'",
             reply_markup=markup
         )
         await state.set_state(FSM_short_registration.fill_registrator)
@@ -221,23 +244,32 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         await state.clear()
 
         await callback.message.answer(
-            text="Спасибо! Ваши данные сохранены.\n"
-                 "Администрация их проверит и даст вам соответствующие права.\n"
-                 "Вы вышли из машины состояний.",
+#             text="Спасибо! Ваши данные сохранены.\n"
+            text=get_text("reg_process.thank_you_yours_data_saved", lang=data.get("lang","ru")),
+
+                #  "Администрация их проверит и даст вам соответствующие права.\n"
+                #  "Вы вышли из машины состояний.",
             reply_markup=await user_menu(status= data.get("user_status", "user"))
         )
 
         if callback.data.isdigit():
             success, result = await notify_registrator_short(bot, int(callback.data), tg_id, user_dict)
             if not success:
-                await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")
+#                 await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")
+                await callback.message.answer(text=get_text("reg_process.error_with_notification_registrator_value", lang=data.get("lang","ru")).format(result=result))
+
         elif callback.data == "stranger":
             success, result = await notify_super_registrator_short(bot, club_id, tg_id, user_dict)
             if not success:
-                await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
+#                 await callback.message.answer(text=f"Ошибка при уведомлении супер-регистратора: {result}")
+                await callback.message.answer(text=get_text("reg_process.error_with_notification_super_registrator_value", lang=data.get("lang","ru")).format(result=result))
+
 
     except Exception as e:
         logger.error(f"Ошибка при выборе регистратора: {e}")
         if callback.message:  # Если сообщение не пустое
-            await callback.message.answer(text=f"Произошла ошибка: {str(e)}")
+            err = str(e)
+#             await callback.message.answer(text=f"Произошла ошибка: {str(e)}")
+            await callback.message.answer(text=get_text("reg_process.occurred_error_value", lang=data.get("lang","ru")).format(err=err))
+
         await state.clear()
