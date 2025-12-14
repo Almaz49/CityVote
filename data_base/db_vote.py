@@ -7,8 +7,8 @@ import traceback
 
 import aiosqlite
 from typing import Dict, Any
-from data_base.db_func import AsyncDatabase, extract_status, list_of_variants, path_db
-from LEXICON.LEXICON import LEXICON_dict
+from LEXICON import get_text
+from data_base.db_func import AsyncDatabase, extract_status, get_club_info, get_member_lang, list_of_variants, path_db
 from utils import fetch_as_dict, log_function_call
 
 # Настройка логирования
@@ -26,6 +26,12 @@ async def voting_create(
     voting_type="usual",
     voting_status="add_variants",
 ):
+    """
+    Создание голосования.
+    """
+    lang = await get_member_lang(creator)
+    data = {"lang": lang}
+
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if len(title) > 40:
         flag = False
@@ -121,6 +127,8 @@ async def get_voting_info(voting_id):
 @log_function_call
 async def variant_create(voting_id, author, title, text=None, variant_status="valid"):
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    lang = await get_member_lang(author)
+    data = {"lang": lang}
 
     if len(title) > 40:
         flag, answ_str = False, "Название не должно быть длиннее 40 символов."
@@ -199,6 +207,11 @@ async def variant_create(voting_id, author, title, text=None, variant_status="va
 @log_function_call
 async def voting_start(voting_id, starter=None) -> Dict[str, Any]:
     time_start = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    club_id = await extract_group_id(voting_id)
+    if not club_id:
+        raise ValueError("Не удалось получить ID группы")
+    club_info = await get_club_info(club_id) or {}
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
     async with AsyncDatabase(path_db) as cursor:
         try:
             # Проверяем статус голосования
@@ -451,12 +464,6 @@ async def count_votist(club_id):
 async def count_directly_votes(variant_id):
     async with AsyncDatabase(path_db) as cursor:
         try:
-            # await cursor.execute('''
-            #     SELECT COUNT(*) FROM Members WHERE id IN
-            #     (SELECT member_id FROM Elections WHERE variant_id = ? AND (status = 'valid' OR status = 'loser' OR status = 'winner'))
-            #     AND id IN
-            #     (SELECT member_id FROM Status WHERE status = 'votist')
-            # ''', (variant_id,))
             await cursor.execute(
                 """
             SELECT COUNT(*)
@@ -524,43 +531,6 @@ async def count_directly_empty_votes(variant_id):
                 f"Ошибка при подсчете прямых голосов без права голоса: {e}\n{traceback.format_exc()}"
             )
             raise
-
-# # Функция подсчета голосов, отданых за вариант через представителей
-# @log_function_call
-# async def count_proxy_votes_old(variant_id):
-#     async with AsyncDatabase(path_db) as cursor:
-#         try:
-#             await cursor.execute(
-#                 """
-#                 SELECT COUNT(*) FROM Members WHERE proxy IN
-#                 (SELECT member_id FROM Elections WHERE variant_id = ? AND status IN ('valid', 'loser', 'winner'))
-#                 AND id NOT IN
-#                 (SELECT member_id FROM Elections WHERE status IN ('valid', 'loser', 'winner')
-#                 AND variant_id IN
-#                 (SELECT id FROM Variants WHERE voting_id IN
-#                 (SELECT voting_id FROM Variants WHERE id = ?)))
-#                 AND id IN
-#                 (SELECT member_id FROM Status WHERE status = 'votist')
-#             """,
-#                 (variant_id, variant_id),
-#             )
-#             result = await cursor.fetchone()
-#             if result:
-#                 (amount,) = result
-#                 logger.info(
-#                     f"Количество голосов через представителей за variant_id={variant_id}: {amount}"
-#                 )
-#                 return int(amount)
-#             else:
-#                 logger.info(
-#                     f"Для variant_id={variant_id} нет голосов через представителей."
-#                 )
-#                 return None
-#         except aiosqlite.Error as e:
-#             logger.error(
-#                 f"Ошибка при подсчете голосов через представителей: {e}\n{traceback.format_exc()}"
-#             )
-#             raise
 
 
 @log_function_call
@@ -636,6 +606,9 @@ async def count_proxy_votes(variant_id):
 @log_function_call
 async def election(member_id, variant_id):
     time_election = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    lang = await get_member_lang(member_id)
+    data = {"lang": lang}
+
     voting_id = await extract_voting_id(variant_id)
     if not voting_id:
         return False, "Голосование не найдено"
@@ -894,7 +867,10 @@ async def voting_stage(voting_id, club_id=None, stager=None) -> Dict[str, Any]:
         club_id = await extract_group_id(voting_id)
         if club_id is None:
             logger.error(f"Не удалось определить club_id для voting_id={voting_id}.")
-            return {"success": False, "message": "Не удалось определить клуб."}
+            return {"success": False, "message": "Group ID not found."}
+
+    club_info = await get_club_info(club_id) or {}
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
 
     # Получаем информацию о голосовании
     voting_info = await get_voting_info(voting_id)
@@ -1029,6 +1005,11 @@ async def voting_stage(voting_id, club_id=None, stager=None) -> Dict[str, Any]:
 @log_function_call
 async def voting_final(voting_id, finaler=None) -> Dict[str, Any]:
     time_final = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    club_id = await extract_group_id(voting_id)
+    if not club_id:
+        raise ValueError("Не удалось получить ID группы")
+    club_info = await get_club_info(club_id) or {}
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
     variants = await list_of_variants(voting_id, "valid")
 
     flag = True
@@ -1109,6 +1090,10 @@ async def voting_complete(voting_id, finisher=None) -> Dict[str, Any]:
     time_finish = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(voting_id, "valid")
     club_id = await extract_group_id(voting_id)
+    if not club_id:
+        raise ValueError("Не удалось получить ID группы")
+    club_info = await get_club_info(club_id) or {}
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
     voting_info = (
         await get_voting_info(voting_id) or {}
     )  # Если None, используем пустой словарь
@@ -1218,10 +1203,17 @@ async def voting_complete(voting_id, finisher=None) -> Dict[str, Any]:
 @log_function_call
 async def confirmation_of_voting_results(voting_id, winner_id):
     logger.info(f"Запущено утверждение итогов голосования {voting_id}")
+    club_id = await extract_group_id(voting_id)
+    if club_id is None:  # Если не нашли ID группы
+        return {"success": False, "message": "Не нашли ID группы"}
+
+    club_info = await get_club_info(club_id) or {}
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
+
     time_create = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # Специальный ID для системных действий
     author = 0
-    title = LEXICON_dict.get("Don't make any decision", "Don't make any decision")
+    title = get_text("Don't make any decision", lang=data.get("lang", "ru"))
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -1254,7 +1246,11 @@ async def confirmation_of_voting_results_stop(voting_id, finisher=None) -> Dict[
     time_finish = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     variants = await list_of_variants(voting_id, "valid")
     club_id = await extract_group_id(voting_id)
-
+    club_info = await get_club_info(club_id)
+    if not club_info:
+        logger.error(f"Группа {club_id} не найдена")
+        raise ValueError(f"Группа {club_id} не найдена")
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
     if not variants:
         logger.info(f"Для voting_id={voting_id} нет действительных вариантов.")
         return {

@@ -18,7 +18,6 @@ from data_base.db_vote import count_votist, extract_member_choise, get_voting_in
 from keyboards.keyboards import (confirm_markup, create_inline_kb,
                                  get_profile_menu_keyboard,
                                  return_to_main_menu_markup, user_menu)
-from LEXICON.LEXICON import LEXICON_dict
 from services.services import (send_variants_by_status)
 from utils import log_handler_call, paginate, safe_edit
 
@@ -91,7 +90,7 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
         votings = await list_of_votings(club_id, *voting_status)
 
         # Формируем клавиатуру для возврата в главное меню
-        main_menu_markup = return_to_main_menu_markup
+        menu_markup = return_to_main_menu_markup(lang=data.get("lang","en"))
 
         if votings:
             # Отправляем заголовок
@@ -116,19 +115,19 @@ async def process_list_of_votings(callback: CallbackQuery, data: dict):
 
             # В последнем сообщении добавляем кнопку "Вернуться в главное меню"
             await callback.message.answer(  # type: ignore
-#                 text=LEXICON.get("return_to_main_menu", "Вернуться в главное меню"),
-                text=LEXICON_dict.get("return_to_main_menu", get_text("all_users.return_in_main_menu", lang=data.get("lang","ru"))),
+#                  text=LEXICON.get("return_to_main_menu", "Вернуться в главное меню"),
 
-                reply_markup=main_menu_markup,
+                text=get_text("return_to_main_menu", lang=data.get("lang", "ru")),
+
+                reply_markup=menu_markup,
             )
         else:
             # Если голосований нет, отправляем сообщение об этом и кнопку "Вернуться в главное меню"
             await callback.message.answer(empty_message)  # type: ignore
             await callback.message.answer(  # type: ignore
 #                 text=LEXICON.get("return_to_main_menu", "Вернуться в главное меню"),
-                text=LEXICON_dict.get("return_to_main_menu", get_text("all_users.return_in_main_menu_1", lang=data.get("lang","ru"))),
-
-                reply_markup=main_menu_markup,
+                text=get_text("return_to_main_menu", lang=data.get("lang", "ru")),
+                reply_markup=menu_markup,
             )
 
     except Exception as e:
@@ -236,62 +235,52 @@ async def process_show_oll_variants(callback: CallbackQuery, data: dict):
         # Формируем меню в зависимости от статуса голосования и статуса пользователя
         dict_menu = {}
         if voting_status == "add_variants":
-            dict_menu["future_votings"] = LEXICON_dict.get(
+            dict_menu["future_votings"] = get_text("back_to_votings", lang=data.get("lang","ru"))
+            if "delegate" in data["user_status"]:
+                dict_menu[f"create_variant:{voting_id}"] = get_text(
+#                     "create_variant", "Добавить вариант"
+                    "create_variant",  lang=data.get("lang","ru"))
+
+            if "admin" in data["user_status"]:
+                dict_menu[f"admin_voting:{voting_id}"] = get_text(
+#                     "admin_voting", "Администрирование голосования"
+                    "admin_voting",  lang=data.get("lang","ru"))
+
+        elif voting_status == "completed":
+            dict_menu["completed_votings"] = get_text(
+#                 "back_to_votings", "Назад к списку голосований"
+                "back_to_votings", lang=data.get("lang","ru"))
+
+            # Пока не администрируем завершенные голосования (не перезапускаем)
+            # if 'admin' in data["user_status"]:
+#             #     dict_menu[f'admin_voting:{voting_id}'] = get_text('admin_voting', 'Администрирование голосования')
+            #     dict_menu[f'admin_voting:{voting_id}'] = get_text("admin_voting", lang=data.get("lang", "ru"))
+        elif voting_status == "ongoing":
+            if "admin" in data["user_status"]:
+                dict_menu[f"admin_voting:{voting_id}"] = get_text(
+#                     "admin_voting", "Администрирование голосования"
+                    "admin_voting", lang=data.get("lang","ru"))
+
+            dict_menu["ongoing_votings"] = get_text(
+#                 "back_to_votings", "Назад к списку голосований"
+                "back_to_votings", lang=data.get("lang","ru"))
+
+        elif voting_status == "confirmation":
+            if "admin" in data["user_status"]:
+                dict_menu[f"admin_voting:{voting_id}"] = get_text(
+#                     "admin_voting", "Администрирование голосования"
+                    "admin_voting", lang=data.get("lang","ru"))
+
+            dict_menu["ongoing_votings"] = get_text(
 #                 "back_to_votings", "Назад к списку голосований"
                 "back_to_votings", get_text("all_users.back_to_to_list_voting", lang=data.get("lang","ru"))
 
             )
-            if "delegate" in data["user_status"]:
-                dict_menu[f"create_variant:{voting_id}"] = LEXICON_dict.get(
-#                     "create_variant", "Добавить вариант"
-                    "create_variant", get_text("all_users.add_option", lang=data.get("lang","ru"))
 
-                )
-            if "admin" in data["user_status"]:
-                dict_menu[f"admin_voting:{voting_id}"] = LEXICON_dict.get(
-#                     "admin_voting", "Администрирование голосования"
-                    "admin_voting", get_text("all_users.admin_voting", lang=data.get("lang","ru"))
-
-                )
-        elif voting_status == "completed":
-            dict_menu["completed_votings"] = LEXICON_dict.get(
-#                 "back_to_votings", "Назад к списку голосований"
-                "back_to_votings", get_text("all_users.back_to_to_list_voting_1", lang=data.get("lang","ru"))
-
-            )
-            # Пока не администрируем завершенные голосования (не перезапускаем)
-            # if 'admin' in data["user_status"]:
-            #     dict_menu[f'admin_voting:{voting_id}'] = LEXICON.get('admin_voting', 'Администрирование голосования')
-        elif voting_status == "ongoing":
-            if "admin" in data["user_status"]:
-                dict_menu[f"admin_voting:{voting_id}"] = LEXICON_dict.get(
-#                     "admin_voting", "Администрирование голосования"
-                    "admin_voting", get_text("all_users.admin_voting_1", lang=data.get("lang","ru"))
-
-                )
-            dict_menu["ongoing_votings"] = LEXICON_dict.get(
-#                 "back_to_votings", "Назад к списку голосований"
-                "back_to_votings", get_text("all_users.back_to_to_list_voting_2", lang=data.get("lang","ru"))
-
-            )
-        elif voting_status == "confirmation":
-            if "admin" in data["user_status"]:
-                dict_menu[f"admin_voting:{voting_id}"] = LEXICON_dict.get(
-#                     "admin_voting", "Администрирование голосования"
-                    "admin_voting", get_text("all_users.admin_voting_2", lang=data.get("lang","ru"))
-
-                )
-            dict_menu["ongoing_votings"] = LEXICON_dict.get(
-#                 "back_to_votings", "Назад к списку голосований"
-                "back_to_votings", get_text("all_users.back_to_to_list_voting_3", lang=data.get("lang","ru"))
-
-            )
-
-        dict_menu["main_menu"] = LEXICON_dict.get(
+        dict_menu["main_menu"] = get_text(
 #             "return_to_main_menu", "Вернуться в главное меню"
-            "return_to_main_menu", get_text("all_users.return_in_main_menu_2", lang=data.get("lang","ru"))
+            "return_to_main_menu", lang=data.get("lang","ru"))
 
-        )
 
         logger.info(f"Словарь меню при показе вариантов: {dict_menu}")
         markup = create_inline_kb(1, **dict_menu)
@@ -390,9 +379,11 @@ async def process_proxy_list(callback: CallbackQuery, data: dict):
 
             # Определение статуса
             status_label = (
-                LEXICON_dict.get("user_status", {}).get("delegate", "делегат")
+#                 LEXICON.get("user_status", {}).get("delegate", "делегат")
+                get_text("user_status.delegate", lang=data.get("lang", "ru"))
                 if "delegate" in proxy_status
-                else LEXICON_dict.get("user_status", {}).get("proxy", "представитель")
+#                 else LEXICON.get("user_status", {}).get("proxy", "представитель")
+                else get_text("user_status.proxy", lang=data.get("lang", "ru"))
             )
 
             # Формирование строки с HTML разметкой
@@ -517,19 +508,18 @@ async def process_proxy_info(callback: CallbackQuery, data: dict):
             page = 1
 
         dict_menu = {}
-        dict_menu[f"proxy_list:{page}"] = LEXICON_dict.get(
+        dict_menu[f"proxy_list:{page}"] = get_text(
 #             "proxy_list", "Список представителей"
-            "proxy_list", get_text("all_users.list_representatives_1", lang=data.get("lang","ru"))
+            "proxy_list", lang=data.get("lang","ru"))
 
-        )
         if "member" in data["user_status"] and "proxy" not in data["user_status"]:
-            dict_menu[f"select_proxy:{proxy_id}"] = LEXICON_dict.get(
+            dict_menu[f"select_proxy:{proxy_id}"] = get_text(
 #                 "select_proxy", "Выбрать этого представителя"
-                "select_proxy", get_text("all_users.choose_this_proxy", lang=data.get("lang","ru"))
+                "select_proxy", lang=data.get("lang","ru"))
 
-            )
-#         dict_menu["main_menu"] = LEXICON.get("main_menu", "Главное меню")
-        dict_menu["main_menu"] = LEXICON_dict.get("main_menu", get_text("all_users.main_menu_1", lang=data.get("lang","ru")))
+# #         dict_menu["main_menu"] = LEXICON.get("main_menu", "Главное меню")
+
+        dict_menu["main_menu"] = get_text("main_menu", lang=data.get("lang", "ru"))
 
         markup = create_inline_kb(1, **dict_menu)
 
@@ -575,7 +565,7 @@ async def press_edit_username(callback: CallbackQuery, state: FSMContext, data: 
         # "Важно, чтобы оно было уникальным для этой группы, чтобы пользователи различали представителей."
         # "И желательно не длиннее 40 символов"
     )
-    data["reply_markup"] = return_to_main_menu_markup
+    data["reply_markup"] = return_to_main_menu_markup(lang=data.get("lang","en"))
 
     # Редактируем сообщение
     await safe_edit(callback,   # type: ignore
@@ -619,7 +609,7 @@ async def process_username_sent(message: Message, state: FSMContext, data: dict)
 #     {message.text}""",
             text=get_text("all_users.please_confirm_correct_is_entered_yours_name_username_value", lang=data.get("lang","ru")).format(message_text=message_text),
 
-            reply_markup=confirm_markup,
+            reply_markup=confirm_markup(lang=data.get("lang","en")),
         )
         await state.set_state(FSM_profile.fill_OK)
     else:
@@ -627,7 +617,7 @@ async def process_username_sent(message: Message, state: FSMContext, data: dict)
 #             text="Такое имя/псевдоним уже есть. Попрбуйте придумать другой псевдоним или добавьте что-нибудь, что выделяло бы вас",
             text=get_text("all_users.such_name_username_already_exists_try_invent_another_u", lang=data.get("lang","ru")),
 
-            reply_markup=return_to_main_menu_markup,
+            reply_markup=return_to_main_menu_markup(lang=data.get("lang","en")),
         )
 
 
@@ -684,7 +674,7 @@ async def process_no_confirm_username_press(
         get_text("all_users.thank_you_username_not_changed_try_also_time_or_press_button", lang=data.get("lang","ru"))
 
     )
-    data["reply_markup"] = return_to_main_menu_markup
+    data["reply_markup"] = return_to_main_menu_markup(lang=data.get("lang","en"))
 
     # Пытаемся отредактировать сообщение
     await safe_edit(callback,   # type: ignore
@@ -713,7 +703,7 @@ async def warning_new_username(message: Message, data: dict):
 
         # "Если вы хотите прервать изменение статуса - "
         # "нажмите кнопку или отправьте команду /cancel",
-        reply_markup=return_to_main_menu_markup,
+        reply_markup=return_to_main_menu_markup(lang=data.get("lang","en")),
     )
 
 
@@ -743,7 +733,7 @@ async def press_edit_description(
         # "Если вы станете представителем - этот раздел смогут прочитать потенциальные подписчики\n"
         # "Если хотите прервать процедуру - нажмите кнопку или наберите /cancel"
     )
-    data["reply_markup"] = return_to_main_menu_markup
+    data["reply_markup"] = return_to_main_menu_markup(lang=data.get("lang","en"))
 
     # Редактируем сообщение
     await safe_edit(callback,   # type: ignore
@@ -913,5 +903,5 @@ async def warning_level_selection(message: Message, data: dict):
 
         # "Если вы хотите прервать процедуру - "
         # "нажмите кнопку под этим сообщением или отправьте команду /cancel",
-        reply_markup=return_to_main_menu_markup,
+        reply_markup=return_to_main_menu_markup(lang=data.get("lang","en")),
     )

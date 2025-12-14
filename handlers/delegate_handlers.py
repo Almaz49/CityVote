@@ -114,8 +114,7 @@ async def process_new_voting_description_sent(message: Message, state: FSMContex
 # Название: {title}
 # Описание: {description}""",
         text=get_text("delegate.please_confirm_correct_is_entered_title_and_description_voti", lang=data.get("lang","ru")).format(description=description, title=title),
-
-        reply_markup=confirm_markup,
+        reply_markup=confirm_markup(lang=data.get("lang","en")),
     )
     await state.set_state(FSMNewVoting.fill_OK)
 
@@ -326,7 +325,7 @@ async def process_new_variant_description_sent(message: Message, state: FSMConte
 # Описание: {description}""",
         text=get_text("delegate.please_confirm_correct_is_entered_title_and_description_opti", lang=data.get("lang","ru")).format(description=description, title=title),
 
-        reply_markup=confirm_markup,
+        reply_markup=confirm_markup(lang=data.get("lang","en")),
     )
     await state.set_state(FSMNewVariant.fill_OK)
 
@@ -364,7 +363,7 @@ async def process_new_variant_yes_confirm_press(
                 get_text("delegate.thank_you_option_created_nkhotite_is_add_eshch_option", lang=data.get("lang","ru"))
 
             )
-            data["reply_markup"] = variant_markup
+            data["reply_markup"] = variant_markup(lang=data.get("lang","ru"))
 
             # Пытаемся отредактировать сообщение
             await safe_edit(callback,   # type: ignore
@@ -377,7 +376,7 @@ async def process_new_variant_yes_confirm_press(
         else:
             # Добавляем данные для SafeEditMiddleware
 #             data["response_text"] = f"Ошибка: {comment}"
-            data["response_text"] = get_text("delegate.error_value_1", lang=data.get("lang","ru")).format(comment=comment)
+            data["response_text"] = get_text("delegate.error_value", lang=data.get("lang","ru")).format(comment=comment)
 
             data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
@@ -415,7 +414,7 @@ async def process_new_variant_no_confirm_press(
 #     data["response_text"] = "Вариант не создан! Хотите ли добавить другой вариант?"
     data["response_text"] = get_text("delegate.option_not_created_want_is_add_another_option", lang=data.get("lang","ru"))
 
-    data["reply_markup"] = variant_markup
+    data["reply_markup"] = variant_markup(lang=data.get("lang","ru"))
 
     # Пытаемся отредактировать сообщение
     await safe_edit(callback,   # type: ignore

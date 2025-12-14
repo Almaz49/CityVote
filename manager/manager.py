@@ -46,6 +46,12 @@ async def voting_create_manager(
     Менеджер создания голосования. Вызывает функцию создания голосования,
     организует информационные рассылки.
     """
+    club_info = await get_club_info(club_id)
+    if not club_info:
+        logger.error(f"Информация о группе {club_id} не найдена")
+        return {"success": False, "message": "Группа не найдена"}
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
+
     result = await voting_create(
         club_id, creator, title, text, voting_type, voting_status
     )
@@ -59,6 +65,7 @@ async def voting_create_manager(
     if not club_info:
         logger.error(f"Информация о группе {club_id} не найдена")
         return {"success": False, "message": "Группа не найдена"}
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
 
     club_name: str = club_info.get("name", "Неизвестная группа")
     notify_text = f"В группе {club_name} создано голосование:\n{title}\n"
@@ -114,15 +121,19 @@ async def voting_manager(
     Менеджер этапов голосования. Вызывает функцию соответствующего этапа голосования,
     организует информационные рассылки.
     """
+
     if not club_id:
         club_id = await extract_group_id(voting_id)
         if not club_id:
             logger.error("Не удалось получить club_id по voting_id")
-            return {"success": False, "message": "club_id не найден"}
+            return {"success": False, "message": "club_id not found"}
 
     club_info = await get_club_info(club_id)
     if not club_info:
-        return {"success": False, "message": "Информация о группе не найдена"}
+        logger.error(f"Информация о группе {club_id} не найдена")
+        return {"success": False, "message": "Group not found"}
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
+
 
     club_name = club_info.get("name", "Неизвестная группа")
 
@@ -241,12 +252,16 @@ async def leave_club(bot: Bot, member_id: int, status: str) -> None:
 
 @log_function_call
 async def daily_task(
-    bot: Bot, club_id: int, message_text: str = "📅 Ежедневная задача выполнена!"
+    bot: Bot, club_id: int, message_text: str = "📅 Daily task completed!"
 ) -> None:
     """
     Рассылка админам.
     """
     logger.info("Выполняется ежедневная задача в 00:00")
+
+    if not club_id:
+        raise ValueError("Не удалось получить ID группы")
+
     admins = await list_of_members(club_id, status=["admin", "owner"])
     if admins:
         for admin in admins:
@@ -270,7 +285,7 @@ async def voting_task(bot: Bot, club_id) -> None:
     if not club_info:
         logger.error(f"Группа {club_id} не найдена")
         return
-
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
     # Проверка права голоса для всех участников
     await check_votist_status_for_all_members(club_id)
 
@@ -391,6 +406,11 @@ async def check_token_for_oll_members(bot: Bot, club_id: int):
     """
     Проверка не истек ли срок действия токенов у всех участников
     """
+    club_info = await get_club_info(club_id)
+    if not club_info:
+        logger.error(f"Группа {club_id} не найдена")
+        return
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
     # Получаем членов группы с актуальным статусом 'member'
     members = await extract_list_of_full_member_ids(club_id)
     for member in members:

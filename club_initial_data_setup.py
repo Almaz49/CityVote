@@ -21,6 +21,7 @@ import logging
 from typing import List, Optional
 from config_data.config import load_config
 
+
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ config = load_config(instance_name=instance_name)
 path_db = config.db.path_db  # путь к базе данных
 admin_ids: List[int] = config.tg_bot.admin_ids  # список tg_id админов бота
 club_id: Optional[int] = config.tg_bot.club_id  # id группы в БД (не телеграм)
+lang: str = config.tg_bot.language # язык группы
 
 # Подключение к БД
 from data_base.db_token_service import auto_approve_by_token, create_tokens_without_lot, is_valid_token
@@ -54,8 +56,8 @@ def create_club(club_id: int, connection: sqlite3.Connection):
     cursor = connection.cursor()
     try:
         cursor.execute(
-            "INSERT OR IGNORE INTO Clubs (id, name) VALUES (?, ?)",
-            (club_id, f"Club {club_id}")
+            "INSERT OR IGNORE INTO Clubs (id, name, lang) VALUES (?, ?, ?)",
+            (club_id, f"Club {club_id}", lang)
         )
         connection.commit()
         logger.info(f"Создана группа с id={club_id}")

@@ -35,7 +35,7 @@ class SafeEditMiddleware(BaseMiddleware):
                 if isinstance(event, CallbackQuery):
                     logger.warning("Сообщение для редактирования не найдено — возможно, устарело")
                     text = data.get(
-                        "response_text", "Произошла ошибка при обновлении сообщения"
+                        "response_text", "Error: message to edit not found"
                     )
                     reply_markup = data.get("reply_markup", None)
                     await event.message.answer(text=text, reply_markup=reply_markup)  # type: ignore

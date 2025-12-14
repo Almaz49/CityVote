@@ -1,6 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# Этот скрипт автоматически извлекает строковые литералы с кириллицей из указанного Python-файла (handlers/owner_handlers.py), начиная с заданной строки (START_LINE = 1). Он предназначен для подготовки проекта к локализации: каждая найденная кириллическая строка заменяется вызовом функции get_text(...), которая будет возвращать текст на нужном языке во время выполнения.
+
+# Процесс работы:
+
+# Скрипт делает резервную копию исходного файла.
+# Загружает существующий словарь локализации (если есть) из LEXICON_RU.auto.py.
+# Находит кириллические строки только в «валидных» контекстах: либо справа от оператора присваивания (=), либо в аргументах вызовов функций, связанных с отправкой сообщений (например, send_message, answer и т.д.).
+# Для каждой подходящей строки создаётся уникальный ключ вида {модуль}.{slug}, где slug генерируется на основе содержимого строки с транслитерацией и удалением форматов/тегов.
+# Если строка — f-строка, скрипт пытается извлечь простые переменные-плейсхолдеры (типа {name}) и сохраняет их для последующего .format(...).
+# Исходная строка заменяется на вызов get_text(...), а оригинал комментируется для удобства отладки.
+# Все извлечённые строки сохраняются в файл LEXICON_RU.auto.py в виде словаря по модулям.
+# Цель — вынести все пользовательские сообщения из кода в отдельный локализуемый ресурс, сохранив при этом структуру форматирования и обеспечив уникальность ключей.
+
+# In English:
+# This script automatically extracts Cyrillic-containing string literals from a specified Python file (handlers/owner_handlers.py), starting from a given line (START_LINE = 1). Its purpose is to prepare the codebase for internationalization: each detected Cyrillic string is replaced with a call to a get_text(...) function, which will return the appropriate localized message at runtime.
+
+# How it works:
+
+# A backup of the input file is created.
+# It loads an existing localization dictionary (if any) from LEXICON_RU.auto.py.
+# It only processes strings found in “valid” contexts: either on the right-hand side of an assignment (=) or as arguments to messaging-related functions (e.g., send_message, answer, etc.).
+# For each valid Cyrillic string, it generates a unique key like {module}.{slug}, where the slug is derived by transliterating the text, stripping HTML tags, placeholders (e.g., {user}), and normalizing the result.
+# If the string is an f-string, the script attempts to detect simple placeholders (like {name}) and preserves them for use in a subsequent .format(...) call.
+# The original string is replaced with a get_text(...) call, while the original line is commented out above for reference.
+# All extracted strings are saved into LEXICON_RU.auto.py as a nested dictionary organized by module.
+# The goal is to externalize all user-facing messages from the source code into a centralized, maintainable localization resource, while preserving formatting logic and ensuring key uniqueness.
+
 from RU_TO_EN import RU_TO_EN
 import os
 import re
@@ -8,7 +35,7 @@ import shutil
 from typing import Set, Dict, List, Optional, Tuple
 
 # -----------------------------
-INPUT_FILE = "handlers/token_handlers.py"
+INPUT_FILE = "handlers/owner_handlers.py"
 START_LINE = 1
 
 BASENAME = os.path.basename(INPUT_FILE)

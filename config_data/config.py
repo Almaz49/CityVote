@@ -22,6 +22,7 @@ class TgBot:
     club_id: int|None  # id группы, которую администрирует бот (группа в БД, а не в телеграм)
     admin_ids: list  # Список id администраторов бота
     timezone: str  # Часовой пояс группы
+    language: str  # Язык
 
 
 @dataclass
@@ -50,6 +51,7 @@ def load_config(path: str | None = None, instance_name: str | None = None) -> Co
     # Читаем опциональные поля
     token = env("BOT_TOKEN", None)
     club_id_str = env("CLUB_ID", None)
+    language = env("LANGUAGE", default="en")
     admin_ids_raw = env.list("ADMIN_IDS", default=[])
 
     # Парсим CLUB_ID
@@ -76,6 +78,7 @@ def load_config(path: str | None = None, instance_name: str | None = None) -> Co
         tg_bot=TgBot(
             token=token,
             club_id=club_id,
+            language=language,
             admin_ids=admin_ids,
             timezone=timezone
         ),

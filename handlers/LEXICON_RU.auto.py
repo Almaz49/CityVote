@@ -1,11 +1,18 @@
 # AUTO-GENERATED — do not edit
 
 LEXICON_RU = {
+    "admin": {
+        "details_of_the_user_you_want_to_ban":("""
+Данные участника которого вы хотите забанить:\n
+Имя: {first_name},
+Фамилия: {last_name}, \n
+Телефон: {tg_phone_number}\n
+Псевдоним: {username} Всё верно?
+        """),
+},
     "all_users": {
         "add_option": 'Добавить вариант',
         "admin_voting": 'Администрирование голосования',
-        "admin_voting_1": 'Администрирование голосования',
-        "admin_voting_2": 'Администрирование голосования',
         "all_valid_votes_in_group_value": 'Всего действительных голосов в группе: {s_votist}\\nВыберите дальнейшее действие',
         "back": '⬅️ Назад',
         "back_to_to_list_voting": 'Назад к списку голосований',
@@ -228,6 +235,100 @@ LEXICON_RU = {
         "you_resigned_ot_role_registrator": 'Вы отказались от роли регистратора!',
         "you_stopped_be_proxy": 'Вы перестали быть представителем!',
     },
+    "owner": {
+        "choose_which_status_you_want_add_user_or_remove_if_want_canc": 'Выберите, какой статус вы хотите добавить пользователю, или удалить.\n\n\\nЕсли хотите прервать процедуру - наберите /cancel',
+        "conditions_not_can_be_empty_try_again": 'Условия не могут быть пустыми. Попробуйте снова.',
+        "conditions_not_can_be_empty_try_again_1": 'Условия не могут быть пустыми. Попробуйте снова.',
+        "conditions_participation_success_changed": 'Условия участия успешно изменены.',
+        "confirm_duration_stages_voting_in_days": ("Подтвердите продолжительность этапов голосования (в сутках):\\n"
+            "1. Этап добавления вариантов: {duration_add_variants} суток\n"
+            "2. Основной этап: {duration_first_stage} суток\n"
+            "3. Финальный этап: {duration_final} суток\n"
+            "4. Этап утверждения итогов: {duration_confirmation} суток\n"
+            "Всё верно?"),
+        "confirm_thresholds_trusted_votes": ('Подтвердите пороги доверенных голосов:\\n'
+            "1. Минимальное количество голосов: {threshold_in_voices}\n"
+            "2. Минимальный процент от общего числа голосов: {threshold_in_percent}\n"
+            "Всё верно?"),
+        "data_member_not_found": 'Данные участника не найдены',
+        "data_member_not_found_1": 'Данные участника не найдены',
+        "data_member_to_whom_you_change_status_name_value_last_name_v": "Данные участника которому вы меняете статус:\\nИмя: {first_name},\n\n    Фамилия: {last_name}, \\n Телефон: {tg_phone_number}\\n\n    Псевдоним: {username} Всё верно?",
+        "data_member_to_whom_you_change_status_name_value_last_name_v_1": "Данные участника которому вы меняете статус:\\nИмя: {first_name},\n\n    Фамилия: {last_name}, \\n Телефон: {tg_phone_number}\\n\n    Псевдоним: {username} Всё верно?",
+        "data_member_to_whom_you_change_status_name_value_last_name_v_2": "Данные участника которому вы меняете статус:\\nИмя: {first_name},\n\n    Фамилия: {last_name}, \\n Телефон: {tg_phone_number}\\n\n    Псевдоним: {username} Всё верно?",
+        "description_group_success_changed": 'Описание группы успешно изменено.',
+        "description_not_can_be_empty_try_again": 'Описание не может быть пустым. Попробуйте снова.',
+        "description_not_can_be_empty_try_again_1": 'Описание не может быть пустым. Попробуйте снова.',
+        "enter_duration_stages_voting_in_days_in_next_formate": ('Введите продолжительность этапов голосования (в сутках) в следующем формате:\\n'
+                "1. Продолжительность этапа добавления вариантов\n"
+        "2. Продолжительность основного этапа\n"
+        "3. Продолжительность финального этапа\n"
+        "4. Продолжительность этапа утверждения итогов\n"
+        "Пример: `2 3 1 1` (через пробел)."),
+        "enter_duration_stages_voting_in_days_in_next_formate_1": 'Введите продолжительность этапов голосования (в сутках) в следующем формате:\\n',
+        "enter_id_or_link_to_channel_chat_for_deletion_from_mailing": 'Введите ID или ссылку на канал/чат для удаления из рассылок:',
+        "enter_id_or_link_to_channel_chat_for_mailing": 'Введите ID или ссылку на канал/чат для рассылок:',
+        "enter_id_or_link_to_main_channel_chat": 'Введите ID или ссылку на основной канал/чат:',
+        "enter_new_conditions_participation_in_group": 'Введите новые условия участия в группе:',
+        "enter_new_description_group": 'Введите новое описание группы:',
+        "enter_new_name_group": 'Введите новое имя группы:',
+        "enter_thresholds_trusted_votes_in_next_formate": ("Введите пороги доверенных голосов в следующем формате:\\n"
+        "1. Минимальное количество голосов (число с плавающей точкой или запятой)\n"
+        "2. Минимальный процент от общего числа голосов (число с плавающей точкой или запятой)\n"
+        "Примеры:\n"
+        "- `10.5 5`\n"
+        "- `10,5 1,5`\n"
+        "- `10 15`\n"
+        "Через пробел."),
+        "enter_value_thresholds_through_space": 'Введите значения порогов через пробел.',
+        "id_or_link_not_can_be_empty_try_again": 'ID или ссылка не могут быть пустыми. Попробуйте снова.',
+        "id_or_link_not_can_be_empty_try_again_1": 'ID или ссылка не могут быть пустыми. Попробуйте снова.',
+        "id_or_link_not_can_be_empty_try_again_2": 'ID или ссылка не могут быть пустыми. Попробуйте снова.',
+        "id_or_link_not_can_be_empty_try_again_3": 'ID или ссылка не могут быть пустыми. Попробуйте снова.',
+        "id_or_link_not_can_be_empty_try_again_4": 'ID или ссылка не могут быть пустыми. Попробуйте снова.',
+        "id_or_link_not_can_be_empty_try_again_5": 'ID или ссылка не могут быть пустыми. Попробуйте снова.',
+        "invalid_input_value": ("Некорректный ввод: {e}\\n"
+            "Пожалуйста, введите два числа через пробел.\n"
+            "Разделителем между целой и дробной частью может быть точка или запятая."
+                                ),
+        "invalid_input_value_please_enter_four_positive_number_throug": 'Некорректный ввод: {e}\\nПожалуйста, введите четыре положительных числа через пробел.',
+        "message_not_contains_text_please_try_again": 'Сообщение не содержит текст. Пожалуйста, попробуйте снова.',
+        "name_group_success_changed_to_value": 'Имя группы успешно изменено на: {new_name}',
+        "name_not_can_be_empty_try_again": 'Имя не может быть пустым. Попробуйте снова.',
+        "name_not_can_be_empty_try_again_1": 'Имя не может быть пустым. Попробуйте снова.',
+        "occurred_error_data_incorrect_must_be_4_positive_number": 'Произошла ошибка: данные некорректны. Должно быть 4 положительных числа.',
+        "occurred_error_data_not_found": 'Произошла ошибка: данные не найдены.',
+        "occurred_error_value": 'Произошла ошибка: {err}',
+        "occurred_error_value_1": 'Произошла ошибка: {err}',
+        "occurred_error_value_2": 'Произошла ошибка: {err}',
+        "occurred_error_value_3": 'Произошла ошибка: {err}',
+        "occurred_error_value_4": 'Произошла ошибка: {ans_str}',
+        "occurred_error_value_5": 'Произошла ошибка: {err}',
+        "occurred_error_with_changes_conditions_participation": 'Произошла ошибка при изменении условий участия.',
+        "occurred_error_with_changes_description_group": 'Произошла ошибка при изменении описания группы.',
+        "occurred_error_with_changes_name_group": 'Произошла ошибка при изменении имени группы.',
+        "occurred_error_with_processing_request": 'Произошла ошибка при обработке запроса.',
+        "please_enter_correct_numeric_value": 'Пожалуйста, введите корректное числовое значение.',
+        "please_enter_telegram_id_member_to_whom_you_want_grant_new_s": 'Пожалуйста, введите телеграм-ID участника,\n\nкоторому вы хотите присвоить новый статус или отправьте контакт с ID',
+        "please_enter_telegram_id_member_to_whom_you_want_grant_new_s_1": 'Пожалуйста, введите телеграм-ID участника,\n\nкоторому вы хотите присвоить новый статус или отправьте контакт с ID',
+        "please_send_contact": 'Пожалуйста, отправьте контакт.',
+        "please_use_buttons": ("Пожалуйста, воспользуйтесь кнопками!\\n\\n"
+                "Если вы хотите прервать назначение регистратора - "
+        "отправьте команду /cancel"),
+        "please_use_buttons_1": ('Пожалуйста, воспользуйтесь кнопками!\\n\\n'
+                "Если вы хотите прервать изменение статуса - "
+        "отправьте команду /cancel"),
+        "setting_prodolzhitelьnosti_stages_cancelled": 'Установка продолжительности этапов отменена.',
+        "setting_thresholds_trusted_votes_cancelled": 'Установка порогов доверенных голосов отменена.',
+        "sorry_such_status_no_try_again": ('Извините, такого статуса нет.\\n\\n Попробуйте снова.'
+                "Вы вышли из машины состояний"),
+        "such_member_not_found": 'Такой участник не найден',
+        "such_member_not_found_1": 'Такой участник не найден',
+        "thank_you_new_status_not_added_try_also_time_you_exited_from": 'Спасибо! Новый статус не добавлен!\\nПопробуйте еще раз.\\nВы вышли из машины состояний',
+        "thank_you_new_status_not_added_try_also_time_you_exited_from_1": 'Спасибо! Новый статус не добавлен!\\nПопробуйте еще раз.\\nВы вышли из машины состояний',
+        "thank_you_status_member_updated": 'Спасибо! Статус участника обновлен!\\n\\nВы вышли из машины состояний',
+        "to_sorry_id_contact_missing_try_send_simply_id": 'К сожалению, ID контакта отсутствует. Попробуйте отправить просто ID',
+        "you_exited_from_machines_consisting": 'Вы вышли из машины состояний',
+    },
     "proxy": {
         "enter_text_rassylki": 'Введите текст рассылки:',
         "message_slishkom_dlinnoe_maks_4000_characters_try_again": 'Сообщение слишком длинное (макс. 4000 символов). попробуйте снова',
@@ -274,7 +375,7 @@ LEXICON_RU = {
         "error_with_notification_super_registrator_value": 'Ошибка при уведомлении супер-регистратора: {result}',
         "message_unavailable": 'Сообщение недоступно',
         "nobody_from_registrators_not_know": 'Никого из регистраторов не знаю',
-        "occurred_error_value": 'Произошла ошибка: {str(e)}',
+        "occurred_error_value": 'Произошла ошибка: {err}',
         "occurred_error_with_start_process_registration": 'Произошла ошибка при начале процесса регистрации.',
         "please_use_buttons_with_choice_moderator_if_you_want_cancel_": 'Пожалуйста, пользуйтесь кнопками при выборе модератора.\\n\\nЕсли вы хотите прервать заполнение анкеты - отправьте команду /cancel',
         "thank_you_choose_registrator_whose_know_to_he_could_confirm_": "Спасибо!\\nВыберите регистратора, которого знаете,\\nчтобы он смог подтвердить вашу личность\\nЕсли никого не знаете,\\nНажмите кнопку 'Никого не знаю'",
@@ -289,7 +390,7 @@ LEXICON_RU = {
         "comment_not_can_be_empty_try_once_more_time_3": 'Комментарий не может быть пустым. Попробуйте ещё раз:',
         "comment_not_can_be_empty_try_once_more_time_4": 'Комментарий не может быть пустым. Попробуйте ещё раз:',
         "comment_not_can_be_empty_try_once_more_time_5": 'Комментарий не может быть пустым. Попробуйте ещё раз:',
-        "created_tokeny_lot_value_value": "Созданы токены лота №",
+        "created_tokeny_lot_value_value": 'Созданы токены лота №',
         "enter_comment_for_these_tokens": 'Введите комментарий для этих токенов:',
         "enter_comment_for_these_tokens_1": 'Введите комментарий для этих токенов:',
         "enter_comment_for_this_token": 'Введите комментарий для этого токена:',

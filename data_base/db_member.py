@@ -5,7 +5,7 @@ import logging
 import os
 import aiosqlite
 import pandas as pd
-from data_base.db_func import AsyncDatabase, db_update, extract_member_id, extract_status, extract_user_id, path_db, threshold_in_voices
+from data_base.db_func import AsyncDatabase, db_update, extract_member_id, extract_status, extract_user_id, get_member_lang, path_db, threshold_in_voices
 from utils import log_function_call
 from utils.utils import fetch_as_dict
 
@@ -102,7 +102,8 @@ async def new_status(registrator, member_id, status, token_id=None):
     logger.info(
         f"Запись нового статуса: registrator={registrator}, member_id={member_id}, status={status}, token_id={token_id}, time_reg={time_reg}"
     )
-
+    lang = await get_member_lang(registrator)
+    data = {"lang": lang}
     async with AsyncDatabase(path_db) as cursor:
         try:
             # Делаем запись в таблице регистраций
@@ -226,7 +227,8 @@ async def trust(member_id, proxy):
     logger.info(
         f"Запись доверия: member_id={member_id}, proxy={proxy}, time_trust={time_trust}"
     )
-
+    lang = await get_member_lang(member_id)
+    data = {"lang": lang}
     async with AsyncDatabase(path_db) as cursor:
         try:
             # Добавляем в строку члена запись о представителе в таблицу Members
@@ -336,6 +338,8 @@ async def is_votist(member_id: int):
 async def member_leave_club(member_id, status):
     time_leave = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info(f"Запись выхода из группы member_id={member_id}")
+    lang = await get_member_lang(member_id)
+    data = {"lang": lang}
     # Если уходит владелец, оставляем за ним статус владельца
     if "owner" in status:
         status.remove("owner")
@@ -695,7 +699,7 @@ async def extract_list_of_full_member_ids(club_id):
 @log_function_call
 async def check_token_expiration(member_id) -> tuple[bool, datetime.datetime]:
     """
-    Проверяет, истел ли срок токена для пользователя с указанным member_id.
+    Проверяет, истек ли срок токена для пользователя с указанным member_id.
     Если истек - пользователю присваивается статус 'frozen', а токену - статус 'old'.
     Также у пользователя удаляется статус 'votist', если он есть.
 

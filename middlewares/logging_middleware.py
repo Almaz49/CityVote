@@ -124,7 +124,7 @@ class LoggingAndErrorHandlingMiddleware(BaseMiddleware):
             # Only call user_menu if tg_id is an integer
             if isinstance(tg_id, int):
                 try:
-                    markup = return_to_main_menu_markup
+                    markup = return_to_main_menu_markup(lang)
                 except Exception as menu_error:
                     logger.error(
                         f"Failed to generate user menu for tg_id {tg_id}: {menu_error}"

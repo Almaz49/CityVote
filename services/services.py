@@ -19,8 +19,8 @@ from config_data.config import Config, load_config
 from data_base.db_func import AsyncDatabase, add_telegram_channel, count_member, get_club_info, get_profile, get_tg_id_by_member_id, list_of_followers, list_of_members, list_of_variants, remove_telegram_channel, set_main_channel
 from data_base.db_member import is_user_available, is_votist, mark_user_as_unavailable
 from data_base.db_vote import count_directly_empty_votes, count_directly_votes, count_proxy_votes, extract_member_choise, extract_proxy_choice, get_voting_info
-from keyboards.keyboards import create_inline_kb, main_menu_markup
-from LEXICON import LEXICON_init
+from keyboards.keyboards import create_inline_kb
+from LEXICON import get_text
 from utils import log_function_call
 
 # Настройка логирования
@@ -38,8 +38,9 @@ async def get_bot_username(bot: Bot):
 
 # Функция уведомления пользователя
 @log_function_call
-async def send_notification_to_user(bot: Bot, tg_id: int, message_text: str, reply_markup = main_menu_markup):
+async def send_notification_to_user(bot: Bot, tg_id: int, message_text: str, reply_markup = None, lang: str = "en"):
     is_available = await is_user_available(tg_id)
+    # if not reply_markup: reply_markup = main_menu_markup(lang)
     # logger.debug(f"Пользователь {tg_id} доступен: {is_available}")
     if is_available:
         try:
@@ -93,6 +94,8 @@ async def send_notification_to_members(
     bot: Bot,
     club_id: int,
     message_text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    lang: str = "en",
     status: str | list[str] = "all",
 ) -> str:
     try:
@@ -108,7 +111,7 @@ async def send_notification_to_members(
                 continue
 
             result = await send_notification_to_user(bot, tg_id, message_text)
-            if "отправлено" in result or "успешно" in result:
+            if "отправлено" in result or "успешно" in result or "sender" in result or "sent" in result or "success" in result:
                 sent_count += 1
             else:
                 failed_count += 1
@@ -127,7 +130,15 @@ async def send_notification_to_followers(
     club_id: int,
     message_text: str,
     proxy: int,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    parse_mode: str | None = None,
+    lang: str = "en",
 ) -> str:
+    club_info = await get_club_info(club_id)
+    if not club_info:
+        logger.error(f"Группа {club_id} не найдена")
+        raise ValueError(f"Group {club_id} not found")
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
     logger.debug(f"Отправка сообщения {message_text} в подписчиков {proxy}")
     message_text_with_header = f"📩 От вашего представителя:\n\n{message_text}"
     try:
@@ -164,12 +175,13 @@ async def send_notification_to_chat_or_channel(
     inline_button_text: str = "Принять участие в голосованиях",
     inline_button_callback_data: str|None = None, # Параметр, который передается при нажатии на кнопку
     member_id: int|None = None,
+    lang: str = "en",
     parse_mode: str = "HTML"
 ):
     """
     Отправляет уведомление в чат или канал с возможностью добавления inline-кнопки.
 
-    :param bot: Экземпляр бота Aiosogram.
+    :param bot: Экземпляр бота Aiogram.
     :param chat_id: ID чата или канала, куда отправляется уведомление.
     :param message_text: Текст уведомления (может быть в формате HTML).
     :param inline_button_text: Текст для inline-кнопки (опционально). По умолчанию "Принять участие в голосованиях".
@@ -237,7 +249,7 @@ async def send_notification_to_chat_or_channel(
 
 
 @log_function_call
-async def send_file_to_user(bot: Bot, tg_id: int, file_path: str, caption: str = "Файл", reply_markup=None):
+async def send_file_to_user(bot: Bot, tg_id: int, file_path: str, caption: str = "Файл", reply_markup=None, lang: str = "en"):
     """
     Отправляет файл пользователю по его tg_id.
 
@@ -291,7 +303,12 @@ async def send_file_to_user(bot: Bot, tg_id: int, file_path: str, caption: str =
 
 #Функция уведомления регистратора при краткой регистрации.
 @log_function_call
-async def notify_registrator_short(bot: Bot, registrator_tg_id, candidate_tg_id, user_dict):
+async def notify_registrator_short(bot: Bot, club_id: int, registrator_tg_id, candidate_tg_id, user_dict, lang: str = 'en'):
+    club_info = await get_club_info(club_id)
+    if not club_info:
+        logger.error(f"Группа {club_id} не найдена")
+        return (False, "Group not found")
+    data = {"club_id": club_id, "lang": club_info.get("lang", "ru")}
     try:
         logger.debug(f"Данные пользователя для регистрации: {user_dict}")
         # Создаем объекты инлайн-кнопок
@@ -312,13 +329,13 @@ async def notify_registrator_short(bot: Bot, registrator_tg_id, candidate_tg_id,
 
         # Формируем сообщение для регистратора
         message_text = (
-            f"Пользователь с данными:\n"
+            "Пользователь с данными:\n"
             f'Имя: {user_dict.get("tg_first_name")}\n'
             f'Фамилия: {user_dict.get("tg_last_name")}\n'
             f'Резюме: {user_dict.get("resume")}\n'
-            f"Просит вас подтвердить его право\n"
-            f"стать членом клуба.\n"
-            f"Подтверждаете?"
+            "Просит вас подтвердить его право\n"
+            "стать членом клуба.\n"
+            "Подтверждаете?"
         )
 
 
@@ -337,7 +354,12 @@ async def notify_registrator_short(bot: Bot, registrator_tg_id, candidate_tg_id,
 
 #Функция уведомления суперрегистратора при краткой регистрации.
 @log_function_call
-async def notify_super_registrator_short(bot, club_id, candidate_tg_id, user_dict):
+async def notify_super_registrator_short(bot, club_id, candidate_tg_id, user_dict, lang: str = ''):
+    club_info = await get_club_info(club_id)
+    if not club_info:
+        logger.error(f"Группа {club_id} не найдена")
+        return (False, "Group not found")
+    data = {"club_id": club_id, "lang": lang or club_info.get("lang", "ru")}
     try:
         # Создаем объекты инлайн-кнопок
         confirm_button = InlineKeyboardButton(
@@ -398,121 +420,6 @@ async def notify_super_registrator_short(bot, club_id, candidate_tg_id, user_dic
 
 
 
-# # Функция уведомления и лишения статуса 'votist' тех пользователей, чей представитель утратил этот статус
-# @log_function_call
-# async def not_votist_because_proxy_quit(bot: Bot, proxy:int):
-#     logger.info(f"Лишаем статуса гоосующих тех, чей представитель {proxy} сложил полномочия")
-#     async with AsyncDatabase(path_db) as cursor:
-#         try:
-#             # Получаем имя представителя
-#             await cursor.execute('''SELECT username FROM Users WHERE id IN
-#                                  (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
-#             username_result = await cursor.fetchone()
-#             if username_result:
-#                 proxy_name, = username_result
-#             else:
-#                 proxy_name = 'Имя неизвестно'
-
-#             # Получаем id всех доверителей
-#             await cursor.execute(
-#                 'SELECT id FROM Members WHERE proxy = ?',
-#                 (proxy,)
-#             )
-#             result = await cursor.fetchall()
-#         except aiosqlite.Error as e:
-#             logger.error(f"Ошибка при лишении статуса 'голосующих' доверителей ушедшего представителя: {e}")
-#             raise
-
-#     for item in result:
-#         member_id, = item
-#         # Проверяем, является ли пользователь голосующим
-#         flag = await is_votist(member_id)
-#         if not flag:
-#             # Получаем телеграм id пользователя
-#             async with AsyncDatabase(path_db) as cursor:
-#                 try:
-#                     await cursor.execute(
-#                 '''SELECT tg_id FROM Users WHERE id in
-#                 (SELECT user_id FROM Members WHERE id = ?)''',
-#                 (member_id,)
-#                     )
-#                     tg_id_result = await cursor.fetchone()
-#                     if tg_id_result:
-#                         tg_id, = tg_id_result
-#                     else:
-#                         tg_id = None
-#                     message_text = f'''
-# Ваш представитель {proxy_name} утратил статус представителя.
-# Выберите другого или сами станьте представителем, чтобы иметь право решающего голоса.
-# Для начала работы наберите или нажмите команду /start
-# '''
-#                     # Отправляем сообщение участннику, чей представитель ушел в отставку
-#                     if tg_id:
-#                         await send_notification_to_user(
-#                             bot,
-#                             tg_id,
-#                             message_text,
-#                         )
-
-#                 except aiosqlite.Error as e:
-#                     logger.error(f"Ошибка при лишении статуса голосующего: {e}")
-#                     raise
-
-# # Функция уведомления и присвоения статуса 'votist' тем пользователям, чей представитель возобновил этот статус
-# @log_function_call
-# async def votist_because_proxy_returned(bot: Bot, proxy:int):
-#     logger.info(f"Возвращаем статус гоосующих тем, чей представитель {proxy} вернул полномочия")
-#     async with AsyncDatabase(path_db) as cursor:
-#         try:
-#             await cursor.execute('''SELECT username FROM Users WHERE id IN
-#                                  (SELECT user_id FROM Members WHERE id = ?)''', (proxy,))
-#             username_result = await cursor.fetchone()
-#             if username_result:
-#                 proxy_name, = username_result
-#             else:
-#                 proxy_name = 'Имя неизвестно'
-
-#             await cursor.execute(
-#                 'SELECT id FROM Members WHERE proxy = ?',
-#                 (proxy,)
-#             )
-#             result = await cursor.fetchall()
-#         except aiosqlite.Error as e:
-#             logger.error(f"Ошибка при возвращении статуса 'голосующих' доверителям вернувшегося представителя: {e}")
-#             raise
-
-#     for item in result:
-#         member_id, = item
-#         flag = await is_votist(member_id)
-#         if flag:
-#             async with AsyncDatabase(path_db) as cursor:
-#                 try:
-#                     await cursor.execute(
-#                 '''SELECT tg_id FROM Users WHERE id in
-#                 (SELECT user_id FROM Members WHERE id = ?)''',
-#                 (member_id,)
-#                     )
-#                     tg_id_result = await cursor.fetchone()
-#                     if tg_id_result:
-#                         tg_id, = tg_id_result
-#                     else:
-#                         tg_id = None
-#                     message_text = f'''
-# Ваш представитель {proxy_name} вернул статус представителя.
-# Теперь ваш голос будет учитываться при голосованиях.
-# Для начала работы наберите или нажмите команду /start
-# '''
-#                     # Отправляем сообщение участннику, чей представитель ушел в отставку
-#                     if  tg_id:
-#                         await send_notification_to_user(
-#                             bot,
-#                             tg_id,
-#                             message_text,
-#                         )
-
-#                 except aiosqlite.Error as e:
-#                     logger.error(f"Ошибка при лишении статуса голосующего: {e}")
-#                     raise
 
 @log_function_call
 async def _notify_trustees(bot: Bot, proxy_id: int, message_template: str):
@@ -537,14 +444,14 @@ async def _notify_trustees(bot: Bot, proxy_id: int, message_template: str):
             text = message_template.format(proxy_name=proxy_name)
             await send_notification_to_user(bot, tg_id, text)
 
-async def not_votist_because_proxy_quit(bot: Bot, proxy: int):
+async def not_votist_because_proxy_quit(bot: Bot, proxy: int, lang: str = "en"):
     """
     Функция уведомления о том, что представитель ушел в отставку
     """
     template = "Ваш представитель {proxy_name} ушёл. Выберите нового..."
     await _notify_trustees(bot, proxy, template)
 
-async def votist_because_proxy_returned(bot: Bot, proxy: int):
+async def votist_because_proxy_returned(bot: Bot, proxy: int, lang: str = "en"):
     """
     Функция уведомления о том, что представитель вернулся
     """
@@ -554,15 +461,18 @@ async def votist_because_proxy_returned(bot: Bot, proxy: int):
 
 # Функция создания приветственного обращения. Использует информацию о группе
 @log_function_call
-async def greetings_message(club_id:int, lang:str = 'ru'):
+async def greetings_message(club_id:int, lang:str = 'en'):
     result = await get_club_info(club_id)
     if result:
         # name, description,father_group, tg_bot, channel_link, conditions_of_entry = result
-        response = f"<b>👋 Привет! Я — бот для голосований группы {result.get('name')}.</b>" + LEXICON_init.get('greetings',
-        'Пройдите регистрацию, чтобы воспользоваться всеми моими возможностями')
+#         response = f"<b>👋 Привет! Я — бот для голосований группы {result.get('name')}.</b>" + LEXICON.get('greetings',
+#         'Пройдите регистрацию, чтобы воспользоваться всеми моими возможностями')
+        bot_name = result.get('name')
+        response = f"<b>👋 Привет! Я — бот для голосований группы {bot_name}.</b>" + get_text("greetings", lang=lang)
         if result.get('channel_link'):
             logger.debug('Текст приветствия успешно составлен')
-            return response + f"<a href='{result.get('channel_link')}'>[Подпишитесь на наш канал, чтобы быть в курсе всех событий:]</a>"
+            channel_link = result.get('channel_link')
+            return response + f"<a href='{channel_link}'>[Подпишитесь на наш канал, чтобы быть в курсе всех событий:]</a>"
         logger.debug('Текст приветствия успешно составлен')
     else:
         logger.debug('Не найдена информация о группе для составления приветствия')
@@ -571,24 +481,27 @@ async def greetings_message(club_id:int, lang:str = 'ru'):
 
 # Функция создания справки в зависимости от ролей участника
 @log_function_call
-def help_message(status_list: list):
+def help_message(status_list: list, lang: str = 'en'):
     status = set(status_list) - {'votist'}  # Исключаем статус 'votist'
     text = "<b>Справка по вашим ролям:</b>\n\n"  # Заголовок
 
     for item in sorted(status):  # Сортируем роли для удобства
-        role_help = LEXICON_init.get(item + '_help', f'Для статуса {item} пока нет справки.')
-        text += f"📌 <b>{LEXICON_init.get(item, item.capitalize())}:</b>\n{role_help}\n\n"
+#         role_help = LEXICON.get(item + '_help', f'Для статуса {item} пока нет справки.')
+        role_help = get_text("_help", lang=lang)
+        role = get_text(item, lang=lang)
+        text += f"📌 <b>{role}:</b>\n{role_help}\n\n"
 
     logger.debug(f'Сформирована справка:\n{text}')
     return text
 
 # Функция создания справки о группе
 @log_function_call
-async def club_info(club_id:int):
+async def club_info(club_id:int, lang:str = 'en'):
     info = await get_club_info(club_id)
     if not info:
         logger.error('Не найдена информация о группе')
         raise  Exception( 'Ошибка. Не найдена информация о группе')
+    data = {"club_id": club_id, "lang": info.get("lang", "ru")}
     amount = await count_member(club_id)
     text = (
         f'Название группы: {info.get("name", "Отсутствует")}\n\n'
@@ -641,7 +554,7 @@ async def get_channel_id(bot: Bot, channel_username): # Имя канала бе
         return None
 
 @log_function_call
-async def validate_and_get_channel_info(bot: Bot, channel_info: str) -> dict:
+async def validate_and_get_channel_info(bot: Bot, channel_info: str, lang: str = 'en') -> dict:
     """
     Проверяет существование канала/чата и права бота.
     :param channel_info: ID или username канала/чата
@@ -774,8 +687,9 @@ async def process_channel_info(bot: Bot, channel_info: str, club_id: int, action
 
     return result
 
-async def profile_message(member_id, status):
+async def profile_message(member_id, status, lang = ''):
     profile = await get_profile(member_id)
+    lang = lang or profile.get('lang') or 'en'
     text = 'Данные вашего профиля:\n'
     if profile.get('username'):
         text += f"Псевдоним: {profile.get('username')}\n"
@@ -790,7 +704,8 @@ async def profile_message(member_id, status):
             text += f"Ваш представитель: {profile.get('proxy_username')}\n"
     if profile.get('token'):
         text += f"Ваш токен: {profile.get('token')}\n"
-    text+=LEXICON_init.get('profile_menu','Выберите, что хотите поменять в профиле') # Сюда вставить функцию создания текста
+#     text+=LEXICON.get('profile_menu','Выберите, что хотите поменять в профиле') # Сюда вставить функцию создания текста
+    text+=get_text("profile_menu", lang=lang) # Сюда вставить функцию создания текста
     return text
 
 
@@ -800,7 +715,9 @@ async def send_variants_by_status(
     variant_status: str,
     voting_id: int,
     member_id: int,
-    member_status: List[str],):
+    member_status: List[str],
+    lang: str = ""
+    ):
     """
     Отправляет пользователю список вариантов с указанным статусом.
     Добавляет пометки о выборе пользователя и его представителя.
@@ -810,6 +727,10 @@ async def send_variants_by_status(
     :param voting_id: ID голосования
     :param member_id: ID участника (для проверки выбора)
     """
+
+    profile = await get_profile(member_id)
+    if not profile: return
+    lang = lang or profile.get('lang') or 'en'
 
     if not callback.message:
         logger.error("Нет сообщения в callback.")
@@ -850,7 +771,8 @@ async def send_variants_by_status(
     proxy_choice = await extract_proxy_choice(member_id, voting_id)
 
     # Формируем заголовок
-    status_title_map = LEXICON_init.get('status_title_map')
+#     status_title_map = LEXICON.get('status_title_map')
+    status_title_map = get_text("status_title_map", lang=lang)
 
     if status_title_map:
         title_text = status_title_map.get(variant_status, f'Варианты со статусом "{variant_status}"')
@@ -887,10 +809,12 @@ async def send_variants_by_status(
 
         if variant_status == 'valid':
             if voting_status in ['ongoing', 'confirmation'] and 'member' in member_status and not choise_mark:
-                keyboard = {f'variant:{variant_id}': LEXICON_init["Vote for this variant"]}
+#                 keyboard = {f'variant:{variant_id}': LEXICON["Vote for this variant"]}
+                keyboard = {f'variant:{variant_id}': get_text("Vote for this variant", lang=lang)}
                 markup = create_inline_kb(1, **keyboard)
             elif voting_status == 'add_variants' and 'admin' in member_status:
-                keyboard = {f'delete_variant:{variant_id}': LEXICON_init["delete variant"]}
+#                 keyboard = {f'delete_variant:{variant_id}': LEXICON["delete variant"]}
+                keyboard = {f'delete_variant:{variant_id}': get_text("delete variant", lang=lang)}
                 markup = create_inline_kb(1, **keyboard)
 
         # Формируем текст

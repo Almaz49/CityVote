@@ -14,13 +14,6 @@ from aiosqlite import Cursor
 logger = logging.getLogger(__name__)
 
 
-# Это декоратор, который каждую функцию объявляет в логах. Вызов происходит @log_function_call
-# def log_function_call(func):
-#     @wraps(func)
-#     def wrapper(*args, **kwargs):
-#         logger.debug(f"Вызвана функция {func.__name__} из модуля {func.__module__} ")
-#         return func(*args, **kwargs)
-#     return wrapper
 
 
 def log_function_call(func):
@@ -49,13 +42,6 @@ def log_function_call(func):
         return sync_wrapper
 
 
-# Это декоратор, который каждый хэндлер объявляет в логах. Вызов происходит @log_function_call
-# def log_handler_call(func):
-#     @wraps(func)
-#     def wrapper(*args, **kwargs):
-#         logger.info(f"Вызван хэндлер {func.__name__} из модуля {func.__module__} \n")
-#         return func(*args, **kwargs)
-#     return wrapper
 
 
 def log_handler_call(func):
@@ -71,15 +57,6 @@ def log_handler_call(func):
     return wrapper
 
 
-# Декоратор, который проверяет наличие FSM data. При ее отсуствии отправляет сообщение, что сессия устарела.
-# Пример использования:
-# @router.callback_query(F.data == "ConfirmOK")
-# @check_fsm_data
-# async def process_new_voting_yes_confirm_press(callback: CallbackQuery, state: FSMContext):
-#     fsm_data = await state.get_data()
-#     title = fsm_data['title']
-#     description = fsm_data['description']
-#     # ... остальная логика ...
 
 
 def check_fsm_data(func):
@@ -90,7 +67,7 @@ def check_fsm_data(func):
 
     @wraps(func)
     async def wrapper(
-        event: Message | CallbackQuery, state: FSMContext, *args, **kwargs
+        event: Message | CallbackQuery, state: FSMContext, *args, **kwargs,
     ):
         # Определяем, как получить объект сообщения
         if isinstance(event, Message):

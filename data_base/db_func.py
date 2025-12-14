@@ -138,6 +138,25 @@ async def get_club_info(club_id):
             )
             raise
 
+@log_function_call
+async def get_member_lang(member_id):
+    """
+    Функция получения языка по member_id
+    """
+    member_info = await get_profile(member_id)
+    response = member_info.get("lang") or member_info.get("clube_lang") or "en"
+    return response
+
+@log_function_call
+async def get_club_lang(club_id):
+    """
+    Функция получния языка по club_id
+    """
+    club_info = await get_club_info(club_id)
+    if not club_info: return "en"
+    response = club_info.get("lang") or "en"
+    return response
+
 
 @log_function_call
 async def extract_member_id(club_id, user_id):
@@ -331,12 +350,15 @@ async def get_profile(member_id: int):
                     m.resume,
                     m.description,
                     m.info_level,
+                    m.lang,
                     t.token AS token,
+                    c.lang AS club_lang,
                     proxy_user.username AS proxy_username
                 FROM Members m
                 INNER JOIN Users u ON m.user_id = u.id
                 LEFT JOIN Tokens t ON m.token = t.id
                 LEFT JOIN Users proxy_user ON m.proxy = proxy_user.id
+                LEFT JOIN Clubs c ON m.club_id = c.id
                 WHERE m.id = ?
             """,
                 (member_id,),
@@ -545,6 +567,10 @@ async def update_club_name(club_id: int, new_name: str):
     :return: Сообщение об успешности или неудачности операции.
     """
     logger.info(f"Обновление имени группы для club_id={club_id} на '{new_name}'")
+
+    lang = await get_club_lang(club_id)
+    data = {"lang": lang}
+
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -573,6 +599,8 @@ async def update_club_description(club_id: int, new_description: str):
     :return: Сообщение об успешности или неудачности операции.
     """
     logger.info(f"Обновление описания группы для club_id={club_id}")
+    lang = await get_club_lang(club_id)
+    data = {"lang": lang}
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -599,6 +627,8 @@ async def update_club_conditions(club_id: int, new_conditions: str):
     :return: Сообщение об успешности или неудачности операции.
     """
     logger.info(f"Обновление условий участия для club_id={club_id}")
+    lang = await get_club_lang(club_id)
+    data = {"lang": lang}
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -625,6 +655,8 @@ async def update_quenstios_for_the_candidate(club_id: int, new_questions: str):
     :return: Сообщение об успешности или неудачности операции.
     """
     logger.info(f"Обновление условий участия для club_id={club_id}")
+    lang = await get_club_lang(club_id)
+    data = {"lang": lang}
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -662,6 +694,8 @@ async def update_stage_duration(
     :return: Сообщение об успешности или неудачности операции.
     """
     logger.info(f"Обновление условий участия для club_id={club_id}")
+    lang = await get_club_lang(club_id)
+    data = {"lang": lang}
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -699,6 +733,8 @@ async def update_thresholds(
     :return: Сообщение об успешности или неудачности операции.
     """
     logger.info(f"Обновление порогов доверенных голосов для club_id={club_id}")
+    lang = await get_club_lang(club_id)
+    data = {"lang": lang}
     async with AsyncDatabase(path_db) as cursor:
         try:
             if threshold_in_voices is not None and threshold_in_percent is not None:
@@ -738,6 +774,8 @@ async def add_telegram_channel(
     logger.info(
         f"Добавление телеграм-канала/чата с tg_id={tg_id} для club_id={club_id}"
     )
+    lang = await get_club_lang(club_id)
+    data = {"lang": lang}
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -772,6 +810,8 @@ async def remove_telegram_channel(club_id: int, tg_id: int):
     :return: Сообщение об успешности или неудачности операции.
     """
     logger.info(f"Удаление телеграм-канала/чата с tg_id={tg_id}")
+    lang = await get_club_lang(club_id)
+    data = {"lang": lang}
     async with AsyncDatabase(path_db) as cursor:
         try:
             await cursor.execute(
@@ -806,6 +846,8 @@ async def set_main_channel(club_id: int, channel_link: str):
     :return: Сообщение об успешности или неудачности операции.
     """
     logger.info(f"Установка основного канала для club_id={club_id}: {channel_link}")
+    lang = await get_club_lang(club_id)
+    data = {"lang": lang}
 
     async with AsyncDatabase(path_db) as cursor:
         try:

@@ -62,7 +62,7 @@ async def enter_token(callback: CallbackQuery, state: FSMContext, data: dict):
         get_text("frozen.enter_a_unique_token", lang=lang)
     )
 
-    markup = return_to_main_menu_markup
+    markup = return_to_main_menu_markup(lang=lang)
 
     # Сохраняем данные в middleware или контекст
     data["response_text"] = text
@@ -104,7 +104,7 @@ async def process_token(message: Message, state: FSMContext, data: dict):
             await message.answer(
 # text = "Токен не действителен. Попробуйте снова или продолжите анкету.",
                 text = get_text("frozen.token_not_valid_try_again_or_continue_questionnaire", lang=lang),
-                reply_markup=return_to_main_menu_markup)
+                reply_markup=return_to_main_menu_markup(lang=lang))
             await add_token_attempt(member_id)
             return
         token_id = result.get("token_id")
@@ -113,18 +113,18 @@ async def process_token(message: Message, state: FSMContext, data: dict):
             if success:
 # await message.answer(text="Авторизация успешна! Вы участник группы.",
                 await message.answer(text=get_text("frozen.auth_success_you_member_group", lang=lang),
-                    reply_markup=return_to_main_menu_markup)
+                    reply_markup=return_to_main_menu_markup(lang=lang))
                 await state.clear()
                 return
             else:
                 await message.answer(text=msg,
-                    reply_markup=return_to_main_menu_markup)
+                    reply_markup=return_to_main_menu_markup(lang=lang))
                 await add_token_attempt(member_id)
                 return
         else:
 # await message.answer(text="Токен недействителен. Попробуйте снова или продолжите анкету.",
             await message.answer(text=get_text("frozen.token_invalid_try_again_or_continue_questionnaire", lang=lang),
-                reply_markup=return_to_main_menu_markup)
+                reply_markup=return_to_main_menu_markup(lang=lang))
             await add_token_attempt(member_id)
             return
     else:
@@ -132,7 +132,7 @@ async def process_token(message: Message, state: FSMContext, data: dict):
         logger.info(f"Вместо токена постпило сообщение: {token_input} от пользователя {member_id}")
 # await message.answer(text="То, что вы ввели не похоже на токен. Попробуйте снова или наберите /cancel.",
         await message.answer(text=get_text("frozen.to_chto_you_entered_not_seems_to_token_try_again_or_type_can", lang=lang),
-                reply_markup=return_to_main_menu_markup)
+                reply_markup=return_to_main_menu_markup(lang=lang))
         await state.set_state(FSMEnterToken.fill_token)
 
 """

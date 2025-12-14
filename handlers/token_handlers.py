@@ -203,7 +203,7 @@ async def process_token_comment(message: Message, state: FSMContext, data: dict)
 
     await state.clear()
 #     await message.answer("Возврат в главное меню:", reply_markup=main_menu_markup)
-    await message.answer(get_text("token.return_in_main_menu", lang=data.get("lang","ru")), reply_markup=main_menu_markup)
+    await message.answer(get_text("token.return_in_main_menu", lang=data.get("lang","ru")), reply_markup=main_menu_markup(lang=data.get("lang","en")))
 
 
     # fsm_data = await state.get_data()
@@ -308,7 +308,7 @@ async def process_issue_token_comment(message: Message, state: FSMContext, data:
 
     await state.clear()
 #     await message.answer("Меню управления токенами:", reply_markup=main_menu_markup)
-    await message.answer(get_text("token.menu_management_tokens", lang=data.get("lang","ru")), reply_markup=main_menu_markup)
+    await message.answer(get_text("token.menu_management_tokens", lang=data.get("lang","ru")), reply_markup=main_menu_markup(lang=data.get("lang","en")))
 
 
 
@@ -369,7 +369,7 @@ async def process_issue_1_token_comment(message: Message, state: FSMContext, dat
 
     await state.clear()
 #     await message.answer("Меню управления токенами:", reply_markup=main_menu_markup)
-    await message.answer(get_text("token.menu_management_tokens_1", lang=data.get("lang","ru")), reply_markup=main_menu_markup)
+    await message.answer(get_text("token.menu_management_tokens_1", lang=data.get("lang","ru")), reply_markup=main_menu_markup(lang=data.get("lang","en")))
 
 
 
@@ -401,13 +401,13 @@ async def handle_export_tokens(callback: CallbackQuery, data: dict):
 #             caption="Экспорт токенов",
             caption=get_text("token.export_tokens", lang=data.get("lang","ru")),
 
-            reply_markup=main_menu_markup
+            reply_markup=main_menu_markup(lang=data.get("lang","en"))
         )
 
     except Exception as e:
         logger.error(f"Ошибка при экспорте токенов: {e}")
 #         await callback.message.answer("Не удалось экспортировать токены.")  # type: ignore
-        await callback.message.answer(get_text("token.not_success_export_tokeny", lang=data.get("lang","ru")))  # type: ignore
+        await callback.message.answer(get_text("token.not_success_export_tokeny", lang=data.get("lang","en")))  # type: ignore
 
     finally:
         if file_path and os.path.exists(file_path):
@@ -415,7 +415,7 @@ async def handle_export_tokens(callback: CallbackQuery, data: dict):
             logger.info(f"Файл {file_path} удалён.")
 
 #     await callback.message.answer("Меню управления токенами:", reply_markup=main_menu_markup)  # type: ignore
-    await callback.message.answer(get_text("token.menu_management_tokens_2", lang=data.get("lang","ru")), reply_markup=main_menu_markup)  # type: ignore
+    await callback.message.answer(get_text("token.menu_management_tokens_2", lang=data.get("lang","ru")), reply_markup=main_menu_markup(lang=lang))  # type: ignore
 
 
 
@@ -464,4 +464,4 @@ async def process_token_value(message: Message, state: FSMContext, data: dict):
 
     await state.clear()
 #     await message.answer("Меню управления токенами:", reply_markup=main_menu_markup)
-    await message.answer(get_text("token.menu_management_tokens_3", lang=data.get("lang","ru")), reply_markup=main_menu_markup)
+    await message.answer(get_text("token.menu_management_tokens_3", lang=data.get("lang","ru")), reply_markup=main_menu_markup(lang=data.get("lang","en")))

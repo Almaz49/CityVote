@@ -45,7 +45,6 @@ dp["path_db"] = path_db
 dp["club_id"] = club_id
 dp["instance_name"] = instance_name
 
-
 # Настройка логгирования
 logger = setup_logger(
     debug_log_path=f"logs/{instance_name}_debug.log",
@@ -79,7 +78,7 @@ def schedule_jobs():
         tz = ZoneInfo("UTC")
         logger.warning(f"Неизвестный часовой пояс '{tz_name}'. Используется UTC.")
 
-    # Проврка права голоса для всех пользователей
+    # Проверка права голоса для всех пользователей
     scheduler.add_job(
         check_votist_status_for_all_members, "interval", hours=1, args=[club_id]
     )  # раз в час

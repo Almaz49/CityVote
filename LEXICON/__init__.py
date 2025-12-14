@@ -20,20 +20,22 @@ LEXICON_MAP: dict[str, Any] = {
     # 'en': LEXICON_EN,
 }
 
-def get_text(key: str, lang: str) -> str:
+from typing import Any
+
+def get_text(key: str, lang: str) -> Any:
     """
-    Возвращает текст по ключу для указанного языка.
-    Гарантированно возвращает строку.
+    Возвращает значение по ключу для указанного языка.
+    Может быть строкой, словарём, числом и т.д.
 
     Fallback: запрошенный язык → русский → [MISSING: key]
     При LEXICON_DEBUG=1 логирует пропущенные ключи и fallback'и.
     """
-    def _get_value(lexicon: Any, key_parts: list[str]) -> str | None:
+    def _get_value(lexicon: Any, key_parts: list[str]) -> Any:
         value = lexicon
         try:
             for k in key_parts:
                 value = value[k]
-            return value if isinstance(value, str) else str(value)
+            return value  # ← возвращаем как есть, без преобразования
         except (KeyError, TypeError, AttributeError):
             return None
 
@@ -65,4 +67,19 @@ def get_text(key: str, lang: str) -> str:
         )
     return missing
 
-LEXICON_init = LEXICON_RU
+# Проверка на дубли в лексиконе
+# TODO: закомментировать после проверки
+
+def assert_no_duplicate_keys(d: dict, path: str = ""):
+    seen = set()
+    for key, value in d.items():
+        full_key = f"{path}.{key}" if path else key
+        assert key not in seen, f"Дублирующийся ключ: {full_key}"
+        seen.add(key)
+        if isinstance(value, dict):
+            assert_no_duplicate_keys(value, full_key)
+
+def test_lexicon_no_duplicates():
+    assert_no_duplicate_keys(LEXICON_RU)
+
+LEXICON = LEXICON_RU

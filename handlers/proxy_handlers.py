@@ -9,6 +9,7 @@ from aiogram.fsm.state import default_state
 from aiogram.types import (CallbackQuery, Message)
 
 
+from LEXICON import get_text
 from data_base.telegram_bot_logic import *
 from filters.filters import StatusFilter
 from FSMs.FSMs import (FSMTextMailing)
@@ -34,7 +35,7 @@ async def mailing_list_start_proxy(callback: CallbackQuery, state: FSMContext, d
     if not callback.message: return
     await callback.answer()
 #     await callback.message.answer(text="Введите текст рассылки:", reply_markup=return_to_main_menu_markup)
-    await callback.message.answer(text=get_text("proxy.enter_text_rassylki", lang=data.get("lang","ru")), reply_markup=return_to_main_menu_markup)
+    await callback.message.answer(text=get_text("proxy.enter_text_rassylki", lang=data.get("lang","ru")), reply_markup=return_to_main_menu_markup(lang=data.get("lang","en")))
 
     await state.set_state(FSMTextMailing.fill_text)
 
@@ -54,7 +55,7 @@ async def fill_mailing_text_for_followers(message: Message, state: FSMContext, d
 #             text = "Сообщение слишком длинное (макс. 4000 символов). попробуйте снова",
             text = get_text("proxy.message_slishkom_dlinnoe_maks_4000_characters_try_again", lang=data.get("lang","ru")),
 
-            reply_markup=return_to_main_menu_markup)
+            reply_markup=return_to_main_menu_markup(lang=data.get("lang","en")))
         return
     message_text = message.text
     bot = message.bot
@@ -65,5 +66,5 @@ async def fill_mailing_text_for_followers(message: Message, state: FSMContext, d
     club_id = data["club_id"]
     text = await send_notification_to_followers(bot, club_id, message_text, proxy)
 
-    await message.answer(text=text, reply_markup=return_to_main_menu_markup)
+    await message.answer(text=text, reply_markup=return_to_main_menu_markup(lang=data.get("lang","en")))
     await state.clear()

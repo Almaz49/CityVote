@@ -103,6 +103,8 @@ async def auto_approve_by_token(member_id: int, club_id, token_id: int = 0, toke
     :param token: Токен (строка).
     :return: (success, message)
     """
+    lang = await get_member_lang(member_id)
+    data = {"lang": lang}
 
     if not token_id and not token:
         return False, "Не указан токен."

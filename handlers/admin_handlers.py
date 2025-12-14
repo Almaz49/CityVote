@@ -111,7 +111,7 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
     profile = await get_profile(member_id)
     if profile != {}:
         # Создаем объект инлайн-клавиатуры
-        markup = confirm_markup
+        markup = confirm_markup(lang=data.get("lang","en"))
 
         # TODO: Вместо этого использовать get_text
 
@@ -141,7 +141,7 @@ async def process_registrator_id_sent(message: Message, state: FSMContext, data:
     else:
         # Добавляем данные для SafeEditMiddleware
         data["response_text"] = get_text("admin.process_registrator_profile_not_found", lang=lang)
-        data["reply_markup"] = main_menu_markup
+        data["reply_markup"] = main_menu_markup(lang=lang)
 
         # Отправляем сообщение об ошибке
         await message.answer(
@@ -192,7 +192,7 @@ async def process_registrator_contact_sent(
     )  # извлекаем данные о новом регистраторе
 
     # Создаем объект инлайн-клавиатуры
-    markup = confirm_markup
+    markup = confirm_markup(lang=data.get("lang","en"))
 
     if flag:
         # Добавляем данные для SafeEditMiddleware
@@ -448,7 +448,7 @@ async def process_registrators_list(callback: CallbackQuery, data: dict):
         )
 
     await callback.message.answer(
-        text="Вернуться в основное меню", reply_markup=return_to_main_menu_markup
+        text="Вернуться в основное меню", reply_markup=return_to_main_menu_markup(lang=lang)
     )
 
 
@@ -736,41 +736,29 @@ async def process_admin_voting_cb(callback: CallbackQuery, data: dict):
 
         dict_menu = {}
         if voting_status == "add_variants":
-            dict_menu[f"voting_start:{voting_id}"] = LEXICON.get(
-                "voting_start", "voting_start"
-            )
-            dict_menu[f"voting_complete:{voting_id}"] = LEXICON.get(
-                "voting_complete", "voting_complete"
-            )
+            dict_menu[f"voting_start:{voting_id}"] = get_text("voting_start", lang=lang)
+            dict_menu[f"voting_complete:{voting_id}"] = get_text("voting_complete", lang=lang)
         # Пока не пишу восстановление голосования - слоишком сложно "проворачивать фарш назад"
         # elif voting_status == 'completed':
-        #     dict_menu[f'voting_reopen:{voting_id}'] = LEXICON.get('reopen', 'reopen')
+#         #     dict_menu[f'voting_reopen:{voting_id}'] = get_text('reopen', 'reopen')
+        #     dict_menu[f'voting_reopen:{voting_id}'] = get_text("reopen", lang=data.get("lang", "ru"))
         elif voting_status == "ongoing":
-            dict_menu[f"voting_stage:{voting_id}"] = LEXICON.get(
-                "voting_stage", "voting_stage"
-            )
-            dict_menu[f"voting_final:{voting_id}"] = LEXICON.get(
-                "voting_final", "voting_final"
-            )
-            dict_menu[f"voting_complete:{voting_id}"] = LEXICON.get(
-                "voting_complete", "voting_complete"
-            )
+            dict_menu[f"voting_stage:{voting_id}"] = get_text("voting_stage", lang=lang)
+            dict_menu[f"voting_final:{voting_id}"] = get_text( "voting_final", lang=lang)
+            dict_menu[f"voting_complete:{voting_id}"] = get_text( "voting_complete", lang=lang)
         elif voting_status == "final":
-            dict_menu[f"voting_complete:{voting_id}"] = LEXICON.get(
-                "voting_complete", "voting_complete"
-            )
+            dict_menu[f"voting_complete:{voting_id}"] = get_text( "voting_complete", lang=lang)
         elif voting_status == "confirmation":
-            dict_menu[f"voting_complete:{voting_id}"] = LEXICON.get(
-                "voting_complete", "voting_complete"
-            )
+            dict_menu[f"voting_complete:{voting_id}"] = get_text( "voting_complete", lang=lang)
         else:
             logger.warning(f"Голосование {voting_id} имеет некорректный статус: {voting_status}")
             await callback.message.answer(  # type: ignore
             text= get_text("admin.unknown_voting_status", lang=lang),
-            reply_markup=return_to_main_menu_markup
+            reply_markup=return_to_main_menu_markup(lang=lang)
         )
 
-        dict_menu["main_menu"] = LEXICON.get("return_to_main_menu", "main menu")
+#         dict_menu["main_menu"] = LEXICON.get("return_to_main_menu", "main menu")
+        dict_menu["main_menu"] = get_text("return_to_main_menu", lang=data.get("lang", "ru"))
 
         logger.info(f"словарь меню при показе вариантов: {dict_menu}")
         markup = create_inline_kb(1, **dict_menu)
@@ -1184,22 +1172,26 @@ async def admin_members(callback: CallbackQuery, data:dict) -> None:
     buttons = [
         [
             InlineKeyboardButton(
-                text=LEXICON.get("export_members","Экспорт списка участников"), callback_data="export_members"
+#                 text=LEXICON.get("export_members","Экспорт списка участников"), callback_data="export_members"
+                text=get_text("export_members", lang=data.get("lang", "ru")), callback_data="export_members"
             ),
         ],
         [
             InlineKeyboardButton(
-                text=LEXICON.get("ban_member","Забанить"), callback_data="ban_member"
+#                 text=LEXICON.get("ban_member","Забанить"), callback_data="ban_member"
+                text=get_text("ban_member", lang=data.get("lang", "ru")), callback_data="ban_member"
             ),
         ],
         [
             InlineKeyboardButton(
-                text=LEXICON.get("unban_member","Разбанить"), callback_data="unban_member"
+#                 text=LEXICON.get("unban_member","Разбанить"), callback_data="unban_member"
+                text=get_text("unban_member", lang=data.get("lang", "ru")), callback_data="unban_member"
             )
         ],
         [
             InlineKeyboardButton(
-                text=LEXICON.get("back_to_menu","Назад"), callback_data="back_to_menu"
+#                 text=LEXICON.get("back_to_menu","Назад"), callback_data="back_to_menu"
+                text=get_text("back_to_menu", lang=data.get("lang", "ru")), callback_data="back_to_menu"
             )
         ]
     ]
@@ -1269,10 +1261,16 @@ async def process_ban_user_id_sent(message: Message, state: FSMContext, data: di
             user_profile = await get_profile(user_member_id)
             if user_profile:
                 await message.answer(
-                    text=f"""Данные участника которому вы хотите забанить:\nИмя: {user_profile.get('first_name')},
-    Фамилия: {user_profile.get('last_name')}, \n Телефон: {user_profile.get('tg_phone_number')}\n
-    Псевдоним: {user_profile.get('username')} Всё верно?""",
-                    reply_markup=confirm_markup,  # клавиатура подтверждения из модуля клавиатур
+                    text=get_text("admin.details_of_the_user_you_want_to_ban",lang=lang).format(user_profile),
+
+    #                 f"""
+    #                 Данные участника которого вы хотите забанить:\n
+    #                 Имя: {user_profile.get('first_name')},
+    # Фамилия: {user_profile.get('last_name')}, \n
+    # Телефон: {user_profile.get('tg_phone_number')}\n
+    # Псевдоним: {user_profile.get('username')} Всё верно?
+    # """,
+                    reply_markup=confirm_markup(lang=data.get("lang","en")),  # клавиатура подтверждения из модуля клавиатур
                 )
                 # Устанавливаем состояние ожидания подтверждения
                 await state.set_state(FSMBan.fill_OK)
@@ -1327,11 +1325,8 @@ async def process_ban_user_contact_sent(
             user_profile = await get_profile(user_member_id)
             if user_profile:
                 await message.answer(
-                    text=f"""Данные участника которого вы хотите забанить:\nИмя: {user_profile.get('first_name')},
-    Фамилия: {user_profile.get('last_name')}, \n Телефон: {user_profile.get('tg_phone_number')}\n
-    Псевдоним: {user_profile.get('username')} Всё верно?""",
-                    reply_markup=confirm_markup,  # клавиатура подтверждения из модуля клавиатур
-                )
+                    text=get_text("admin.details_of_the_user_you_want_to_ban",lang=lang).format(user_profile)
+                    )
             else:
                 await message.answer(text="Данные участника не найдены")
                 # Сбрасываем состояние и очищаем данные, полученные внутри состояний
@@ -1455,7 +1450,7 @@ async def process_ban_execute(callback: CallbackQuery, state: FSMContext, data: 
     await ban_member(member_id, admin_id, ban_time_days)
     await callback.message.answer(
         text= get_text("admin.user_banned_for_days", lang=lang).format(ban_time_days = ban_time_days),
-        reply_markup=return_to_main_menu_markup
+        reply_markup=return_to_main_menu_markup(lang=lang)
         )
 
 """
@@ -1484,9 +1479,11 @@ async def export_members_start(callback: CallbackQuery, state: FSMContext, data:
     if not callback.message:
         raise ValueError("Callback message is None")
     text= get_text("admin.choose_member_status_for_export", lang=lang)
-    button_dict = LEXICON.get("user_status")
+#     button_dict = LEXICON.get("user_status")
+    button_dict:dict = get_text("user_status", lang=data.get("lang", "ru"))
     if not button_dict: button_dict = {}
-    button_dict["main_menu"] = LEXICON.get("main_menu", "Главное меню")
+#     button_dict["main_menu"] = LEXICON.get("main_menu", "Главное меню")
+    button_dict["main_menu"] = get_text("main_menu", lang=data.get("lang", "ru"))
     markup = create_inline_kb(2, **button_dict)
     await callback.message.answer(text, reply_markup=markup)
     await state.set_state(FSMExportMembers.fill_status)
@@ -1519,7 +1516,7 @@ async def process_export_members(
             tg_id=callback.from_user.id,
             file_path=file_path,
             caption= get_text("admin.export_members_start", lang=lang),
-            reply_markup=main_menu_markup
+            reply_markup=main_menu_markup(lang=lang)
         )
 
         # Удаляем файл после отправки
@@ -1530,7 +1527,7 @@ async def process_export_members(
         logger.error(f"Ошибка при экспорте списка участников: {e}")
         await callback.message.answer(get_text("admin.export_failed", lang=lang))  # type: ignore
 
-    await callback.message.answer("Главное меню:", reply_markup=main_menu_markup)  # type: ignore
+    await callback.message.answer("Главное меню:", reply_markup=main_menu_markup(lang=lang))  # type: ignore
     await state.clear()
 
 """
@@ -1567,11 +1564,11 @@ async def mailing_all_start(callback: CallbackQuery, state: FSMContext, data:dic
     if callback.data == "mailing_user":
         await callback.message.answer(
             text= get_text("admin.enter_user_id_or_contact_for_mailing", lang=lang),
-            reply_markup=return_to_main_menu_markup
+            reply_markup=return_to_main_menu_markup(lang=lang)
             )
         await state.set_state(FSMTextMailing.fill_tg_id)
     else:
-        await callback.message.answer(text="Введите текст рассылки:", reply_markup=return_to_main_menu_markup)
+        await callback.message.answer(text="Введите текст рассылки:", reply_markup=return_to_main_menu_markup(lang=lang))
         await state.set_state(FSMTextMailing.fill_text)
 
 
@@ -1586,7 +1583,7 @@ async def fill_mailing_tg_id_or_contact(message: Message, state: FSMContext, dat
         if not user_tg_id:
             await message.answer(
                 text = get_text("admin.contact_has_no_id", lang=lang),
-                reply_markup=return_to_main_menu_markup
+                reply_markup=return_to_main_menu_markup(lang=lang)
                                  )
             return
         logger.info(f"Получен контакт с ID: {user_tg_id}")
@@ -1596,18 +1593,18 @@ async def fill_mailing_tg_id_or_contact(message: Message, state: FSMContext, dat
         except ValueError:
             await message.answer(
                 text= get_text("admin.invalid_numeric_input", lang=lang),
-                reply_markup=return_to_main_menu_markup)
+                reply_markup=return_to_main_menu_markup(lang=lang))
             return
     else:
         await message.answer(
              text= get_text("admin.message_has_no_text", lang=lang),
-             reply_markup=return_to_main_menu_markup
+             reply_markup=return_to_main_menu_markup(lang=lang)
              )
         logger.warning(f"Пользователь {message.from_user.id if message.from_user else 'неизвестен'} ввел некорректный контакт: {message.text}")
         return
 
     await state.update_data(ID=user_tg_id)
-    await message.answer("Введите текст послания:", reply_markup=return_to_main_menu_markup)
+    await message.answer("Введите текст послания:", reply_markup=return_to_main_menu_markup(lang=lang))
     await state.set_state(FSMTextMailing.fill_text)
 
 
@@ -1624,7 +1621,7 @@ async def fill_mailing_text_for_all(message: Message, state: FSMContext, data: d
     if len(message.text) > 4000:
         await message.answer(
             text = get_text("admin.message_too_long_max_4000", lang=lang),
-            reply_markup=return_to_main_menu_markup)
+            reply_markup=return_to_main_menu_markup(lang=lang))
         return
     message_text = message.text
     bot = message.bot
@@ -1643,5 +1640,5 @@ async def fill_mailing_text_for_all(message: Message, state: FSMContext, data: d
     else:
         raise ValueError("Неизвестное значение choice")
 
-    await message.answer(text=text, reply_markup=main_menu_markup)
+    await message.answer(text=text, reply_markup=main_menu_markup(lang=lang))
     await state.clear()

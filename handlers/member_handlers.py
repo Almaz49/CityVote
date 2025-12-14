@@ -109,7 +109,7 @@ async def process_select_proxy(callback: CallbackQuery, data: dict):
             if callback.data is None:
                 logger.warning("Callback data отсутствует")
 #                 await callback.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
-                await callback.answer(get_text("member.occurred_error_please_try_again_1", lang=data.get("lang","ru")))
+                await callback.answer(get_text("member.occurred_error_please_try_again", lang=data.get("lang","ru")))
 
                 return
             _, page = callback.data.split(":")
@@ -300,7 +300,7 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
 #                 text="Не найдена информация о представителе",
                 text=get_text("member.not_found_info_about_representative_info", lang=data.get("lang","ru")),
 
-                reply_markup=return_to_main_menu_markup,
+                reply_markup=return_to_main_menu_markup(lang=data.get("lang","en")),
             )
             return
 
@@ -354,7 +354,7 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
             pagination_buttons.append(
                 InlineKeyboardButton(
 #                     text="⬅️ Назад", callback_data=f"select_proxy:{page - 1}"
-                    text=get_text("member.back_1", lang=data.get("lang","ru")), callback_data=f"select_proxy:{page - 1}"
+                    text=get_text("member.back", lang=data.get("lang","ru")), callback_data=f"select_proxy:{page - 1}"
 
                 )
             )
@@ -362,7 +362,7 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
             pagination_buttons.append(
                 InlineKeyboardButton(
 #                     text="➡️ Вперед", callback_data=f"select_proxy:{page + 1}"
-                    text=get_text("member.before_1", lang=data.get("lang","ru")), callback_data=f"select_proxy:{page + 1}"
+                    text=get_text("member.before", lang=data.get("lang","ru")), callback_data=f"select_proxy:{page + 1}"
 
                 )
             )
@@ -370,7 +370,7 @@ async def process_proxy_details(callback: CallbackQuery, data: dict):
         # Добавляем кнопку "Главное меню"
         main_menu_button = InlineKeyboardButton(
 #             text="Главное меню", callback_data="main_menu"
-            text=get_text("member.main_menu_1", lang=data.get("lang","ru")), callback_data="main_menu"
+            text=get_text("member.main_menu", lang=data.get("lang","ru")), callback_data="main_menu"
 
         )
 
@@ -647,7 +647,7 @@ async def process_username_sent(message: Message, state: FSMContext, data: dict)
 # {username}""",
             text=get_text("member.please_confirm_correct_is_entered_yours_name_username_value", lang=data.get("lang","ru")).format(username=username),
 
-            reply_markup=confirm_markup,
+            reply_markup=confirm_markup(lang=data.get("lang","en")),
         )
         await state.set_state(FSM_become_proxy.fill_OK)
     else:
@@ -739,7 +739,7 @@ async def process_no_confirm_proxy_press(
         get_text("member.thank_you_username_not_added_try_also_time_or_press_button_f", lang=data.get("lang","ru"))
 
     )
-    data["reply_markup"] = return_to_main_menu_markup
+    data["reply_markup"] = return_to_main_menu_markup(lang=data.get("lang","en"))
 
     # Пытаемся отредактировать сообщение
     await safe_edit(callback,   # type: ignore
@@ -1313,7 +1313,7 @@ async def process_reg_username_sent(message: Message, state: FSMContext, data: d
 # {username}""",
             text=get_text("member.please_confirm_correct_is_entered_yours_name_username_value_1", lang=data.get("lang","ru")).format(username=username),
 
-            reply_markup=confirm_markup,
+            reply_markup=confirm_markup(lang=data.get("lang","en")),
         )
         await state.set_state(FSM_become_registrator.fill_OK)
     else:
@@ -1402,7 +1402,7 @@ async def process_no_confirm_registrator_press(
         get_text("member.thank_you_username_not_added_try_enter_username_also_time_or", lang=data.get("lang","ru"))
 
     )
-    data["reply_markup"] = return_to_main_menu_markup
+    data["reply_markup"] = return_to_main_menu_markup(lang=data.get("lang","en"))
 
     # Пытаемся отредактировать сообщение
     await safe_edit(callback,   # type: ignore

@@ -15,7 +15,6 @@ from data_base.telegram_bot_logic import (get_club_info, list_of_members,
                                           update_user_data)
 from FSMs.FSMs import FSM_short_registration
 from keyboards.keyboards import return_to_main_menu_markup, user_menu
-from LEXICON.LEXICON import LEXICON_dict
 from services.services import (notify_registrator_short,
                                notify_super_registrator_short)
 from utils import log_handler_call
@@ -51,7 +50,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 #                 text="Вы уже зарегистрированы в группе",
                 text=get_text("short_reg_process.you_already_registered_in_group", lang=data.get("lang","ru")),
 
-                reply_markup=return_to_main_menu_markup,
+                reply_markup=return_to_main_menu_markup(lang=data.get("lang","en")),
             )
             return
 
@@ -69,9 +68,10 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
         logger.debug(f"Club info: {club_info}")
 
 #         text0 = LEXICON.get("registration_message", "Напишите о себе")
-        text0 = LEXICON_dict.get("registration_message", get_text("short_reg_process.write_about_about_yourself", lang=data.get("lang","ru")))
+        text0 = get_text("registration_message", lang=data.get("lang", "ru"))
 
-        text1 = LEXICON_dict.get("reg_cancel_info")
+#         text1 = LEXICON.get("reg_cancel_info")
+        text1 = get_text("reg_cancel_info", lang=data.get("lang", "ru"))
 
         # Проверяем, что club_info содержит вопросы
         questions = club_info.get("questions_for_the_candidate")
@@ -257,7 +257,7 @@ async def process_registrator_choise(
         # Если выбран регистратор, отправляем ему сообщение с просьбой подтвердить регистрацию
         if callback.data.isdigit():
             success, result = await notify_registrator_short(
-                bot, int(callback.data), tg_id, user_dict
+                bot, club_id, int(callback.data), tg_id, user_dict
             )
             if not success:
 #                 await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")  # type: ignore
@@ -274,8 +274,9 @@ async def process_registrator_choise(
             # Здесь тоже нужна функция уведомления администрации
     except Exception as e:
         logger.error(f"Ошибка при выборе регистратора: {e}")
+        err = str(e)
 #         await callback.message.answer(text=f"Произошла ошибка: {str(e)}")  # type: ignore
-        await callback.message.answer(text=get_text("short_reg_process.occurred_error_value", lang=data.get("lang","ru")).format(/*** NEED MANUAL FIX ***/))  # type: ignore
+        await callback.message.answer(text=get_text("short_reg_process.occurred_error_value", lang=data.get("lang","ru")).format(err=err))  # type: ignore
 
         # Завершаем машину состояний
         await state.clear()

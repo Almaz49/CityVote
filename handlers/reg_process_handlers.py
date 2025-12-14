@@ -14,7 +14,6 @@ from data_base.db_token_service import (clear_old_attempts, get_token_attempts_c
 from services.services import notify_registrator_short, notify_super_registrator_short
 from FSMs.FSMs import FSM_short_registration
 from keyboards.keyboards import  user_menu
-from LEXICON.LEXICON import LEXICON_dict
 from utils import log_handler_call
 from utils.utils import safe_edit
 
@@ -66,7 +65,7 @@ async def process_registration(callback: CallbackQuery, state: FSMContext, data:
 
     # Формируем сообщение: ввести токен ИЛИ ответить на вопросы
 #     questions = club_info.get("questions_for_the_candidate") or LEXICON.get("registration_message", "Напишите о себе")
-    questions = club_info.get("questions_for_the_candidate") or LEXICON_dict.get("registration_message", get_text("reg_process.write_about_about_yourself", lang=data.get("lang","ru")))
+    questions = club_info.get("questions_for_the_candidate") or get_text("registration_message", lang=data.get("lang", "ru"))
 
     text = (
 #         "Введите уникальный токен (если он у вас есть).\n"
@@ -223,8 +222,12 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
 
         user_dict = await state.get_data()
         tg_id = callback.from_user.id
-        member_id = data["member_id"]
-        club_id = data["club_id"]
+        member_id = data.get("member_id")
+        if not member_id:
+            raise ValueError("member_id not found")
+        club_id = data.get("club_id")
+        if not club_id:
+            raise ValueError("club_id not found")
 
         user_param = {
             "tg_phone_number": user_dict.get("tg_phone_number"),
@@ -253,7 +256,7 @@ async def process_registrator_choise(callback: CallbackQuery, state: FSMContext,
         )
 
         if callback.data.isdigit():
-            success, result = await notify_registrator_short(bot, int(callback.data), tg_id, user_dict)
+            success, result = await notify_registrator_short(bot, club_id, int(callback.data), tg_id, user_dict)
             if not success:
 #                 await callback.message.answer(text=f"Ошибка при уведомлении регистратора: {result}")
                 await callback.message.answer(text=get_text("reg_process.error_with_notification_registrator_value", lang=data.get("lang","ru")).format(result=result))
