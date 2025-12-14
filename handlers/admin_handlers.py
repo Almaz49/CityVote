@@ -1190,8 +1190,8 @@ async def admin_members(callback: CallbackQuery, data:dict) -> None:
         ],
         [
             InlineKeyboardButton(
-#                 text=LEXICON.get("back_to_menu","Назад"), callback_data="back_to_menu"
-                text=get_text("back_to_menu", lang=data.get("lang", "ru")), callback_data="back_to_menu"
+#                 text=LEXICON.get("return_to_main_menu","Назад"), callback_data="return_to_main_menu"
+                text=get_text("return_to_main_menu", lang=data.get("lang", "ru")), callback_data="return_to_main_menu"
             )
         ]
     ]
