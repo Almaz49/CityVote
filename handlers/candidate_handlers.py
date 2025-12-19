@@ -741,7 +741,7 @@ async def process_list_proxy(callback: CallbackQuery, data: dict):
         if not proxies:
             # Добавляем данные для SafeEditMiddleware
 #             data["response_text"] = "В данный момент нет доступных представителей."
-            data["response_text"] = get_text("candidate.in_this_moment_no_available_representatives_1", lang=data.get("lang","ru"))
+            data["response_text"] = get_text("candidate.in_this_moment_no_available_representatives", lang=data.get("lang","ru"))
             data["reply_markup"] = await user_menu(status = data.get("user_status", ["user"]))
 
             # Редактируем сообщение

@@ -190,9 +190,10 @@ LEXICON_HANDLERS_RU = {
     "frozen": {
         "auth_success_you_member_group": 'Авторизация успешна! Вы участник группы.',
         "enter_a_unique_token": 'Введите уникальный токен (если он у вас есть).\\n',
-        "error notifying super registrar": 'Ошибка при уведомлении супер-регистратора: {result}',
+        "error_notify_super_registrator": 'Ошибка при уведомлении супер-регистратора: {result}',
         "error_with_notification_super_registrator": 'Ошибка при уведомлении супер-регистратора: ',
         "not_found_profile_user": 'Не найден профиль пользователя',
+        "number_token_entry_attempts_exceeded":"Превышено количество попыток ввода токена.",
         "to_chto_you_entered_not_seems_to_token_try_again_or_type_can": 'То, что вы ввели не похоже на токен. Попробуйте снова или наберите /cancel.',
         "to_you_no_confirming_token_or_expired_period_his_actions_pop": 'У вас нет подтверждающего токена или истек срок его действия".\nПопросите у администрации новый токен.',
         "to_you_no_confirming_token_or_expired_period_his_actions_pop_1": 'У вас нет подтверждающего токена или истек срок его действия".\nПопросите у администрации новый токен.',

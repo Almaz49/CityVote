@@ -239,7 +239,7 @@ async def process_yes_registrator_press(
     fsm_data = await state.get_data()
     member_tg_id = fsm_data["ID"]
     if not member_tg_id:
-        await callback.message.answer(get_text("admin.failed to get participant ID",lang=lang)) # type: ignore
+        await callback.message.answer(get_text("admin.failed_to_get_participant_id",lang=lang)) # type: ignore
         return
     admin_tg_id = callback.from_user.id
     admin_id = data["member_id"]
@@ -296,7 +296,7 @@ async def process_yes_registrator_press(
         raise  # Передаем исключение middleware для обработки
 
 # ====================================================================================================
-# get_text("admin.", lang=lang).format( = )
+
 # Этот хэндлер будет срабатывать на нажатие кнопки "НЕВЕРНО"
 @router.callback_query(StateFilter(FSMNewRegistrator.fill_OK), F.data == "ConfirmNotOK")
 @log_handler_call

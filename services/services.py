@@ -487,7 +487,7 @@ def help_message(status_list: list, lang: str = 'en'):
 
     for item in sorted(status):  # Сортируем роли для удобства
 #         role_help = LEXICON.get(item + '_help', f'Для статуса {item} пока нет справки.')
-        role_help = get_text("_help", lang=lang)
+        role_help = get_text(item + "_help", lang=lang)
         role = get_text(item, lang=lang)
         text += f"📌 <b>{role}:</b>\n{role_help}\n\n"
 
@@ -689,21 +689,14 @@ async def process_channel_info(bot: Bot, channel_info: str, club_id: int, action
 
 async def profile_message(member_id, status, lang = ''):
     profile = await get_profile(member_id)
+
+    # Подготовка к безопасному форматированию
+    safe_profile = {
+        k: (v if v is not None else "—") for k, v in profile.items()
+    }
     lang = lang or profile.get('lang') or 'en'
-    text = 'Данные вашего профиля:\n'
-    if profile.get('username'):
-        text += f"Псевдоним: {profile.get('username')}\n"
-    if profile.get('description'):
-        text += f"Ваше описание:\n{profile.get('description')}\n"
-    if profile.get('info_level'):
-        text += f"Уровень информирования: {profile.get('info_level')}\n"
-    if profile.get('proxy_username'):
-        if 'proxy' in status:
-            text += f"Ваш заместитель: {profile.get('proxy_username')}\n"
-        else:
-            text += f"Ваш представитель: {profile.get('proxy_username')}\n"
-    if profile.get('token'):
-        text += f"Ваш токен: {profile.get('token')}\n"
+    text = get_text("your_profile_data", lang=lang)
+    text += get_text("profile_info", lang=lang).format(**safe_profile)
 #     text+=LEXICON.get('profile_menu','Выберите, что хотите поменять в профиле') # Сюда вставить функцию создания текста
     text+=get_text("profile_menu", lang=lang) # Сюда вставить функцию создания текста
     return text

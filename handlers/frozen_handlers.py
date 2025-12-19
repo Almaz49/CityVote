@@ -53,8 +53,7 @@ async def enter_token(callback: CallbackQuery, state: FSMContext, data: dict):
     await clear_old_attempts(member_id)
     attempts = await get_token_attempts_count(member_id)
     if attempts >= 3:
-        await callback.message.answer(get_text("frozen.", lang=lang),
-            "Превышено количество попыток ввода токена.")
+        await callback.message.answer(get_text("frozen.number_token_entry_attempts_exceeded", lang=lang))
         return
 
     # Формируем сообщение: ввести токен
@@ -217,6 +216,6 @@ async def frozen_cb_await(callback: CallbackQuery, data: dict):
     }
     markup = create_inline_kb(1, **buttons)
     await callback.message.answer(  # type: ignore
-        text=get_text("frozen.t_have_verification_token", lang=lang),
+        text=get_text("frozen.you_don't_have_verification_token", lang=lang),
         reply_markup=markup,
     )
