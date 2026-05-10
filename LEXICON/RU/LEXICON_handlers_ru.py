@@ -74,7 +74,7 @@ LEXICON_HANDLERS_RU = {
         "choose_this_proxy": 'Выбрать этого представителя',
         "enter_unique_name_or_username": 'Введите уникальное имя или псевдоним.Это может быть ваше собственное имя (фамилия).Важно, чтобы оно было уникальным для этой группы, чтобы пользователи различали представителей.И желательно не длиннее 40 символов',
         "error_empty_message_please_enter_username": 'Ошибка: пустое сообщение. Пожалуйста, введите псевдоним.',
-        "f_description_proxy_info": ']}\\n" f"Описание:\\n{proxy_info[',
+        "f_description_proxy_info": "📝 Description:\n",
         "for_more_detailed_information_about_representative_info_pres": '\\nДля более подробной информации о представителе нажмите на соответствующую кнопку.',
         "in_present_time_no_active_voting": 'В настоящее время нет активных голосований.',
         "in_present_time_no_available_options": 'В настоящее время нет доступных вариантов.',

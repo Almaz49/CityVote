@@ -498,8 +498,15 @@ async def process_proxy_info(callback: CallbackQuery, data: dict):
         logger.info(
             f"Пользователь {callback.from_user.id} запросил информацию о представителе с ID {proxy_id}."
         )
-#         text = f"{proxy_info['username']}\n" f"Описание:\n{proxy_info['description']}\n"
-        text = f"{proxy_info['usernameget_text("all_users.f_description_proxy_info", lang=data.get("lang","ru"))description']}\n"
+        # Было (сломано):
+        # text = f"{proxy_info['username']}\n" f"Описание:\n{proxy_info['description']}\n"
+
+        # Стало (правильно с i18n):
+        text = (
+            f"{proxy_info['username']}\n"
+            f"{get_text('all_users.f_description_proxy_info', lang=data.get('lang','ru'))}"
+            f"{proxy_info['description']}\n"
+        )
 
         try:
             page = callback.data.split(":")[2]
